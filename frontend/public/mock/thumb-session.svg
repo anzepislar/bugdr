@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 112" font-family="Inter,sans-serif">
+  <rect width="240" height="112" fill="#2a2420"/>
+  <text x="12" y="18" font-size="8" fill="#f59e0b">SESSION LIFECYCLE</text>
+  <g fill="none" stroke="#f59e0b" stroke-opacity=".6">
+    <rect x="12" y="32" width="52" height="26" rx="3"/>
+    <rect x="94" y="32" width="52" height="26" rx="3"/>
+    <rect x="176" y="32" width="52" height="26" rx="3"/>
+    <path d="M66 45h24M86 41l4 4-4 4M148 45h24M168 41l4 4-4 4" stroke="#acb2be"/>
+  </g>
+  <g font-size="9" fill="#f2f3f5" text-anchor="middle">
+    <text x="38" y="48">Login</text><text x="120" y="48">JWT</text><text x="202" y="48">API</text>
+  </g>
+  <text x="120" y="86" font-size="8" fill="#f97316" text-anchor="middle">Token revoked. Session still active.</text>
+</svg>

@@ -52,6 +52,21 @@ Unlike LeetCode — these problems can't be solved by AI copy-paste.
 - Highlight (#EBA599) sparingly — difficulty badges, alerts only
 - Never use pure black or pure white
 
+**Logos** — `frontend/public/logo/` (transparent PNG, light-on-dark, cropped).
+Always use these files — never recreate the logo from screenshots.
+
+| File | Content | Size |
+|------|---------|------|
+| `bugdr-logo.png` | Bug mark + "bug.dr" wordmark | 447×126 |
+| `bugdr-wordmark.png` | "bug.dr" wordmark, eye as the dot | 352×111 |
+| `bugdr-mark.png` | Bug mark only (cut from `bugdr-logo.png`) | 90×126 |
+
+Favicon: `frontend/src/app/favicon.ico` = bug mark on a canvas-colored rounded square.
+Placement of logos per screen: follow the Figma designs.
+
+Use with `next/image`, e.g. `<Image src="/logo/bugdr-logo.png" alt="Bugdr" width={447} height={126} />`
+and scale with a CSS height. Raster files: for sharp retina display keep the rendered width at ≤ half the file width (logo ≤ ~220px wide).
+
 ---
 
 ## Routes
@@ -126,13 +141,13 @@ Time multiplier:
 Updated at the end of every session. Read this first in a new session.
 
 ```
-Last session: 6. 10. 2026 — Seja 1 (project setup, backend plan, admin Create Problem)
+Last session: 6. 10. 2026 — Seja 2 (dashboard + app shell)
 Phase: Frontend build from Figma designs (mock data)
-Frontend: 1 screen on mock data — /admin/problems/new (Create Problem, 6 steps)
+Frontend: 2 screens on mock data — /admin/problems/new (Create Problem), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx)
 Backend: Not started — plan in md_files/06_backend_slices.md (decisions D1-D19 locked)
 Database: Schema designed, not created yet
 Next step: next frontend screen (waiting for user)
-Open questions: add schema changes to 01_database.md? · D20 validation rule (all checks fail vs. pass on solution) · D21-D22 in 06
+Open questions: add schema changes to 01_database.md? · D20 validation rule · D21-D22 · D23 bookmarks · D24 feed filters vs. D19 · D25 notifications (all in 06)
 ```
 
 ### Session tracking
@@ -155,6 +170,10 @@ Open questions: add schema changes to 01_database.md? · D20 validation rule (al
 - Always ask before deleting files or changing routes
 - Run lint + typecheck + build after every screen
 - Never commit .env or passwords
+
+- Always check existing components in src/components/ before creating new ones
+- Reuse existing UI primitives (Button, Input, Modal, Table, etc.) — never duplicate them
+- If a component needs a new variant, extend the existing one — don't create a parallel version
 
 ---
 

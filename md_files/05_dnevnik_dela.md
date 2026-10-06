@@ -134,6 +134,20 @@ D11 pa tudi uspeh na rešitvi; negativna preverjanja legitimno uspejo že na
 pokvarjeni kodi), Claude analiza samo v backendu (D21), shranjevanje
 razpakiranega ZIP-a (D22). Nov stolpec `problems.bug_summary`.
 
+### 6. Logotipi
+
+Uporabnik je dal dva logotipa (prozoren PNG, svetel na temnem). Shranjena sta v
+`frontend/public/logo/`, obrezana na vsebino (izvirnika sta imela ~70 %
+praznega roba in šum v alfa kanalu, vrednosti ≤ 1 so bile počiščene):
+`bugdr-logo.png` (znak + napis "bug.dr", 447×126), `bugdr-wordmark.png`
+(napis z očesom kot piko, 352×111) in iz prvega izrezan samo znak
+`bugdr-mark.png` (90×126, za favicon in majhne prostore). V `CLAUDE.md` je
+dodan razdelek "Logos" s pravilom, da se logotip nikoli ne rekreira s
+posnetkov zaslona. Privzeti `src/app/favicon.ico` (create-next-app) je bil z
+dovoljenjem uporabnika zamenjan z znakom na zaobljenem kvadratu barve canvas
+(16/32/48/64 px) - na prozornem ozadju bi bil svetel znak na svetlih
+zavihkih brskalnika neviden. Postavitev logotipov se odloči ob prvih dizajnih.
+
 ### Tehnične opombe
 
 - `npm run lint`, `npm run typecheck` in `npm run build` v `frontend/` so bili
@@ -154,3 +168,67 @@ Predlagani Summary:
 Predlagani Description:
 
 `Creates the repository layout from the project overview (frontend, backend, docker, migrations, seeds) and scaffolds the Next.js 16 + TypeScript + Tailwind v4 frontend. The Graphite Signal palette, difficulty colors and 6px radius are defined as Tailwind theme tokens, Inter replaces the default font, and a typecheck script is added so lint, typecheck and build can run after every screen. A root .gitignore keeps .env files and node_modules out of the repository. Adds the first screen, /admin/problems/new: a six-step Create Problem flow (upload ZIP, AI analysis, review, define level and label, validate checks against the buggy code, save as draft or publish), fully on mock data until the backend slices exist. Also adds the session log and the backend slice plan in md_files.`
+---
+
+## 6. 10. 2026 — Seja 2: Dashboard
+
+### Povzetek
+
+Zgrajen je zaslon `/dashboard` po Figma dizajnu, na lažnih podatkih, skupaj
+s stransko in zgornjo vrstico, ki ju bodo uporabljali vsi uporabniški zasloni.
+
+### Kaj je narejeno
+
+- **Ogrodje uporabniških strani:** skupina poti `src/app/(app)/` (URL-jev ne
+  spremeni) z `layout.tsx` → `src/components/app/AppShell.tsx`: stranska
+  vrstica (logotip, Dashboard / Problems / Contests s številom aktivnih / My
+  profile, "Your path" s ciljem in izkušnjami iz onboardinga, Settings, Help,
+  uporabnik) in zgornja vrstica (drobtinice, iskanje → `/problems?q=`,
+  obvestila, avatar). Pod 1024 px se stranska vrstica skrči v vodoraven trak.
+- **Dashboard** (`src/app/(app)/dashboard/page.tsx`): pozdrav glede na uro,
+  datum, aktivna tekmovanja (tip, "Ends in", težavnost, udeleženci),
+  "Pick up where you left off" (nedokončan poskus → `/problems/[slug]/solve`),
+  "Recommended for you" (`src/components/dashboard/RecommendedFeed.tsx`:
+  filtri kategorija/težavnost/"Hide solved"/razvrščanje, privzeto po D19,
+  Reset, zaznamek) in "Your progress" (`ProgressPanel.tsx`: nivo in napredek
+  do naslednjega, rešeni, točke, streak tega tedna, graf aktivnosti 17 tednov,
+  "solved this month", zadnje rešitve). Dnevi so UTC (D7).
+- Skupni gradniki: `src/components/Icon.tsx` (SVG ikone brez knjižnice),
+  `src/components/DifficultyPill.tsx`.
+- Tipi `src/lib/types/dashboard.ts` (oblika `GET /dashboard`), mock
+  `src/lib/mock/dashboard.ts`, sličice problemov v `public/mock/*.svg`.
+
+### Odstopanja od dizajna (zaradi dokumentov)
+
+- Nivo: dizajn kaže "Level 12, 860 XP to level 13", sistem nivojev ima imena
+  (`03`) → prikazano "5 · Staff, 2,160 points to Principal".
+- "XP" → "points" (izraz iz `03`).
+- Kartica problema kaže časovno omejitev ("40 min") namesto razpona
+  ("25–40 min"), ki ga shema nima.
+- Odbijanje časa ("Ends in", "elapsed") se izračuna ob nalaganju, ne teče
+  sproti.
+
+Nova odprta vprašanja v `06`: D23 (zaznamki - ni tabele, zdaj samo v
+brskalniku), D24 (filtri feeda in "Hide solved" proti D19), D25 (obvestila -
+ni v shemi, zvonec zdaj brez funkcije). Razpon let pri izkušnjah ("2–4 years"
+za `mid`) je predpostavka do zaslona onboardinga.
+
+### Tehnične opombe
+
+- `npm run lint`, `npm run typecheck`, `npm run build` uspešni.
+- Preverjeno v brskalniku (Playwright): 1440 px primerjano z dizajnom, 390 px
+  brez vodoravnega drsenja, filtri / Reset / zaznamek delujejo. Edine napake
+  v konzoli so 404 ob predhodnem nalaganju povezav na zaslone, ki še ne
+  obstajajo (`/problems`, `/contests`, `/profile/max`).
+- Podatki se naložijo šele na odjemalcu (kot bo pravi `fetch`), zato besedila
+  odvisna od časa ne povzročajo napak hidracije.
+
+### Git zapis
+
+Predlagani Summary:
+
+`Add the dashboard and the app shell (mock data)`
+
+Predlagani Description:
+
+`Adds the shared sidebar and top bar for signed-in pages via an (app) route group, and the /dashboard screen from the Figma design: live contests, resume banner for the in-progress attempt, recommended problems with filters, and a progress panel with level, streak, activity graph and recent wins. Runs on mock data until slices U3, T1 and U2 exist.`

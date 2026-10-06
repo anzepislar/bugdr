@@ -19,7 +19,7 @@ povezala na API.
 ```
 Zadnja posodobitev: 6. 10. 2026
 Backend: ni začet (nobena rezina ni narejena)
-Frontend: 1 zaslon na mocku - /admin/problems/new (Create Problem, 6 korakov)
+Frontend: 2 zaslona na mocku - /admin/problems/new (Create Problem), /dashboard
 Naslednja rezina: F0 (ko se začne backend - Faza 2/3 iz 00_bugdr_razvoj.md)
 ```
 
@@ -83,6 +83,9 @@ dokler je uporabnik ne potrdi.
 | D20 | **ODPRTO** - pravilo validacije ob objavi | Zaslon Create Problem (po navodilu uporabnika) zahteva, da **vsa** preverjanja padejo na pokvarjeni kodi, sicer objava ni mogoča. To je v napetosti z D11 (preverjanja morajo tudi **uspeti** na rešitvi, ki je wizard ne zbira) in izloči legitimna negativna preverjanja (npr. "potekel žeton → 401" uspe že na pokvarjeni kodi). Predlog: objava = vsaj eno preverjanje pade na pokvarjeni kodi + vsa uspejo na rešitvi; preverjanje, ki uspe na pokvarjeni kodi, je opozorilo, ne blokada. Zahteva korak za nalaganje rešitve (drugi ZIP) | A10, A4, A5 |
 | D21 | **ODPRTO** - Claude analiza | Klic samo v backendu (ključ `ANTHROPIC_API_KEY` nikoli v frontendu), model iz konfiguracije, omejitev velikosti ZIP-a in števila/velikosti datotek, izpusti `node_modules`, `.git`, binarne datoteke; strogo preverjanje JSON odgovora (oblika `ProblemAnalysis`), ob neveljavnem odgovoru 502 `ANALYSIS_INVALID` | A10 |
 | D22 | **ODPRTO** - kje živi razpakiran ZIP med analizo in shranjevanjem | Predlog: analiza takoj ustvari osnutek problema (`is_published = false`) in shrani datoteke v `problem_codebase`; odgovor vrne `problemId`, "Save as Draft"/"Publish" sta nato `PATCH` istega osnutka. Brez začasnih map na disku | A10, A2 |
+| D23 | **ODPRTO** - zaznamki (bookmark) na kartici problema | Dizajn dashboarda ima ikono zaznamka, shema nima tabele. Predlog: `problem_bookmarks (user_id, problem_id, created_at, PK(user_id, problem_id))` + `PUT/DELETE /problems/:slug/bookmark`. Do odločitve je zaznamek samo stanje v brskalniku | U3, P1 |
+| D24 | **ODPRTO** - feed na dashboardu: filtri in rešeni problemi | Dizajn ima filtre (kategorija, težavnost, "Hide solved", razvrščanje). D19 pravi, da feed ne vsebuje rešenih. Predlog: `GET /dashboard/feed?category=&difficulty=&hideSolved=&sort=`, privzeto po D19 (`hideSolved=true`); ko je "Hide solved" izklopljen, so rešeni problemi v feedu z oznako `solved` | U3 |
+| D25 | **ODPRTO** - ikona obvestil v zgornji vrstici | Dizajn ima zvonec, shema in dokumenti nimajo obvestil. Predlog: v v1 ikona brez funkcije ali skrita; obvestila kasneje kot svoja rezina | - |
 
 ### Spremembe sheme glede na `01_database.md`
 
@@ -254,7 +257,9 @@ polnijo s seed skripto.
 
 **U3 · Dashboard** `M` · odvisno od: P1, F4 · ⬜
 - API: `GET /dashboard` → personaliziran feed (D19), aktivna tekmovanja (po T1), lastna statistika na kratko, nedokončani poskusi.
-- Frontend: `/dashboard`.
+- Frontend: `/dashboard`. Oblika odgovora je `Dashboard` v `frontend/src/lib/types/dashboard.ts` (`contests`, `inProgress`, `feed`, `stats` z `level`/`nextLevel` iz `level_thresholds`, `activity` iz `user_daily_activity`, `recentWins`). Filtri feeda po D24 (zdaj filtrira mock na odjemalcu).
+- Kartica tekmovanja: težavnost = najvišja težavnost problemov tekmovanja, `participantCount` = število `contest_entries`.
+- Kartica problema prikaže `time_limit_minutes` (dizajn ima razpon "25-40 min", ki ga shema nima).
 - Končano, ko: feed ne vsebuje rešenih ali neobjavljenih problemov.
 
 ### M5 - Tekmovanja
@@ -326,6 +331,7 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 
 | Zaslon | Mock (datoteka / konstanta) | Zamenja rezina | Stanje |
 | --- | --- | --- | --- |
+| `/dashboard` + stranska vrstica (`(app)/layout.tsx`) | `src/lib/mock/dashboard.ts`: `mockGetDashboard` (datumi relativni na zdaj), `MOCK_ME` (uporabnik, cilj, izkušnje), `MOCK_ACTIVE_CONTEST_COUNT`; sličice v `public/mock/` | U3, T1, U2, F4 | ⬜ |
 | `/admin/problems/new` (Create Problem) | `src/lib/mock/adminProblems.ts`: `mockAnalyzeProblem`, `mockRunCheck` (lint uspe, ostalo pade), `mockSaveProblem` | A10, A4, A2/A5 | ⬜ |
 
 ---
