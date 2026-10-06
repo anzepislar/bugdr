@@ -19,7 +19,8 @@ povezala na API.
 ```
 Zadnja posodobitev: 6. 10. 2026
 Backend: ni začet (nobena rezina ni narejena)
-Frontend: 2 zaslona na mocku - /admin/problems/new (Create Problem), /dashboard
+Frontend: 5 zaslonov na mocku - /admin/problems/new (Create Problem), /dashboard, /problems,
+          /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve
 Naslednja rezina: F0 (ko se začne backend - Faza 2/3 iz 00_bugdr_razvoj.md)
 ```
 
@@ -88,6 +89,9 @@ dokler je uporabnik ne potrdi.
 | D25 | **ODPRTO** - ikona obvestil v zgornji vrstici | Dizajn ima zvonec, shema in dokumenti nimajo obvestil. Predlog: v v1 ikona brez funkcije ali skrita; obvestila kasneje kot svoja rezina | - |
 | D26 | **ODPRTO** - opisi preverjanj na strani podrobnosti | Dizajn `/problems/[slug]` ima "Acceptance checks" (opisi) in "N checks total", P2 pravi "brez preverjanj". Predlog: `GET /problems/:slug` vrne `checks: string[]` = samo `problem_checks.description` po `check_order` (nikoli `check_command`/`expected_output`) | P2 |
 | D27 | **ODPRTO** - ime repozitorija in sklad na strani podrobnosti | Dizajn kaže "northstar / checkout-worker" in "TypeScript · Node 20 · Redis", shema nima imena. Predlog: `problem_codebase.repository_name VARCHAR(100)`, sklad = `language` + `framework` + tagi; zavihek Repository pokaže poti iz `repository_structure` (brez vsebine) | P2, A2 |
+| D28 | **ODPRTO** - "Give up" na zaslonu reševanja | `02` zahteva gumb Give up, dizajn ga nima. Zdaj: besedilni gumb v glavi (na telefonu v statusni vrstici) s potrditvijo → R2 | R2 |
+| D29 | **ODPRTO** - iskanje in razširitve v levi vrstici zaslona reševanja | Dizajn ima ikoni, dokumenti ne opisujejo funkcije. Zdaj neaktivni. Predlog: iskanje po datotekah poskusa na odjemalcu (brez API), razširitve odstraniti | R1 |
+| D30 | **ODPRTO** - "helpful" in odgovori na komentarje | Dizajn razprave ima "N helpful", "Reply" in razvrščanje "Most helpful"; `problem_comments` nima ničesar od tega. Predlog: `problem_comments.parent_id UUID NULL REFERENCES problem_comments(id)` (odgovori samo ena raven), tabela `comment_helpful (comment_id, user_id, created_at, PK(comment_id, user_id))` + `problem_comments.helpful_count` (posodobljen v isti transakciji), `PUT/DELETE /comments/:id/helpful`, lastnega komentarja ni mogoče označiti, `GET /problems/:slug/comments?sort=helpful\|newest` | O2 |
 
 ### Spremembe sheme glede na `01_database.md`
 
@@ -101,6 +105,7 @@ Posledica odločitev - narejene v migraciji rezine, ki tabelo ustvari:
 | `problem_codebase` | + `solution_files JSONB` | D11 | R1 |
 | `contest_entries` | − `attempt_id` | D18 | T2 |
 | `contests` / `contest_entries` | + oznaka "nagrada poslana" (`04`) - točna oblika ob rezini | - | A7 |
+| `problem_comments` | + `parent_id`, + `helpful_count`; nova tabela `comment_helpful` (predlog, čaka odločitev) | D30 | O2 |
 | `problems` | + `bug_summary TEXT` (interna opomba AI analize, samo admin, nikoli k uporabniku) - zahteva zaslona Create Problem | - | A2 |
 
 `01_database.md` se ob tem **ne spreminja samodejno** - posodobi se le, če
@@ -190,7 +195,7 @@ polnijo s seed skripto.
 **P2 · Podrobnosti problema** `S` · odvisno od: P1 · ⬜
 - API: `GET /problems/:slug` → opis, težavnost, kategorija, tagi, povprečna ocena + število, **število** komentarjev, status uporabnika. **Brez** kode in preverjanj (pridejo ob `start`).
 - Naredi: `user_daily_activity`. Ogled prijavljenega uporabnika poveča `problems_opened` za današnji UTC dan (D6, D7) in posodobi `user_stats.current_streak/longest_streak/last_activity_date`.
-- Frontend: `/problems/[slug]`. Oblika odgovora je `ProblemDetail` v `frontend/src/lib/types/problem.ts` (+ `solveCount`, `commentCount`, `checks` po D26, `repository` po D27).
+- Frontend: `/problems/[slug]`. Oblika odgovora je `ProblemDetail` v `frontend/src/lib/types/problem.ts` (+ `solveCount`, `commentCount`, `checks` po D26, `repository` po D27, `result` = rešen poskus uporabnika: `timeTakenSeconds`, `linesAdded/Deleted`, `pointsEarned`, `timeMultiplier`, `myRating`; rešen problem stran pokaže kot "Problem solved").
 - Končano, ko: neobjavljen ali neznan slug → 404; odgovor ne vsebuje `check_command` ali datotek; dva ogleda istega dne = en dan streaka, ogled naslednji dan ga podaljša.
 
 ### M2 - Reševanje
@@ -200,7 +205,7 @@ polnijo s seed skripto.
 - API: `POST /problems/:slug/start` → ustvari poskus (ali vrne obstoječega `in_progress`, timer teče naprej od `started_at`), vrne datoteke, drevo, `startedAt`, `timeLimitMinutes`, opise preverjanj (samo `description` + `check_order`).
 - `abandoned` poskus: ista vrstica nazaj v `in_progress`, nov `started_at` (D8).
 - Frontend shranjuje neshranjene spremembe v `localStorage` po poskusu (D14).
-- Frontend: `/problems/[slug]/solve` (Monaco, drevo datotek, timer).
+- Frontend: `/problems/[slug]/solve` (Monaco, drevo datotek, timer). Oblika odgovora je `Attempt` v `frontend/src/lib/types/attempt.ts` (+ `repositoryName` po D27); zdaj `CodeEditorMock` namesto Monaca.
 - Končano, ko: že rešen problem → 409 `ALREADY_SOLVED`; ponoven start ne resetira časa; skrite datoteke niso v odgovoru.
 
 **R2 · Odstop** `S` · odvisno od: R1 · ⬜
@@ -243,6 +248,7 @@ polnijo s seed skripto.
 - Naredi: `problem_comments`.
 - API: `GET /problems/:slug/comments` (nerešen: samo `{ count, locked: true }`), `POST /problems/:slug/comments` (samo po rešitvi).
 - Vsebina se hrani surova, izpis je varen (React escapa).
+- Frontend: zavihek Discussion na `/problems/[slug]` (rešen problem) - `Discussion.tsx`. Oblika komentarja je `ProblemComment` v `frontend/src/lib/types/problem.ts` (avtor z `goalRole`, `helpfulCount`, `markedHelpful`, `replies` po D30). Najdaljša vsebina 2000 znakov (predlog).
 - Končano, ko: nerešen uporabnik nikoli ne dobi vsebine; prazna/predolga vsebina → 400.
 
 ### M4 - Profil in dashboard
@@ -335,7 +341,8 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | --- | --- | --- | --- |
 | `/dashboard` + stranska vrstica (`(app)/layout.tsx`) | `src/lib/mock/dashboard.ts`: `mockGetDashboard` (datumi relativni na zdaj), `MOCK_ME` (uporabnik, cilj, izkušnje), `MOCK_ACTIVE_CONTEST_COUNT`; sličice v `public/mock/` | U3, T1, U2, F4 | ⬜ |
 | `/problems` | `src/lib/mock/problems.ts`: `mockGetProblems` (vsi problemi, filtri/razvrščanje/straničenje na odjemalcu v `ProblemBrowser.tsx`); zaznamki samo v brskalniku (D23) | P1 | ⬜ |
-| `/problems/[slug]` | `src/lib/mock/problems.ts`: `mockGetProblem` (polni opis samo za `payment-retries-disappear`) | P2 (O1, O2 za oceno in komentarje) | ⬜ |
+| `/problems/[slug]` | `src/lib/mock/problems.ts`: `mockGetProblem` (+ `RESULTS` za rešen problem; ocena v `RateProblem` samo v stanju), `mockGetComments` (komentarji samo za rešen problem; objave, odgovori in helpful samo v stanju `Discussion.tsx`) (polni opis samo za `payment-retries-disappear`) | P2 (O1, O2 za oceno in komentarje) | ⬜ |
+| `/problems/[slug]/solve` | `src/lib/mock/attempts.ts`: `mockStartAttempt` (timer teče od zdaj, za `in_progress` od 18:42), `mockRunTests` (vnaprej določeni rezultati); koda v `mockCodebase` (`mock/problems.ts`); urejevalnik je `CodeEditorMock` (samo branje) | R1, R2 (Give up), R4, R5 (terminal), R6 | ⬜ |
 | `/admin/problems/new` (Create Problem) | `src/lib/mock/adminProblems.ts`: `mockAnalyzeProblem`, `mockRunCheck` (lint uspe, ostalo pade), `mockSaveProblem` | A10, A4, A2/A5 | ⬜ |
 
 ---

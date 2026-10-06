@@ -135,4 +135,34 @@ export interface ProblemDetail extends ProblemListItem {
   checks: string[];
   /** D27: `name` has no column yet; `files` are the paths of repository_structure. */
   repository: { name: string; stack: string[]; files: string[] };
+  /** The user's solved attempt; null unless `status` is "solved". */
+  result: SolveResult | null;
+}
+
+/** Solved row of user_problem_attempts, as the detail page shows it. */
+export interface SolveResult {
+  solvedAt: string;
+  timeTakenSeconds: number;
+  checksPassed: number;
+  checksTotal: number;
+  linesAdded: number;
+  linesDeleted: number;
+  pointsEarned: number;
+  /** time_bonus_multiplier (03_scoring.md): 1, 1.25, 1.5 or 2. */
+  timeMultiplier: number;
+  /** problem_ratings.rating of this user, 1-5. */
+  myRating: number | null;
+}
+
+/** One comment of GET /problems/:slug/comments (slice O2). Replies are one level deep (D30). */
+export interface ProblemComment {
+  id: string;
+  author: { username: string; displayName: string; goalRole: CategorySlug | null };
+  /** Raw text; rendered as text, never as HTML. */
+  content: string;
+  createdAt: string;
+  /** D30: no column yet. */
+  helpfulCount: number;
+  markedHelpful: boolean;
+  replies: ProblemComment[];
 }

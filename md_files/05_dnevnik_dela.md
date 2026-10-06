@@ -233,72 +233,131 @@ Predlagani Description:
 
 `Adds the shared sidebar and top bar for signed-in pages via an (app) route group, and the /dashboard screen from the Figma design: live contests, resume banner for the in-progress attempt, recommended problems with filters, and a progress panel with level, streak, activity graph and recent wins. Runs on mock data until slices U3, T1 and U2 exist.`
 
-## 6. 10. 2026 — Seja 3: Seznam in podrobnosti problema
+## 6. 10. 2026 — Seja 3: Problemi - seznam, podrobnosti, reševanje, rešen problem, razprava
 
 ### Povzetek
 
-Zgrajena sta zaslona `/problems` ("Explore problems") in `/problems/[slug]`
-(podrobnosti problema) po Figma dizajnu, na lažnih podatkih, znotraj
-obstoječe stranske in zgornje vrstice.
+Zgrajen je celoten tok problema po Figma dizajnih, na lažnih podatkih:
+seznam `/problems`, podrobnosti `/problems/[slug]` (z različico za rešen
+problem in razpravo) ter zaslon reševanja `/problems/[slug]/solve`. Vmes je
+bilo več krogov popravkov postavitve; iz njih je v `CLAUDE.md` nastal
+razdelek **UI Rules**.
 
 ### Kaj je narejeno
 
-- **Stran** `src/app/(app)/problems/page.tsx`: naslov, podnaslov; prebere
-  `?q=` iz iskanja v zgornji vrstici in z njim napolni iskalno polje (nova
-  iskanja v zgornji vrstici ponastavijo filtre).
-- **`src/components/problems/ProblemBrowser.tsx`:** iskanje (naslov, opis,
-  tagi), filtri Role (kategorija) / Difficulty / Topic (tagi iz podatkov) /
-  Status (Any, Unsolved - privzeto, In progress, Solved), "Saved problems"
-  (prikaže samo zaznamovane), razvrščanje (Recommended = najprej kategorija
-  iz cilja uporabnika, nato ocena; Highest rated; Shortest), mreža kartic
-  (sličica, težavnost, tagi, zaznamek, naslov, kratek opis, čas, ocena,
-  oznaka Solved / In progress, puščica → `/problems/[slug]`), straničenje po
-  6 (Previous / Next page, "Showing X of Y problems").
-- Tip `ProblemListItem` v `src/lib/types/problem.ts` (oblika kartice
-  `GET /problems` s `status` po P1), mock `src/lib/mock/problems.ts`
-  (12 problemov, sličice iz `public/mock/`).
-- **Podrobnosti problema** `src/app/(app)/problems/[slug]/page.tsx` (strežniška
-  komponenta, brez JS na odjemalcu): "All problems", težavnost, kategorija in
-  tagi, naslov, ocena / čas / število rešitev, zavihki Overview / Repository /
-  Discussion kot povezave `?tab=`. Overview izriše `description` (majhna
-  podmnožica markdowna: `## ` naslovi, odstavki, ``` bloki z naslovom, npr.
-  `worker.log`). Repository pokaže ime, sklad in seznam poti datotek (brez
-  vsebine). Discussion je zaklenjen do rešitve (prikaže število komentarjev).
-  Desno kartica glede na status (Start problem / Resume problem / Solved →
-  Open discussion) s podatki o repozitoriju in seznam "Acceptance checks"
-  (prve 4, ostale pod `<details>` "N checks total"). Neznan slug → 404. Na
-  telefonu je kartica s Start nad opisom.
-- Tip `ProblemDetail` in `mockGetProblem` (polni opis za
-  `payment-retries-disappear`, ostali dobijo splošnega iz kartice); ikona
-  `arrowLeft`; drobtinice v `AppShell.tsx` na `/problems/*` kažejo
-  "Problem details".
+**Seznam `/problems`** (`src/app/(app)/problems/page.tsx`,
+`src/components/problems/ProblemBrowser.tsx`)
+- Iskanje (naslov, opis, tagi; `?q=` iz zgornje vrstice ga napolni), filtri
+  Role / Difficulty / Topic / Status (privzeto Unsolved) in "Saved problems"
+  v isti vrstici, razvrščanje (Recommended = najprej kategorija iz cilja
+  uporabnika, nato ocena; Highest rated; Shortest).
+- Mreža kartic 1 → 2 (`md`) → 3 (`lg`) → 4 (`2xl`) stolpci, zadnja vrstica
+  poravnana levo. **Neskončno drsenje:** prvo nalaganje zapolni višino
+  zaslona + eno vrstico, nato po en zaslon, ko se konec seznama pokaže
+  (IntersectionObserver); sprememba filtra začne znova.
 
-### Odstopanja od dizajna (zaradi dokumentov)
+**Podrobnosti `/problems/[slug]`** (`src/app/(app)/problems/[slug]/page.tsx`,
+strežniška komponenta; zavihki so povezave `?tab=`)
+- Težavnost, kategorija, tagi, naslov, ocena / čas / število rešitev,
+  zavihki Overview / Repository / Discussion.
+- Overview: `description` (majhna podmnožica markdowna: `## ` naslovi,
+  odstavki, ``` bloki z naslovom, npr. `worker.log`), "Acceptance checks"
+  (vsa, v dveh stolpcih), pasica "Discussion is locked" z ikono ključavnice.
+- Repository: ime, sklad, poti datotek (brez vsebine).
+- Desno lepljiva kartica Start / Resume z repozitorijem (od `lg`; pod
+  `lg` je kartica vodoravna in pod vsebino). Zaklenjen zavihek Discussion
+  je prazno stanje čez celo višino stolpca.
+- **Rešen problem** (po odločitvi uporabnika brez nove poti): zgoraj
+  `SolvedSummary` - "Solved", "All checks passed.", **Next problem →
+  `/problems`**, "Your result has been recorded.", statistika (čas,
+  preverjanja, spremenjene vrstice, težavnost, **točke s časovnim bonusom**),
+  "Validation results", "What is next?" (Join the discussion, ocena 1-5 v
+  `RateProblem.tsx`); spodaj "About this problem" z istimi zavihki (`#about`
+  ohrani položaj).
+- **Razprava** (`src/components/problems/Discussion.tsx`, samo za rešen
+  problem): razvrščanje Most helpful / Newest, obrazec "Share your approach
+  or ask a question..." + Post comment (prazno onemogočeno, največ 2000
+  znakov po O2), komentarji (začetnica, ime, vloga iz `goal_role`, relativni
+  čas, besedilo kot navadno besedilo - ne HTML), "N helpful" (preklop; ne
+  za lastne komentarje), Reply (odgovori eno raven globoko). Zavihek kaže
+  število komentarjev ("Discussion 4"). Komentarji se naložijo samo, ko je
+  zavihek odprt in je problem rešen.
+- Vsebnik: polna širina s `px-6` pod 1400 px, nad tem `max-w-[1200px]`
+  na sredini (nova prelomna točka `wide` v `globals.css`). Neznan slug → 404.
 
-- Čas na kartici je časovna omejitev ("40 min"), ne razpon ("25–40 min") -
-  enako kot na dashboardu.
+**Reševanje `/problems/[slug]/solve`** (`src/app/problems/[slug]/solve/`,
+izven skupine `(app)`: lastna celozaslonska glava, brez stranske vrstice)
+- `src/components/solve/Workspace.tsx`: glava (logotip, naslov, "Running",
+  timer od `startedAt` / meja, rdeč pri 80 % po `02`, Give up, Run tests,
+  zapri → podrobnosti), leva vrstica (prikaz/skritje drevesa), drevo
+  datotek (`FileTree.tsx`), zavihki odprtih datotek, pot, urejevalnik,
+  spodnji panel Terminal / Output / Problems, desno "Scenario checks"
+  (`ChecksPanel.tsx`), statusna vrstica.
+- `CodeEditorMock.tsx`: samo za branje, videz Monaca (številke vrstic,
+  barvanje sintakse, drsenje); Monaco se namesti z R1.
+- Run tests: preverjanja se razkrivajo eno za drugim (pending → running →
+  passed/failed), izpis v terminal, "3 of 7 passed", "Failure details" za
+  izbrano neuspelo preverjanje; `npm run test:scenario` v terminalu naredi
+  isto. Ko vsa uspejo → preusmeritev na podrobnosti (rešen problem).
+- Rešen problem → nazaj na podrobnosti (R1: 409 `ALREADY_SOLVED`). Od
+  1024 px je zaslon točno višine okna, pod tem se zloži in drsi; na telefonu
+  je namesto drevesa in zavihkov izbirnik datotek.
+
+**Podatki (tipi in mocki)**
+- `src/lib/types/problem.ts`: `ProblemListItem`, `ProblemDetail` (+ `result`),
+  `SolveResult`, `ProblemComment`; `src/lib/types/attempt.ts`: `Attempt`,
+  `CheckRunResult`, `CheckStatus`.
+- `src/lib/mock/problems.ts`: 12 problemov, podrobnosti, koda
+  (`mockCodebase`, `README.md` = opis problema), rezultat rešenega problema
+  (32:18 od 40 min → 1x, Medium → 250 točk po `03`), komentarji
+  (`mockGetComments`). `src/lib/mock/attempts.ts`: `mockStartAttempt`,
+  `mockRunTests`. Seznam datotek, imena preverjanj in število komentarjev
+  izhajajo iz istega vira na vseh zaslonih.
+- Ikone `arrowLeft`, `chevronDown`, `x`, `lock`; drobtinice na
+  `/problems/*` kažejo "Problem details".
+
+### Odstopanja od dizajna
+
+- Čas na kartici je časovna omejitev ("40 min"), ne razpon - shema ga nima.
 - Barve težavnosti po `CLAUDE.md` (Medium rumena), ne modra iz dizajna.
-- Zaznamki so samo stanje v brskalniku in niso skupni z dashboardom (D23).
-- Podrobnosti: naslov iz mocka ("Payment retries disappear", kot na kartici
-  seznama) - dizajna se razlikujeta ("... from the queue").
-- Podrobnosti: kategorija polno ime ("Backend Engineer"), dizajn "Backend".
+- "Acceptance checks" v glavnem stolpcu namesto v desnem (odpravi prazen
+  prostor ob kratki vsebini).
+- Imena preverjanj in naslovi iz enega mocka (dizajni se med seboj
+  razlikujejo); kategorija s polnim imenom ("Backend Engineer").
+- Zaslon reševanja: dodan "Give up" (`02` ga zahteva - D28), iskanje in
+  razširitve v levi vrstici neaktivni (D29).
+- Rešen problem: brez "View solution" in brez zavihka "Your solution" (po
+  navodilu), dodane točke, 5 zvezdic namesto 4 (O1: 1-5), drobtinice
+  "Problem details" namesto "Problem solved".
+- Razprava: dodano razvrščanje Newest; "helpful" in odgovori nimata stolpcev
+  (D30).
 
-Nova odprta vprašanja v `06`: D26 (opisi preverjanj na strani podrobnosti -
-P2 jih izključuje), D27 (ime repozitorija in sklad - ni stolpca).
+Odprta vprašanja v `06`: D26 (opisi preverjanj na podrobnostih), D27 (ime
+repozitorija), D28 (Give up), D29 (leva vrstica reševanja), D30 (helpful in
+odgovori na komentarje).
 
 ### Tehnične opombe
 
-- `npm run lint`, `npm run typecheck`, `npm run build` uspešni.
-- Preverjeno v brskalniku (Playwright): 1440 px primerjano z dizajnom, 390 px
-  brez vodoravnega drsenja, `?q=redis` → 2 kartici, druga stran → 5 kartic,
-  brez napak v konzoli.
+- `npm run lint`, `npm run typecheck`, `npm run build` uspešni. Projekt še
+  nima avtomatskih testov.
+- Preverjeno v brskalniku (Playwright, skripte niso v repozitoriju): vse
+  strani 320-2560 px brez vodoravnega drsenja, brez napak v konzoli;
+  neskončno drsenje (390 px: 2 → 4 → … → 11), filtri, Run tests → "3 of 7
+  passed", terminal, 404 in preusmeritve, rešen problem (statistika, ocena,
+  Next problem → `/problems`), razprava (razvrščanje, objava, odgovor,
+  helpful, HTML se izpiše kot besedilo, nerešen problem ostane zaklenjen).
+- Tailwind v4 nima `tailwind.config.ts`: prelomne točke so v `@theme` v
+  `globals.css` (`--breakpoint-wide: 1400px`).
+- Projekt nima `.prettierrc`; ročno oblikovanje sledi širini 120 znakov.
+- Uporabniške spremembe (zaznamki, objave, odgovori, helpful, ocena) živijo
+  samo v stanju komponente, dokler jih ne shranijo rezine (D23, O1, O2, D30).
 
 ### Git zapis
 
 Predlagani Summary:
 
-`Add the problems list and problem detail pages (mock data)`
+`Add the problem flow: list, detail, solve workspace, solved state, discussion (mock data)`
 
 Predlagani Description:
 
-`Adds the /problems screen from the Figma design: search (prefilled from the top bar ?q=), role/difficulty/topic/status filters, saved-only toggle, sorting, a card grid and pagination. Adds /problems/[slug]: description, overview/repository/discussion tabs, start card by attempt status and acceptance checks. Runs on mock data until slices P1 and P2 exist.`
+`Adds /problems (search, filters, infinite scroll), /problems/[slug] (description, repository, sticky start card; for solved problems a result summary with points, rating and a discussion with sorting, posting, replies and helpful votes) and the full-screen /problems/[slug]/solve workspace (file tree, read-only Monaco stand-in, terminal, scenario checks). Adds UI Rules to CLAUDE.md. Runs on mock data until slices P1, P2, R1-R6, O1 and O2 exist.`

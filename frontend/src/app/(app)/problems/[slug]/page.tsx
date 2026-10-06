@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
-import { mockGetProblem } from "@/lib/mock/problems";
-import { CATEGORIES, type ProblemDetail } from "@/lib/types/problem";
+import { Discussion } from "@/components/problems/Discussion";
+import { RateProblem } from "@/components/problems/RateProblem";
+import { mockGetComments, mockGetProblem } from "@/lib/mock/problems";
+import { CATEGORIES, DIFFICULTY_LABEL, type ProblemDetail, type SolveResult } from "@/lib/types/problem";
 
 const TABS = {
   overview: "Overview",
@@ -12,7 +14,14 @@ const TABS = {
 } as const;
 type Tab = keyof typeof TABS;
 
-// Tabs are ?tab= links, so the page needs no client JS.
+const pad = (n: number) => String(n).padStart(2, "0");
+const duration = (s: number) =>
+  s >= 3600
+    ? `${Math.floor(s / 3600)}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`
+    : `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
+
+// Tabs are ?tab= links, so the page needs no client JS (except the rating).
+// A solved problem shows its result first and the problem itself below it.
 export default async function ProblemPage({
   params,
   searchParams,
@@ -25,69 +34,187 @@ export default async function ProblemPage({
   if (!problem) notFound();
 
   const tab: Tab = rawTab && rawTab in TABS ? (rawTab as Tab) : "overview";
-  const solved = problem.status === "solved";
+  const result = problem.status === "solved" ? problem.result : null;
+  const solved = result !== null;
+  // On a solved problem the tabs sit further down; keep them in view when switching.
+  const anchor = solved ? "#about" : "";
+  // Comment content is only sent for solved problems (O2), and only fetched when the tab is open.
+  const comments = solved && tab === "discussion" ? await mockGetComments(slug) : null;
   const category = CATEGORIES.find((c) => c.slug === problem.categorySlug)?.name;
 
   return (
     <div className="w-full px-6 py-8 wide:mx-auto wide:max-w-[1200px]">
-      <Link href="/problems" className="inline-flex items-center gap-1.5 text-sm text-action hover:underline">
-        <Icon name="arrowLeft" className="h-4 w-4" /> All problems
-      </Link>
+      {result ? (
+        <SolvedSummary problem={problem} result={result} />
+      ) : (
+        <Link href="/problems" className="inline-flex items-center gap-1.5 text-sm text-action hover:underline">
+          <Icon name="arrowLeft" className="h-4 w-4" /> All problems
+        </Link>
+      )}
 
-      <div className="mt-8 flex flex-wrap items-center gap-3">
-        <DifficultyPill difficulty={problem.difficulty} />
-        <span className="text-xs text-muted">{[category, ...problem.tags].join(" · ")}</span>
-      </div>
-      <h1 className="mt-3 text-3xl font-semibold text-text">{problem.title}</h1>
-      <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-        <span>
-          <span className="text-medium">★</span> {problem.averageRating.toFixed(1)} ({problem.ratingCount} ratings)
-        </span>
-        <span>{problem.timeLimitMinutes} min</span>
-        <span>{problem.solveCount.toLocaleString("en-US")} engineers solved this</span>
-      </p>
-
-      <nav aria-label="Problem sections" className="mt-6 flex gap-8 overflow-x-auto border-t border-border">
-        {(Object.keys(TABS) as Tab[]).map((t) => (
-          <Link
-            key={t}
-            href={t === "overview" ? `/problems/${slug}` : `/problems/${slug}?tab=${t}`}
-            aria-current={t === tab ? "page" : undefined}
-            className={`shrink-0 border-b-2 pb-2 pt-5 text-sm ${
-              t === tab ? "border-action font-semibold text-action" : "border-transparent text-muted hover:text-text"
-            }`}
-          >
-            {TABS[t]}
-            {t === "discussion" && !solved ? " Locked" : ""}
-          </Link>
-        ))}
-      </nav>
-
-      <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-start">
-        <div className={`min-w-0 flex-1 ${tab === "discussion" ? "lg:self-stretch" : ""}`}>
-          {tab === "overview" ? (
-            <>
-              <Description text={problem.description} />
-              <AcceptanceChecks checks={problem.checks} />
-              {!solved ? <DiscussionLocked className="mt-10" /> : null}
-            </>
-          ) : null}
-          {tab === "repository" ? <Repository problem={problem} /> : null}
-          {tab === "discussion" ? (
-            solved ? (
-              // ponytail: comments themselves come with slice O2.
-              <p className="text-sm text-muted">{problem.commentCount} comments</p>
-            ) : (
-              <DiscussionEmpty count={problem.commentCount} />
-            )
-          ) : null}
+      <section
+        id="about"
+        aria-labelledby="about-heading"
+        className={solved ? "mt-12 scroll-mt-6 border-t border-border pt-10" : ""}
+      >
+        {solved ? (
+          <h2 id="about-heading" className="text-xl font-semibold text-text">
+            About this problem
+          </h2>
+        ) : null}
+        <div className={`${solved ? "mt-4" : "mt-8"} flex flex-wrap items-center gap-3`}>
+          <DifficultyPill difficulty={problem.difficulty} />
+          <span className="text-xs text-muted">{[category, ...problem.tags].join(" · ")}</span>
         </div>
+        {solved ? null : (
+          <h1 id="about-heading" className="mt-3 text-3xl font-semibold text-text">
+            {problem.title}
+          </h1>
+        )}
+        <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+          <span>
+            <span className="text-medium">★</span> {problem.averageRating.toFixed(1)} ({problem.ratingCount} ratings)
+          </span>
+          <span>{problem.timeLimitMinutes} min</span>
+          <span>{problem.solveCount.toLocaleString("en-US")} engineers solved this</span>
+        </p>
 
-        <aside className="w-full shrink-0 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:w-80 lg:overflow-y-auto xl:w-96">
-          <StartCard problem={problem} />
+        <nav aria-label="Problem sections" className="mt-6 flex gap-8 overflow-x-auto border-t border-border">
+          {(Object.keys(TABS) as Tab[]).map((t) => (
+            <Link
+              key={t}
+              href={`${t === "overview" ? `/problems/${slug}` : `/problems/${slug}?tab=${t}`}${anchor}`}
+              aria-current={t === tab ? "page" : undefined}
+              className={`shrink-0 border-b-2 pb-2 pt-5 text-sm ${
+                t === tab ? "border-action font-semibold text-action" : "border-transparent text-muted hover:text-text"
+              }`}
+            >
+              {TABS[t]}
+              {t === "discussion" ? solved ? <span className="ml-1.5">{problem.commentCount}</span> : " Locked" : null}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-start">
+          <div className={`min-w-0 flex-1 ${tab === "discussion" ? "lg:self-stretch" : ""}`}>
+            {tab === "overview" ? (
+              <>
+                <Description text={problem.description} />
+                {/* A solved problem lists its checks in the validation results above. */}
+                {solved ? null : <AcceptanceChecks checks={problem.checks} />}
+                {!solved ? <DiscussionLocked className="mt-10" /> : null}
+              </>
+            ) : null}
+            {tab === "repository" ? <Repository problem={problem} /> : null}
+            {tab === "discussion" ? (
+              comments ? (
+                <Discussion initial={comments} />
+              ) : (
+                <DiscussionEmpty count={problem.commentCount} />
+              )
+            ) : null}
+          </div>
+
+          {solved ? null : (
+            <aside className="w-full shrink-0 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:w-80 lg:overflow-y-auto xl:w-96">
+              <StartCard problem={problem} />
+            </aside>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SolvedSummary({ problem, result }: { problem: ProblemDetail; result: SolveResult }) {
+  const stats = [
+    { value: duration(result.timeTakenSeconds), label: "Time to solve" },
+    { value: `${result.checksPassed} / ${result.checksTotal}`, label: "Scenario checks passed" },
+    { value: `+${result.linesAdded} / −${result.linesDeleted}`, label: "Lines changed" },
+    { value: DIFFICULTY_LABEL[problem.difficulty], label: "Difficulty" },
+    {
+      value: `+${result.pointsEarned.toLocaleString("en-US")}`,
+      label: `Points earned · ${result.timeMultiplier}x time bonus`,
+    },
+  ];
+
+  return (
+    <section aria-labelledby="solved-heading">
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <span className="inline-block rounded bg-action/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-action">
+            Solved
+          </span>
+          <h1 id="solved-heading" className="mt-5 text-3xl font-semibold text-text">
+            All checks passed.
+          </h1>
+          <p className="mt-2 text-lg text-muted">{problem.title}</p>
+        </div>
+        <Link
+          href="/problems"
+          className="flex shrink-0 items-center justify-center gap-2 rounded bg-action px-6 py-2.5 text-sm font-medium text-canvas hover:opacity-90 sm:w-48 sm:justify-start"
+        >
+          Next problem <Icon name="arrowRight" className="h-4 w-4" />
+        </Link>
+      </div>
+
+      <div className="mt-8 flex items-start gap-4 rounded border border-action/20 bg-action/10 p-6">
+        <Icon name="check" className="mt-1 h-5 w-5 shrink-0 text-action" />
+        <div>
+          <p className="text-lg font-semibold text-text">Your result has been recorded.</p>
+          <p className="mt-2 text-sm text-action">
+            This problem is complete. Your time and score cannot be improved by retrying.
+          </p>
+        </div>
+      </div>
+
+      <dl className="mt-8 grid grid-cols-2 gap-x-6 gap-y-8 border-b border-border pb-8 md:grid-cols-3 lg:grid-cols-5">
+        {stats.map((s) => (
+          <div key={s.label} className="flex min-w-0 flex-col-reverse justify-end">
+            <dt className="mt-2 text-sm text-muted">{s.label}</dt>
+            <dd className="text-3xl font-semibold tabular-nums text-text">{s.value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="mt-8 flex flex-col gap-10 lg:flex-row lg:items-start">
+        <section aria-labelledby="validation-heading" className="min-w-0 flex-1">
+          <h2 id="validation-heading" className="text-xl font-semibold text-text">
+            Validation results
+          </h2>
+          <ul className="mt-4">
+            {problem.checks.map((c) => (
+              <li key={c} className="flex items-center gap-4 border-b border-border py-3.5 text-sm">
+                <Icon name="check" className="h-4 w-4 shrink-0 text-action" />
+                <span className="min-w-0 flex-1 text-text">{c}</span>
+                <span className="text-xs text-action">Passed</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <aside className="flex shrink-0 flex-col gap-8 lg:w-80 xl:w-96">
+          <div>
+            <h2 className="text-xl font-semibold text-text">What is next?</h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted">
+              Compare approaches in the discussion, or take on another production issue.
+            </p>
+            <Link
+              href={`/problems/${problem.slug}?tab=discussion#about`}
+              className="mt-6 block rounded border border-border bg-surface px-4 py-2.5 text-sm text-text hover:border-action"
+            >
+              Join the discussion
+            </Link>
+          </div>
+          <RateProblem initial={result.myRating} />
         </aside>
       </div>
-    </div>
+
+      <p className="mt-10 text-xs text-muted">
+        {result.checksPassed}/{result.checksTotal} applies to this scenario&apos;s checks, not overall production
+        reliability.
+      </p>
+    </section>
   );
 }
 
@@ -117,37 +244,23 @@ function StartCard({ problem }: { problem: ProblemDetail }) {
   return (
     <section className="rounded border border-border bg-surface p-6 md:grid md:grid-cols-[minmax(0,1fr)_240px] md:gap-8 lg:block">
       <div>
-        {problem.status === "solved" ? (
-          <>
-            <h2 className="flex items-center gap-2 text-lg font-semibold text-text">
-              <Icon name="check" className="h-5 w-5 text-passed" /> Solved
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              Your result is final. Rate the problem and join the discussion.
-            </p>
-            <Link href={`/problems/${problem.slug}?tab=discussion`} className={buttonClass}>
-              Open discussion <Icon name="arrowRight" className="h-4 w-4" />
-            </Link>
-          </>
-        ) : (
-          <>
-            <h2 className="text-lg font-semibold text-text">
-              {problem.status === "in_progress" ? "Pick up where you left off" : "Ready to investigate?"}
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              A codebase, terminal and {problem.checks.length} checks are ready in your workspace.
-            </p>
-            <Link href={solveHref} className={buttonClass}>
-              {problem.status === "in_progress" ? "Resume problem" : "Start problem"}{" "}
-              <Icon name="arrowRight" className="h-4 w-4" />
-            </Link>
-            <p className="mt-6 text-xs leading-relaxed text-muted">
-              Your timer starts when you begin.
-              <br />
-              Your first successful result is final.
-            </p>
-          </>
-        )}
+        <>
+          <h2 className="text-lg font-semibold text-text">
+            {problem.status === "in_progress" ? "Pick up where you left off" : "Ready to investigate?"}
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            A codebase, terminal and {problem.checks.length} checks are ready in your workspace.
+          </p>
+          <Link href={solveHref} className={buttonClass}>
+            {problem.status === "in_progress" ? "Resume problem" : "Start problem"}{" "}
+            <Icon name="arrowRight" className="h-4 w-4" />
+          </Link>
+          <p className="mt-6 text-xs leading-relaxed text-muted">
+            Your timer starts when you begin.
+            <br />
+            Your first successful result is final.
+          </p>
+        </>
       </div>
       <div className="mt-6 border-t border-border pt-6 md:mt-0 md:border-l md:border-t-0 md:pl-8 md:pt-0 lg:mt-6 lg:border-l-0 lg:border-t lg:pl-0 lg:pt-6">
         <p className="text-xs text-muted">Repository</p>
@@ -165,7 +278,9 @@ function Repository({ problem }: { problem: ProblemDetail }) {
         {problem.repository.name}
       </h2>
       <p className="mt-2 text-sm text-muted">
-        You get the full codebase when you start. File contents stay hidden until then.
+        {problem.status === "solved"
+          ? "The codebase you fixed."
+          : "You get the full codebase when you start. File contents stay hidden until then."}
       </p>
       <ul className="mt-6 rounded border border-border bg-surface p-5 font-mono text-[13px] leading-7 text-muted">
         {problem.repository.files.toSorted().map((f) => (

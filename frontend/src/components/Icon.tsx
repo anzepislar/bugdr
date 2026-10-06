@@ -11,6 +11,8 @@ const PATHS = {
   arrowRight: "M5 12h14M13 5l7 7-7 7",
   arrowLeft: "M19 12H5M11 19l-7-7 7-7",
   chevronRight: "M9 18l6-6-6-6",
+  chevronDown: "M6 9l6 6 6-6",
+  x: "M18 6 6 18M6 6l12 12",
   clock: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2",
   bookmark: "M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z",
   check: "M20 6 9 17l-5-5",
