@@ -232,3 +232,51 @@ Predlagani Summary:
 Predlagani Description:
 
 `Adds the shared sidebar and top bar for signed-in pages via an (app) route group, and the /dashboard screen from the Figma design: live contests, resume banner for the in-progress attempt, recommended problems with filters, and a progress panel with level, streak, activity graph and recent wins. Runs on mock data until slices U3, T1 and U2 exist.`
+
+## 6. 10. 2026 — Seja 3: Seznam problemov
+
+### Povzetek
+
+Zgrajen je zaslon `/problems` ("Explore problems") po Figma dizajnu, na lažnih
+podatkih, znotraj obstoječe stranske in zgornje vrstice.
+
+### Kaj je narejeno
+
+- **Stran** `src/app/(app)/problems/page.tsx`: naslov, podnaslov; prebere
+  `?q=` iz iskanja v zgornji vrstici in z njim napolni iskalno polje (nova
+  iskanja v zgornji vrstici ponastavijo filtre).
+- **`src/components/problems/ProblemBrowser.tsx`:** iskanje (naslov, opis,
+  tagi), filtri Role (kategorija) / Difficulty / Topic (tagi iz podatkov) /
+  Status (Any, Unsolved - privzeto, In progress, Solved), "Saved problems"
+  (prikaže samo zaznamovane), razvrščanje (Recommended = najprej kategorija
+  iz cilja uporabnika, nato ocena; Highest rated; Shortest), mreža kartic
+  (sličica, težavnost, tagi, zaznamek, naslov, kratek opis, čas, ocena,
+  oznaka Solved / In progress, puščica → `/problems/[slug]`), straničenje po
+  6 (Previous / Next page, "Showing X of Y problems").
+- Tip `ProblemListItem` v `src/lib/types/problem.ts` (oblika kartice
+  `GET /problems` s `status` po P1), mock `src/lib/mock/problems.ts`
+  (12 problemov, sličice iz `public/mock/`).
+
+### Odstopanja od dizajna (zaradi dokumentov)
+
+- Čas na kartici je časovna omejitev ("40 min"), ne razpon ("25–40 min") -
+  enako kot na dashboardu.
+- Barve težavnosti po `CLAUDE.md` (Medium rumena), ne modra iz dizajna.
+- Zaznamki so samo stanje v brskalniku in niso skupni z dashboardom (D23).
+
+### Tehnične opombe
+
+- `npm run lint`, `npm run typecheck`, `npm run build` uspešni.
+- Preverjeno v brskalniku (Playwright): 1440 px primerjano z dizajnom, 390 px
+  brez vodoravnega drsenja, `?q=redis` → 2 kartici, druga stran → 5 kartic,
+  brez napak v konzoli.
+
+### Git zapis
+
+Predlagani Summary:
+
+`Add the problems list page (mock data)`
+
+Predlagani Description:
+
+`Adds the /problems screen from the Figma design: search (prefilled from the top bar ?q=), role/difficulty/topic/status filters, saved-only toggle, sorting, a card grid and pagination. Filtering runs client-side on mock data until slice P1 exists.`

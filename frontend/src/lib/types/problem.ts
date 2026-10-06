@@ -109,3 +109,18 @@ export function toSlug(title: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
+
+/** One card of GET /problems (slice P1). `status` is null when the user never started it. */
+export interface ProblemListItem {
+  slug: string;
+  title: string;
+  shortDescription: string;
+  difficulty: Difficulty;
+  categorySlug: CategorySlug;
+  tags: string[];
+  timeLimitMinutes: number;
+  averageRating: number;
+  ratingCount: number;
+  thumbnailUrl: string | null;
+  status: "solved" | "in_progress" | null;
+}

@@ -83,7 +83,7 @@ dokler je uporabnik ne potrdi.
 | D20 | **ODPRTO** - pravilo validacije ob objavi | Zaslon Create Problem (po navodilu uporabnika) zahteva, da **vsa** preverjanja padejo na pokvarjeni kodi, sicer objava ni mogoča. To je v napetosti z D11 (preverjanja morajo tudi **uspeti** na rešitvi, ki je wizard ne zbira) in izloči legitimna negativna preverjanja (npr. "potekel žeton → 401" uspe že na pokvarjeni kodi). Predlog: objava = vsaj eno preverjanje pade na pokvarjeni kodi + vsa uspejo na rešitvi; preverjanje, ki uspe na pokvarjeni kodi, je opozorilo, ne blokada. Zahteva korak za nalaganje rešitve (drugi ZIP) | A10, A4, A5 |
 | D21 | **ODPRTO** - Claude analiza | Klic samo v backendu (ključ `ANTHROPIC_API_KEY` nikoli v frontendu), model iz konfiguracije, omejitev velikosti ZIP-a in števila/velikosti datotek, izpusti `node_modules`, `.git`, binarne datoteke; strogo preverjanje JSON odgovora (oblika `ProblemAnalysis`), ob neveljavnem odgovoru 502 `ANALYSIS_INVALID` | A10 |
 | D22 | **ODPRTO** - kje živi razpakiran ZIP med analizo in shranjevanjem | Predlog: analiza takoj ustvari osnutek problema (`is_published = false`) in shrani datoteke v `problem_codebase`; odgovor vrne `problemId`, "Save as Draft"/"Publish" sta nato `PATCH` istega osnutka. Brez začasnih map na disku | A10, A2 |
-| D23 | **ODPRTO** - zaznamki (bookmark) na kartici problema | Dizajn dashboarda ima ikono zaznamka, shema nima tabele. Predlog: `problem_bookmarks (user_id, problem_id, created_at, PK(user_id, problem_id))` + `PUT/DELETE /problems/:slug/bookmark`. Do odločitve je zaznamek samo stanje v brskalniku | U3, P1 |
+| D23 | **ODPRTO** - zaznamki (bookmark) na kartici problema | Dizajn dashboarda in `/problems` (gumb "Saved problems") ima ikono zaznamka, shema nima tabele. Predlog: `problem_bookmarks (user_id, problem_id, created_at, PK(user_id, problem_id))` + `PUT/DELETE /problems/:slug/bookmark`. Do odločitve je zaznamek samo stanje v brskalniku | U3, P1 |
 | D24 | **ODPRTO** - feed na dashboardu: filtri in rešeni problemi | Dizajn ima filtre (kategorija, težavnost, "Hide solved", razvrščanje). D19 pravi, da feed ne vsebuje rešenih. Predlog: `GET /dashboard/feed?category=&difficulty=&hideSolved=&sort=`, privzeto po D19 (`hideSolved=true`); ko je "Hide solved" izklopljen, so rešeni problemi v feedu z oznako `solved` | U3 |
 | D25 | **ODPRTO** - ikona obvestil v zgornji vrstici | Dizajn ima zvonec, shema in dokumenti nimajo obvestil. Predlog: v v1 ikona brez funkcije ali skrita; obvestila kasneje kot svoja rezina | - |
 
@@ -182,7 +182,7 @@ polnijo s seed skripto.
 **P1 · Seznam problemov** `M` · odvisno od: F3 · ⬜
 - Naredi: `problem_categories` (seed 5 kategorij v migraciji), `problems` (+ `thumbnail_url`, `summary`, brez `is_contest_problem`), `problem_tags`. Seed skripta z nekaj razvojnimi problemi.
 - API: `GET /problems?category=&difficulty=&tag=&q=&sort=` → kartice (`02` "Card contains": naslov, kratek opis, težavnost, kategorija, ocena, število rešitev, časovna omejitev) + za prijavljenega `status` (`solved`/`in_progress`/`null`). Samo `is_published` in ne problemi tekmovanja, ki še ni končano (D17).
-- Frontend: `/problems`.
+- Frontend: `/problems`. Oblika kartice je `ProblemListItem` v `frontend/src/lib/types/problem.ts`. Zaslon ima še filter `status` (`any`/`unsolved`/`in_progress`/`solved`, privzeto `unsolved`), straničenje (6 na stran) in "Saved problems" (po D23) → dodati `&status=&saved=&page=` (zdaj filtrira mock na odjemalcu).
 - Končano, ko: neobjavljen problem ni na seznamu; filtri se kombinirajo; `base_points` se ujema s težavnostjo (CHECK ali seed pravilo).
 
 **P2 · Podrobnosti problema** `S` · odvisno od: P1 · ⬜
@@ -332,6 +332,7 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | Zaslon | Mock (datoteka / konstanta) | Zamenja rezina | Stanje |
 | --- | --- | --- | --- |
 | `/dashboard` + stranska vrstica (`(app)/layout.tsx`) | `src/lib/mock/dashboard.ts`: `mockGetDashboard` (datumi relativni na zdaj), `MOCK_ME` (uporabnik, cilj, izkušnje), `MOCK_ACTIVE_CONTEST_COUNT`; sličice v `public/mock/` | U3, T1, U2, F4 | ⬜ |
+| `/problems` | `src/lib/mock/problems.ts`: `mockGetProblems` (vsi problemi, filtri/razvrščanje/straničenje na odjemalcu v `ProblemBrowser.tsx`); zaznamki samo v brskalniku (D23) | P1 | ⬜ |
 | `/admin/problems/new` (Create Problem) | `src/lib/mock/adminProblems.ts`: `mockAnalyzeProblem`, `mockRunCheck` (lint uspe, ostalo pade), `mockSaveProblem` | A10, A4, A2/A5 | ⬜ |
 
 ---

@@ -141,9 +141,9 @@ Time multiplier:
 Updated at the end of every session. Read this first in a new session.
 
 ```
-Last session: 6. 10. 2026 — Seja 2 (dashboard + app shell)
+Last session: 6. 10. 2026 — Seja 3 (problems list)
 Phase: Frontend build from Figma designs (mock data)
-Frontend: 2 screens on mock data — /admin/problems/new (Create Problem), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx)
+Frontend: 3 screens on mock data — /admin/problems/new (Create Problem), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx), /problems
 Backend: Not started — plan in md_files/06_backend_slices.md (decisions D1-D19 locked)
 Database: Schema designed, not created yet
 Next step: next frontend screen (waiting for user)
