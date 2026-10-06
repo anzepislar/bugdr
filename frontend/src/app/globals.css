@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/* Graphite Signal — see CLAUDE.md */
+@theme {
+  --color-canvas: #151618;
+  --color-surface: #202226;
+  --color-border: #383c43;
+  --color-action: #8bacff;
+  --color-text: #f2f3f5;
+  --color-muted: #acb2be;
+  --color-passed: #22c55e;
+  --color-pending: #f59e0b;
+  --color-failed: #ef4444;
+  --color-highlight: #eba599;
+
+  --color-easy: #22c55e;
+  --color-medium: #f59e0b;
+  --color-hard: #f97316;
+  --color-get-a-job: #ef4444;
+
+  --font-sans: var(--font-inter);
+  --radius: 6px;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-text);
+}
