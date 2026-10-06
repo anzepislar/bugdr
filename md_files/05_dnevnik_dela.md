@@ -233,12 +233,13 @@ Predlagani Description:
 
 `Adds the shared sidebar and top bar for signed-in pages via an (app) route group, and the /dashboard screen from the Figma design: live contests, resume banner for the in-progress attempt, recommended problems with filters, and a progress panel with level, streak, activity graph and recent wins. Runs on mock data until slices U3, T1 and U2 exist.`
 
-## 6. 10. 2026 — Seja 3: Seznam problemov
+## 6. 10. 2026 — Seja 3: Seznam in podrobnosti problema
 
 ### Povzetek
 
-Zgrajen je zaslon `/problems` ("Explore problems") po Figma dizajnu, na lažnih
-podatkih, znotraj obstoječe stranske in zgornje vrstice.
+Zgrajena sta zaslona `/problems` ("Explore problems") in `/problems/[slug]`
+(podrobnosti problema) po Figma dizajnu, na lažnih podatkih, znotraj
+obstoječe stranske in zgornje vrstice.
 
 ### Kaj je narejeno
 
@@ -256,6 +257,21 @@ podatkih, znotraj obstoječe stranske in zgornje vrstice.
 - Tip `ProblemListItem` v `src/lib/types/problem.ts` (oblika kartice
   `GET /problems` s `status` po P1), mock `src/lib/mock/problems.ts`
   (12 problemov, sličice iz `public/mock/`).
+- **Podrobnosti problema** `src/app/(app)/problems/[slug]/page.tsx` (strežniška
+  komponenta, brez JS na odjemalcu): "All problems", težavnost, kategorija in
+  tagi, naslov, ocena / čas / število rešitev, zavihki Overview / Repository /
+  Discussion kot povezave `?tab=`. Overview izriše `description` (majhna
+  podmnožica markdowna: `## ` naslovi, odstavki, ``` bloki z naslovom, npr.
+  `worker.log`). Repository pokaže ime, sklad in seznam poti datotek (brez
+  vsebine). Discussion je zaklenjen do rešitve (prikaže število komentarjev).
+  Desno kartica glede na status (Start problem / Resume problem / Solved →
+  Open discussion) s podatki o repozitoriju in seznam "Acceptance checks"
+  (prve 4, ostale pod `<details>` "N checks total"). Neznan slug → 404. Na
+  telefonu je kartica s Start nad opisom.
+- Tip `ProblemDetail` in `mockGetProblem` (polni opis za
+  `payment-retries-disappear`, ostali dobijo splošnega iz kartice); ikona
+  `arrowLeft`; drobtinice v `AppShell.tsx` na `/problems/*` kažejo
+  "Problem details".
 
 ### Odstopanja od dizajna (zaradi dokumentov)
 
@@ -263,6 +279,12 @@ podatkih, znotraj obstoječe stranske in zgornje vrstice.
   enako kot na dashboardu.
 - Barve težavnosti po `CLAUDE.md` (Medium rumena), ne modra iz dizajna.
 - Zaznamki so samo stanje v brskalniku in niso skupni z dashboardom (D23).
+- Podrobnosti: naslov iz mocka ("Payment retries disappear", kot na kartici
+  seznama) - dizajna se razlikujeta ("... from the queue").
+- Podrobnosti: kategorija polno ime ("Backend Engineer"), dizajn "Backend".
+
+Nova odprta vprašanja v `06`: D26 (opisi preverjanj na strani podrobnosti -
+P2 jih izključuje), D27 (ime repozitorija in sklad - ni stolpca).
 
 ### Tehnične opombe
 
@@ -275,8 +297,8 @@ podatkih, znotraj obstoječe stranske in zgornje vrstice.
 
 Predlagani Summary:
 
-`Add the problems list page (mock data)`
+`Add the problems list and problem detail pages (mock data)`
 
 Predlagani Description:
 
-`Adds the /problems screen from the Figma design: search (prefilled from the top bar ?q=), role/difficulty/topic/status filters, saved-only toggle, sorting, a card grid and pagination. Filtering runs client-side on mock data until slice P1 exists.`
+`Adds the /problems screen from the Figma design: search (prefilled from the top bar ?q=), role/difficulty/topic/status filters, saved-only toggle, sorting, a card grid and pagination. Adds /problems/[slug]: description, overview/repository/discussion tabs, start card by attempt status and acceptance checks. Runs on mock data until slices P1 and P2 exist.`

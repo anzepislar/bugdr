@@ -141,13 +141,13 @@ Time multiplier:
 Updated at the end of every session. Read this first in a new session.
 
 ```
-Last session: 6. 10. 2026 — Seja 3 (problems list)
+Last session: 6. 10. 2026 — Seja 3 (problems list + problem detail)
 Phase: Frontend build from Figma designs (mock data)
-Frontend: 3 screens on mock data — /admin/problems/new (Create Problem), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx), /problems
+Frontend: 4 screens on mock data — /admin/problems/new (Create Problem), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx), /problems, /problems/[slug]
 Backend: Not started — plan in md_files/06_backend_slices.md (decisions D1-D19 locked)
 Database: Schema designed, not created yet
 Next step: next frontend screen (waiting for user)
-Open questions: add schema changes to 01_database.md? · D20 validation rule · D21-D22 · D23 bookmarks · D24 feed filters vs. D19 · D25 notifications (all in 06)
+Open questions: add schema changes to 01_database.md? · D20 validation rule · D21-D22 · D23 bookmarks · D24 feed filters vs. D19 · D25 notifications · D26 check descriptions on detail · D27 repository name (all in 06)
 ```
 
 ### Session tracking
@@ -188,3 +188,35 @@ Open questions: add schema changes to 01_database.md? · D20 validation rule · 
 | `md_files/04_admin.md` | Admin dashboard |
 | `md_files/05_dnevnik_dela.md` | Session log — what was built, per session (Slovenian) |
 | `md_files/06_backend_slices.md` | Backend plan as slices + mock register (Slovenian) |
+
+---
+
+## UI Rules
+
+Learned from fixes on `/problems` and `/problems/[slug]`. Apply to every new screen.
+
+**Page layout**
+- Page containers: full width with px-6 below 1400px, centered at max-w-[1200px] mx-auto at 1400px and above using a custom 'wide' Tailwind breakpoint — never center content on screens where it would leave minimal side space
+- No `min-h-*`, fixed heights or extra bottom padding on page content — the page ends after the last element (+ the standard `py-8`).
+- Two-column layouts: `flex flex-col lg:flex-row lg:items-start gap-8`; main column `min-w-0 flex-1`, side panel `shrink-0 lg:w-80 xl:w-96`. `items-start` so a short column never stretches or leaves a gap. On phones the panel goes below the main content.
+- A side panel holding the primary action is sticky only where it is a side column: `lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto`.
+- Keep side panels short (the primary action + a few facts). Content the user reads (descriptions, check lists) belongs in the main column, otherwise short tabs leave a gap under the main column.
+- A tab with little content (empty / locked state) fills the column height (`lg:self-stretch` + `h-full` empty-state card) instead of leaving space next to the side panel.
+- When a side panel spans full width (below `lg`), lay it out horizontally and give buttons `sm:w-fit` — never a full-width card with a 700px button.
+
+**Content**
+- Never hide information the user needs to make a decision (e.g. acceptance checks) behind a toggle on first load. Long lists go in two columns (`sm:grid-cols-2`) rather than a collapsed list.
+- Section headings: `font-semibold`, at least `text-lg` (description sections use `text-xl`), `mt-8` above each section.
+- Locked / gated states are a banner, not plain text: full-width card, lock icon on the left, `bg-surface border border-border`, one sentence that says how to unlock.
+
+**Card grids and lists**
+- Columns: 1 → `md:` 2 → `lg:` 3 → `2xl:` 4. Never let cards grow unbounded; cards get `min-w-0`, long tag lists `truncate`.
+- A short last row stays left-aligned (plain CSS grid, no centering tricks).
+- Long lists use infinite scroll, not pagination: the first load fills the screen plus one row (so the page can scroll), each later load adds about a screenful when the end of the list comes into view (IntersectionObserver). Changing a filter resets to the first load. "Showing X of Y" left-aligned under the list.
+
+**Controls**
+- Filter bars: one column on phones (`grid gap-4 sm:grid-cols-2 md:grid-cols-4`), labels must never clip.
+- Related toggles (e.g. "Saved problems") sit in the same row as the filters as the last item, using the existing button style.
+
+**Verification after every screen**
+- Check 320, 390, 768, 1024, 1440 and 2560 px wide: no horizontal scroll, no clipped labels, no text overflowing a card.

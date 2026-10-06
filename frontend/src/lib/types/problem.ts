@@ -124,3 +124,15 @@ export interface ProblemListItem {
   thumbnailUrl: string | null;
   status: "solved" | "in_progress" | null;
 }
+
+/** Result of GET /problems/:slug (slice P2). Never contains file contents or check commands. */
+export interface ProblemDetail extends ProblemListItem {
+  /** problems.description: paragraphs, "## " headings and ``` blocks (the text after ``` is the block title). */
+  description: string;
+  solveCount: number;
+  commentCount: number;
+  /** problem_checks.description in check_order (D26). */
+  checks: string[];
+  /** D27: `name` has no column yet; `files` are the paths of repository_structure. */
+  repository: { name: string; stack: string[]; files: string[] };
+}

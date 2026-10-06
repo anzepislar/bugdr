@@ -86,6 +86,8 @@ dokler je uporabnik ne potrdi.
 | D23 | **ODPRTO** - zaznamki (bookmark) na kartici problema | Dizajn dashboarda in `/problems` (gumb "Saved problems") ima ikono zaznamka, shema nima tabele. Predlog: `problem_bookmarks (user_id, problem_id, created_at, PK(user_id, problem_id))` + `PUT/DELETE /problems/:slug/bookmark`. Do odločitve je zaznamek samo stanje v brskalniku | U3, P1 |
 | D24 | **ODPRTO** - feed na dashboardu: filtri in rešeni problemi | Dizajn ima filtre (kategorija, težavnost, "Hide solved", razvrščanje). D19 pravi, da feed ne vsebuje rešenih. Predlog: `GET /dashboard/feed?category=&difficulty=&hideSolved=&sort=`, privzeto po D19 (`hideSolved=true`); ko je "Hide solved" izklopljen, so rešeni problemi v feedu z oznako `solved` | U3 |
 | D25 | **ODPRTO** - ikona obvestil v zgornji vrstici | Dizajn ima zvonec, shema in dokumenti nimajo obvestil. Predlog: v v1 ikona brez funkcije ali skrita; obvestila kasneje kot svoja rezina | - |
+| D26 | **ODPRTO** - opisi preverjanj na strani podrobnosti | Dizajn `/problems/[slug]` ima "Acceptance checks" (opisi) in "N checks total", P2 pravi "brez preverjanj". Predlog: `GET /problems/:slug` vrne `checks: string[]` = samo `problem_checks.description` po `check_order` (nikoli `check_command`/`expected_output`) | P2 |
+| D27 | **ODPRTO** - ime repozitorija in sklad na strani podrobnosti | Dizajn kaže "northstar / checkout-worker" in "TypeScript · Node 20 · Redis", shema nima imena. Predlog: `problem_codebase.repository_name VARCHAR(100)`, sklad = `language` + `framework` + tagi; zavihek Repository pokaže poti iz `repository_structure` (brez vsebine) | P2, A2 |
 
 ### Spremembe sheme glede na `01_database.md`
 
@@ -182,13 +184,13 @@ polnijo s seed skripto.
 **P1 · Seznam problemov** `M` · odvisno od: F3 · ⬜
 - Naredi: `problem_categories` (seed 5 kategorij v migraciji), `problems` (+ `thumbnail_url`, `summary`, brez `is_contest_problem`), `problem_tags`. Seed skripta z nekaj razvojnimi problemi.
 - API: `GET /problems?category=&difficulty=&tag=&q=&sort=` → kartice (`02` "Card contains": naslov, kratek opis, težavnost, kategorija, ocena, število rešitev, časovna omejitev) + za prijavljenega `status` (`solved`/`in_progress`/`null`). Samo `is_published` in ne problemi tekmovanja, ki še ni končano (D17).
-- Frontend: `/problems`. Oblika kartice je `ProblemListItem` v `frontend/src/lib/types/problem.ts`. Zaslon ima še filter `status` (`any`/`unsolved`/`in_progress`/`solved`, privzeto `unsolved`), straničenje (6 na stran) in "Saved problems" (po D23) → dodati `&status=&saved=&page=` (zdaj filtrira mock na odjemalcu).
+- Frontend: `/problems`. Oblika kartice je `ProblemListItem` v `frontend/src/lib/types/problem.ts`. Zaslon ima še filter `status` (`any`/`unsolved`/`in_progress`/`solved`, privzeto `unsolved`), neskončno drsenje (prvo nalaganje zapolni zaslon, nato po en zaslon) in "Saved problems" (po D23) → dodati `&status=&saved=&limit=&offset=` (zdaj filtrira mock na odjemalcu).
 - Končano, ko: neobjavljen problem ni na seznamu; filtri se kombinirajo; `base_points` se ujema s težavnostjo (CHECK ali seed pravilo).
 
 **P2 · Podrobnosti problema** `S` · odvisno od: P1 · ⬜
 - API: `GET /problems/:slug` → opis, težavnost, kategorija, tagi, povprečna ocena + število, **število** komentarjev, status uporabnika. **Brez** kode in preverjanj (pridejo ob `start`).
 - Naredi: `user_daily_activity`. Ogled prijavljenega uporabnika poveča `problems_opened` za današnji UTC dan (D6, D7) in posodobi `user_stats.current_streak/longest_streak/last_activity_date`.
-- Frontend: `/problems/[slug]`.
+- Frontend: `/problems/[slug]`. Oblika odgovora je `ProblemDetail` v `frontend/src/lib/types/problem.ts` (+ `solveCount`, `commentCount`, `checks` po D26, `repository` po D27).
 - Končano, ko: neobjavljen ali neznan slug → 404; odgovor ne vsebuje `check_command` ali datotek; dva ogleda istega dne = en dan streaka, ogled naslednji dan ga podaljša.
 
 ### M2 - Reševanje
@@ -333,6 +335,7 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | --- | --- | --- | --- |
 | `/dashboard` + stranska vrstica (`(app)/layout.tsx`) | `src/lib/mock/dashboard.ts`: `mockGetDashboard` (datumi relativni na zdaj), `MOCK_ME` (uporabnik, cilj, izkušnje), `MOCK_ACTIVE_CONTEST_COUNT`; sličice v `public/mock/` | U3, T1, U2, F4 | ⬜ |
 | `/problems` | `src/lib/mock/problems.ts`: `mockGetProblems` (vsi problemi, filtri/razvrščanje/straničenje na odjemalcu v `ProblemBrowser.tsx`); zaznamki samo v brskalniku (D23) | P1 | ⬜ |
+| `/problems/[slug]` | `src/lib/mock/problems.ts`: `mockGetProblem` (polni opis samo za `payment-retries-disappear`) | P2 (O1, O2 za oceno in komentarje) | ⬜ |
 | `/admin/problems/new` (Create Problem) | `src/lib/mock/adminProblems.ts`: `mockAnalyzeProblem`, `mockRunCheck` (lint uspe, ostalo pade), `mockSaveProblem` | A10, A4, A2/A5 | ⬜ |
 
 ---

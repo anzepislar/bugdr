@@ -1,5 +1,5 @@
-// Mock of GET /problems. Replaced by slice P1 (see md_files/06_backend_slices.md, "Register mockov").
-import type { ProblemListItem } from "@/lib/types/problem";
+// Mock of GET /problems and GET /problems/:slug. Replaced by slices P1 and P2 (see md_files/06_backend_slices.md, "Register mockov").
+import type { ProblemDetail, ProblemListItem } from "@/lib/types/problem";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -165,4 +165,72 @@ const PROBLEMS: ProblemListItem[] = [
 export async function mockGetProblems(): Promise<ProblemListItem[]> {
   await delay(300);
   return PROBLEMS;
+}
+
+type DetailFields = Omit<ProblemDetail, keyof ProblemListItem>;
+
+const DETAILS: Record<string, DetailFields> = {
+  "payment-retries-disappear": {
+    description: `## Your assignment
+
+You have joined the payments team at Northstar, an online marketplace.
+A background worker processes checkout events and schedules retries when the payment provider is temporarily unavailable.
+
+## What the team is seeing
+
+Support reports that a small number of orders remain in "payment pending".
+The original payment attempt is logged, but the expected follow-up never appears. The incident began during a burst of provider timeouts.
+
+\`\`\`worker.log
+[WARN] gateway timeout order=ord_842 attempt=1
+[INFO] retry scheduled delay=30000ms
+\`\`\`
+
+## Expected behavior
+
+Transient payment failures should be retried without charging twice.
+Successful payments should complete their order exactly once.`,
+    solveCount: 842,
+    commentCount: 37,
+    checks: [
+      "Retry transient failures",
+      "Preserve successful payments",
+      "Prevent duplicate charges",
+      "Keep the worker healthy",
+      "Back off between retries",
+      "Keep failed jobs visible in the queue",
+      "Existing tests still pass",
+    ],
+    repository: {
+      name: "northstar / checkout-worker",
+      stack: ["TypeScript", "Node 20", "Redis"],
+      files: [
+        "package.json",
+        "tsconfig.json",
+        "src/index.ts",
+        "src/queue.ts",
+        "src/retry.ts",
+        "src/gateway.ts",
+        "src/orders.ts",
+        "test/retry.test.ts",
+      ],
+    },
+  },
+};
+
+// Every other mock problem gets a generic detail built from its card.
+function genericDetail(p: ProblemListItem): DetailFields {
+  return {
+    description: `## Your assignment\n\n${p.shortDescription}\n\n## Expected behavior\n\nFind the root cause and fix it without breaking existing behavior.`,
+    solveCount: p.ratingCount * 6,
+    commentCount: Math.round(p.ratingCount / 4),
+    checks: ["Reproduce the reported bug", "Fix the root cause", "Existing tests still pass"],
+    repository: { name: `acme / ${p.slug}`, stack: p.tags, files: ["package.json", "src/index.ts", "test/index.test.ts"] },
+  };
+}
+
+export async function mockGetProblem(slug: string): Promise<ProblemDetail | null> {
+  await delay(300);
+  const p = PROBLEMS.find((x) => x.slug === slug);
+  return p ? { ...p, ...(DETAILS[slug] ?? genericDetail(p)) } : null;
 }

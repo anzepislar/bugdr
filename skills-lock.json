@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "responsive-design": {
+      "source": "akillness/oh-my-skills",
+      "sourceType": "github",
+      "skillPath": ".agent-skills/responsive-design/SKILL.md",
+      "computedHash": "a9aea1536368dd77361d6a3d58d4343c6b8661f9cc86b0a79e27e82f3dcd3370"
+    }
+  }
+}

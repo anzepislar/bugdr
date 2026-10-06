@@ -20,6 +20,9 @@
 
   --font-sans: var(--font-inter);
   --radius: 6px;
+
+  /* Page containers center from here (CLAUDE.md "UI Rules"). */
+  --breakpoint-wide: 1400px;
 }
 
 body {
