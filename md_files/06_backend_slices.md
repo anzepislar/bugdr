@@ -92,6 +92,9 @@ dokler je uporabnik ne potrdi.
 | D28 | **ODPRTO** - "Give up" na zaslonu reševanja | `02` zahteva gumb Give up, dizajn ga nima. Zdaj: besedilni gumb v glavi (na telefonu v statusni vrstici) s potrditvijo → R2 | R2 |
 | D29 | **ODPRTO** - iskanje in razširitve v levi vrstici zaslona reševanja | Dizajn ima ikoni, dokumenti ne opisujejo funkcije. Zdaj neaktivni. Predlog: iskanje po datotekah poskusa na odjemalcu (brez API), razširitve odstraniti | R1 |
 | D30 | **ODPRTO** - "helpful" in odgovori na komentarje | Dizajn razprave ima "N helpful", "Reply" in razvrščanje "Most helpful"; `problem_comments` nima ničesar od tega. Predlog: `problem_comments.parent_id UUID NULL REFERENCES problem_comments(id)` (odgovori samo ena raven), tabela `comment_helpful (comment_id, user_id, created_at, PK(comment_id, user_id))` + `problem_comments.helpful_count` (posodobljen v isti transakciji), `PUT/DELETE /comments/:id/helpful`, lastnega komentarja ni mogoče označiti, `GET /problems/:slug/comments?sort=helpful\|newest` | O2 |
+| D31 | ~~Stran posameznega tekmovanja~~ → **rešeno 6. 10. 2026**: uporabnik je dal dizajn, pot `/contests/[id]` (id, ker `contests` nima sluga). En incident na tekmovanje kot v dizajnu, čeprav shema dovoli več problemov (`contest_problems`) | T1, T2 |
+| D33 | **ODPRTO** - en ali več problemov na tekmovanje | Dizajn `/contests/[id]` kaže en incident ("The incident", "Enter contest" → reševanje), `contest_problems` dovoli več. Zdaj tip `ContestDetail.problem` = en problem. Predlog: v1 en problem na tekmovanje (omejitev v A-rezini) | T1, A7 |
+| D32 | **ODPRTO** - "N/M checks passed" v zgodovini tekmovanj | Dizajn kaže preverjanja, `contest_entries` ima `problems_solved` in `total_score`. Zdaj mock vrne `checksPassed`/`checksTotal` (vsota čez probleme tekmovanja), "Completed" = vsa preverjanja uspešna. Predlog: prikaži `problems_solved` / število problemov in točke | T2 |
 
 ### Spremembe sheme glede na `01_database.md`
 
@@ -343,6 +346,8 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | `/problems` | `src/lib/mock/problems.ts`: `mockGetProblems` (vsi problemi, filtri/razvrščanje/straničenje na odjemalcu v `ProblemBrowser.tsx`); zaznamki samo v brskalniku (D23) | P1 | ⬜ |
 | `/problems/[slug]` | `src/lib/mock/problems.ts`: `mockGetProblem` (+ `RESULTS` za rešen problem; ocena v `RateProblem` samo v stanju), `mockGetComments` (komentarji samo za rešen problem; objave, odgovori in helpful samo v stanju `Discussion.tsx`) (polni opis samo za `payment-retries-disappear`) | P2 (O1, O2 za oceno in komentarje) | ⬜ |
 | `/problems/[slug]/solve` | `src/lib/mock/attempts.ts`: `mockStartAttempt` (timer teče od zdaj, za `in_progress` od 18:42), `mockRunTests` (vnaprej določeni rezultati); koda v `mockCodebase` (`mock/problems.ts`); urejevalnik je `CodeEditorMock` (samo branje) | R1, R2 (Give up), R4, R5 (terminal), R6 | ⬜ |
+| `/contests` | `src/lib/mock/contests.ts`: `mockGetContests` (live/upcoming/past + zgodovina uporabnika, datumi relativni na zdaj); prihajajoča tekmovanja brez težavnosti, oznak in sličice (T1); "View contest" vodi na `/contests/[id]` | T1, T2 | ⬜ |
+| `/contests/[id]` | `src/lib/mock/contests.ts`: `mockGetContest` (seznam + `DETAILS`: incident, ime repozitorija (D27), število preverjanj, nagrada, udeležba); problemi tekmovanj so obstoječi mock problemi, da "Enter contest" odpre delujoč zaslon reševanja | T1, T2 | ⬜ |
 | `/admin/problems/new` (Create Problem) | `src/lib/mock/adminProblems.ts`: `mockAnalyzeProblem`, `mockRunCheck` (lint uspe, ostalo pade), `mockSaveProblem` | A10, A4, A2/A5 | ⬜ |
 
 ---
@@ -386,6 +391,6 @@ Odprto:
 | `/problems/[slug]` | P2, O1, O2 |
 | `/problems/[slug]/solve` | R1-R6 |
 | `/profile/[username]` | U1, U2 |
-| `/contests` | T1, T2 |
+| `/contests`, `/contests/[id]` | T1, T2 |
 | `/admin/problems/new` | A10, A2, A4, A5 |
 | `/admin/*` | A1-A9 |

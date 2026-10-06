@@ -107,7 +107,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           <nav aria-label="Breadcrumb" className="hidden items-center gap-3 text-sm sm:flex">
             <span className="text-muted">Workspace</span>
             <Icon name="chevronRight" className="h-3.5 w-3.5 text-muted" />
-            <span className="text-text">{pathname.startsWith("/problems/") ? "Problem details" : current?.label}</span>
+            <span className="text-text">
+              {pathname.startsWith("/problems/")
+                ? "Problem details"
+                : pathname.startsWith("/contests/")
+                  ? "Contest details"
+                  : current?.label}
+            </span>
           </nav>
           <form action="/problems" role="search" className="relative ml-auto w-full max-w-[275px]">
             <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />

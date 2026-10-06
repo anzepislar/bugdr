@@ -361,3 +361,72 @@ Predlagani Summary:
 Predlagani Description:
 
 `Adds /problems (search, filters, infinite scroll), /problems/[slug] (description, repository, sticky start card; for solved problems a result summary with points, rating and a discussion with sorting, posting, replies and helpful votes) and the full-screen /problems/[slug]/solve workspace (file tree, read-only Monaco stand-in, terminal, scenario checks). Adds UI Rules to CLAUDE.md. Runs on mock data until slices P1, P2, R1-R6, O1 and O2 exist.`
+
+## 6. 10. 2026 — Seja 4: Tekmovanja (seznam in podrobnosti)
+
+### Povzetek
+
+Zaslona `/contests` in `/contests/[id]` po dizajnih iz Figme, na mock podatkih. Uporablja pravila
+"UI Rules" iz `CLAUDE.md`.
+
+### Kaj je narejeno
+
+- `/contests` (`src/app/(app)/contests/page.tsx`, strežniška komponenta):
+  naslov, zavihki Live / Upcoming / Past contests kot povezave (`?tab=`, kot
+  na podrobnostih problema), kartice tekmovanj in "Your contest history".
+- Kartica: sličica, vrsta tekmovanja, težavnost + oznake, naslov, opis,
+  število udeležencev, desno "Ends in" / "Starts in" / "Ended" in gumb
+  "View contest". Pod `md` se zloži navpično, pod `xl` sta odštevanje in
+  gumb pod vsebino.
+- Prihajajoča tekmovanja ne razkrijejo problemov (T1): brez težavnosti,
+  oznak in sličice (ikona ključavnice).
+- Prazno stanje za vsak zavihek, prazna zgodovina.
+- Tipi v `src/lib/types/contest.ts`, mock v `src/lib/mock/contests.ts`.
+- Odštevanje premaknjeno v skupni `src/lib/format.ts` (`countdown`), ki ga
+  zdaj uporablja tudi dashboard.
+
+Dodano po pregledu - podrobnosti tekmovanja:
+
+- `/contests/[id]` (`src/app/(app)/contests/[id]/page.tsx`): oznaki vrste in
+  težavnosti, naslov, repozitorij + oznake, "The incident" z diagramom,
+  "Contest rules", lepljiva stranska kartica ("Closes in", udeleženci,
+  gumb, čas zaprtja v UTC, težavnost, število preverjanj) ter "Your
+  participation" z nagrado. Neznan id → 404.
+- Stanja: živo (Enter contest / Resume contest / View problem, ko je
+  rešeno), prihajajoče (incident skrit za pasico z ključavnico, brez gumba),
+  končano ("Ended", View problem - problem je po koncu javen, D17).
+- Pod `lg` gre stranska kartica pod vsebino in se postavi vodoravno (kot
+  StartCard na podrobnostih problema).
+- Gumbi "View contest" na `/contests` zdaj vodijo na `/contests/[id]` (tudi
+  za prihajajoča tekmovanja); drobtinice v `AppShell` kažejo "Contest
+  details".
+
+### Odstopanja od dizajna
+
+- Podrobnosti: en incident na tekmovanje kot v dizajnu (D33); diagram omejen
+  na `max-w-md`, da se SVG ne raztegne; težavnost kot `DifficultyPill`.
+- Zgodovina: dodan status "Incomplete" za nepopolne vnose; "checks passed"
+  shema nima (D32).
+- Sličica ohrani razmerje 15:7 namesto raztezanja na višino kartice.
+
+Odprta vprašanja v `06`: D32, D33 (D31 rešen z dizajnom podrobnosti).
+
+### Tehnične opombe
+
+- `npm run lint`, `npm run typecheck`, `npm run build` uspešni.
+- Preverjeno s Playwright (skripta ni v repozitoriju): vsi trije zavihki
+  in vseh 5 tekmovanj + neznan id pri 320, 390, 768, 1024, 1440 in 2560 px brez vodoravnega drsenja in brez
+  elementov, ki bi presegali svoj okvir.
+- `Date.now()` je v pomožni funkciji `load()`, ker ga ESLint pravilo
+  `react-hooks/purity` v komponenti ne dovoli.
+
+### Git zapis
+
+Predlagani Summary:
+
+`Add the contests list and contest detail pages (mock data)`
+
+Predlagani Description:
+
+`Adds /contests with Live, Upcoming and Past tabs, contest cards with countdowns and the user's contest history, and /contests/[id] with the incident, rules, a sticky entry card and the user's participation. Upcoming contests keep their problems hidden. Moves the countdown formatter into src/lib/format.ts, shared with the dashboard. Runs on mock data until slices T1 and T2 exist.`
+

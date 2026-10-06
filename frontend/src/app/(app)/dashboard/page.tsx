@@ -6,6 +6,7 @@ import { ProgressPanel } from "@/components/dashboard/ProgressPanel";
 import { RecommendedFeed } from "@/components/dashboard/RecommendedFeed";
 import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
+import { countdown } from "@/lib/format";
 import { MOCK_ME, mockGetDashboard } from "@/lib/mock/dashboard";
 import type { ActiveContest, Dashboard, InProgressAttempt } from "@/lib/types/dashboard";
 
@@ -16,16 +17,6 @@ function greeting(now: Date): string {
   if (hour < 12) return "Good morning";
   if (hour < 18) return "Good afternoon";
   return "Good evening";
-}
-
-// ponytail: computed once on load, not a ticking countdown. Add an interval if the design asks for live time.
-function endsIn(endsAt: string, now: number): string {
-  const minutes = Math.max(0, Math.floor((Date.parse(endsAt) - now) / 60_000));
-  const days = Math.floor(minutes / 1440);
-  const hours = Math.floor((minutes % 1440) / 60);
-  if (days >= 7) return `Ends in ${days}d`;
-  if (days > 0) return `Ends in ${days}d ${pad(hours)}h`;
-  return `Ends in ${pad(hours)}h ${pad(minutes % 60)}m`;
 }
 
 function elapsed(startedAt: string, now: number): string {
@@ -110,7 +101,7 @@ function ContestCard({ contest, now }: { contest: ActiveContest; now: number }) 
       >
         <div className="flex items-center justify-between gap-3 text-xs">
           <span className="font-semibold uppercase tracking-wide text-action">{contest.type} contest</span>
-          <span className="text-muted">{endsIn(contest.endsAt, now)}</span>
+          <span className="text-muted">Ends in {countdown(Date.parse(contest.endsAt) - now)}</span>
         </div>
         <h3 className="mt-3 text-lg font-semibold text-text">{contest.title}</h3>
         <p className="mt-1 text-sm text-muted">{contest.description}</p>
