@@ -277,13 +277,14 @@ polnijo s seed skripto.
 
 **T1 · Seznam tekmovanj** `S` · odvisno od: P1 · ⬜
 - Naredi: `contests`, `contest_problems`.
-- API: `GET /contests` → dnevna/tedenska/mesečna, status izpeljan iz časa (`upcoming`/`active`/`ended`), nagrada; problemi samo za `active`/`ended`.
-- Frontend: `/contests`, del `/dashboard`.
+- API: `GET /contests` → dnevna/tedenska/mesečna, status izpeljan iz časa (`upcoming`/`active`/`ended`), nagrada; problemi samo za `active`/`ended`. Oblika odgovora je `ContestList` v `frontend/src/lib/types/contest.ts` (`live`/`upcoming`/`past`; težavnost = najvišja težavnost problemov, oznake in sličica iz problema).
+- API: `GET /contests/:id` → `ContestDetail` (incident, ime repozitorija - D27, število preverjanj, nagrada); za `upcoming` `problem = null`. En problem na tekmovanje (D33).
+- Frontend: `/contests`, `/contests/[id]`, del `/dashboard`.
 - Končano, ko: problemi prihajajočega tekmovanja niso razkriti.
 
 **T2 · Udeležba in rezultati** `M` · odvisno od: T1, R4 · ⬜
 - Naredi: `contest_entries` (brez `attempt_id`, D18); rešitev tekmovalnega problema znotraj časa posodobi vnos (v transakciji R4).
-- API: `GET /contests/:id/leaderboard`.
+- API: `GET /contests/:id/leaderboard`; `participation` v `GET /contests/:id` in `history` v `GET /contests` (`ContestHistoryEntry` - glej D32) iz `contest_entries` prijavljenega uporabnika.
 - Končano, ko: rešitev po `ends_at` ne šteje; en vnos na uporabnika na tekmovanje.
 
 ### M6 - Admin (`04_admin.md`)

@@ -415,10 +415,13 @@ Odprta vprašanja v `06`: D32, D33 (D31 rešen z dizajnom podrobnosti).
 
 - `npm run lint`, `npm run typecheck`, `npm run build` uspešni.
 - Preverjeno s Playwright (skripta ni v repozitoriju): vsi trije zavihki
-  in vseh 5 tekmovanj + neznan id pri 320, 390, 768, 1024, 1440 in 2560 px brez vodoravnega drsenja in brez
-  elementov, ki bi presegali svoj okvir.
-- `Date.now()` je v pomožni funkciji `load()`, ker ga ESLint pravilo
-  `react-hooks/purity` v komponenti ne dovoli.
+  `/contests`, vseh 5 tekmovanj na `/contests/[id]` in neznan id (404) pri
+  320, 390, 768, 1024, 1440 in 2560 px - brez vodoravnega drsenja in brez
+  elementov, ki bi presegali svoj okvir; seznam → podrobnosti in
+  drobtinice delujejo.
+- Obe strani sta strežniški komponenti. `Date.now()` je v pomožni funkciji
+  `load()`, ker ga ESLint pravilo `react-hooks/purity` v komponenti ne
+  dovoli; odštevanje velja ob nalaganju strani (ne teče v živo).
 
 ### Git zapis
 
