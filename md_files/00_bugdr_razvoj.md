@@ -175,8 +175,8 @@ PostgreSQL
 
 | Page | Route | Description |
 |------|-------|-------------|
-| Login / Signup | `/login` `/signup` | Standard auth |
-| Onboarding | `/onboarding` | 3 questions after signup |
+| Login / Signup | `/login` `/signup` `/forgot-password` | Standard auth + password reset request |
+| Onboarding | `/onboarding` | 4 steps after signup: role, experience, goal, languages |
 | Dashboard | `/dashboard` | Personalized feed + contests |
 | Problems | `/problems` | Browse all problems |
 | Problem detail | `/problems/[slug]` | Description + start |

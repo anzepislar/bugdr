@@ -17,10 +17,11 @@ povezala na API.
 ## Stanje
 
 ```
-Zadnja posodobitev: 6. 10. 2026
+Zadnja posodobitev: 7. 10. 2026
 Backend: ni začet (nobena rezina ni narejena)
-Frontend: 5 zaslonov na mocku - /admin/problems/new (Create Problem), /dashboard, /problems,
-          /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve
+Frontend: 13 zaslonov na mocku - /login, /signup, /forgot-password, /onboarding, /dashboard,
+          /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
+          /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new
 Naslednja rezina: F0 (ko se začne backend - Faza 2/3 iz 00_bugdr_razvoj.md)
 ```
 
@@ -102,6 +103,8 @@ dokler je uporabnik ne potrdi.
 | D38 | **ODPRTO** - "Full name" namesto `username` na `/signup` | Dizajn ima polno ime, F2 zahteva `username` (gre v `/profile/[username]`), shema nima imena (prim. D34 `display_name`). Predlog: dodati polje Username ali ga izpeljati iz imena/e-pošte in dovoliti spremembo v nastavitvah | F2, U1 |
 | D39 | **ODPRTO** - minimalna dolžina gesla | Dizajn: "At least 12 characters", F2: ≥ 8. Zdaj obrazec zahteva 12. Predlog: 12 tudi v F2 | F2 |
 | D40 | **ODPRTO** - "Remember me" na `/login` | Dokumenti ne določajo trajanja seje. Predlog: brez kljukice piškotek seje, s kljukico JWT za 30 dni | F2 |
+| D41 | **ODPRTO** - "Exploring my path" na onboardingu | Dizajn ima 6. vlogo, `goal_role` dovoli samo 5 kategorij. Zdaj mock pošlje `"exploring"`. Predlog: `goal_role = NULL` = raziskujem; D19 feed brez filtra kategorije | F4, U3 |
+| D42 | **ODPRTO** - jeziki na onboardingu (korak 4) | Dizajn sprašuje po jezikih, F4 in shema jih nimata (prim. D34 `languages TEXT[]`). Zdaj mock pošlje `languages`; povzetek "Your starting path" vzame prvi izbrani jezik. Predlog: `user_profiles.languages` iz D34, F4 sprejme `languages` | F4, U1 |
 
 ### Spremembe sheme glede na `01_database.md`
 
@@ -363,6 +366,7 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | `/login` | `src/lib/mock/auth.ts`: `mockLogin` (vedno uspe → `/dashboard`); "Continue with GitHub" pokaže napako (D37); "Remember me" se ne uporabi (D40) | F2 | ⬜ |
 | `/signup` | `src/lib/mock/auth.ts`: `mockSignup` (vedno uspe → `/onboarding`); polno ime namesto `username` (D38), geslo ≥ 12 (D39) | F2 | ⬜ |
 | `/forgot-password` | `src/lib/mock/auth.ts`: `mockRequestPasswordReset` (uspe za vsak e-mail - stran ne razkrije, ali račun obstaja); pošiljanje pošte je odloženo (X5) | X5 (rezina še ne obstaja) | ⏸ |
+| `/onboarding` | `src/lib/mock/auth.ts`: `mockSaveOnboarding` (vedno uspe → `/dashboard`); vloga "exploring" (D41), jeziki (D42); "Sign out" je povezava na `/login` | F4 (F2 za odjavo) | ⬜ |
 | `/admin/problems/new` (Create Problem) | `src/lib/mock/adminProblems.ts`: `mockAnalyzeProblem`, `mockRunCheck` (lint uspe, ostalo pade), `mockSaveProblem` | A10, A4, A2/A5 | ⬜ |
 
 ---

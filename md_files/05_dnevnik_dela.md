@@ -602,3 +602,36 @@ urejevalnika se premakne z njim - urejevalnik "pripelje" z desne. Ista
 animacija velja za skrivanje/odpiranje opisa (prej 300 ms); z
 `prefers-reduced-motion` brez animacije. Preverjeno s Playwright
 (širina 883 → 737 → 646 → 595 → 576 px).
+
+### Onboarding
+
+- `/onboarding` (`src/app/onboarding/page.tsx`): glava z logotipom in
+  "Sign out", oznaka "Your engineering path", 4 črte napredka, "Step N of
+  4", 4 koraki na isti poti (stanje v komponenti):
+  1. vloga (6 kartic v 2 stolpcih), 2. izkušnje (4 kartice),
+  3. cilj (Get hired / Improve my skills / Both),
+  4. jeziki (več izbir, `LANGUAGES` iz nastavitev) + "Your starting path"
+     (vloga · začetna težavnost iz izkušenj (D19) · prvi izbrani jezik).
+- "Continue" je onemogočen, dokler korak ni odgovorjen; "Back" ohrani
+  odgovore; "Go to dashboard" shrani (mock) in odpre `/dashboard`.
+  Fokus se ob menjavi koraka premakne na naslov.
+- Kartice so pravi `radio` / `checkbox` (tipkovnica, bralniki zaslona).
+- `STARTING_DIFFICULTY` (prej `DEFAULT_DIFFICULTY` v `RecommendedFeed`)
+  in `PLATFORM_GOALS`, `OnboardingAnswers` so v `lib/types/dashboard.ts`.
+- `EXPERIENCE_LABEL` ima zdaj besedila iz onboardinga ("Just getting
+  started", "Less than 2 years", "2–4 years", "5+ years") - spremeni tudi
+  stransko vrstico in `/settings`.
+- `AuthHeader` sprejme `children` (desna stran glave).
+- Mock: `mockSaveOnboarding` v `src/lib/mock/auth.ts`.
+
+Odstopanja: "ProofSignal" → "Bugdr"; jeziki v vrstnem redu iz
+nastavitev; besedilo gumbov na sredini; opomba "You can change your path
+later in Settings." samo na 1. koraku (kot v dizajnu).
+
+Odprto v `06`: D41 ("Exploring my path" ni v `goal_role`), D42 (jeziki
+niso v F4).
+
+Preverjeno: lint, typecheck, build; Playwright pri 320-2560 px brez
+vodoravnega drsenja, celoten potek do `/dashboard`, brez napak v konzoli.
+
+Git zapis (Summary): `Add the onboarding flow (mock data)`

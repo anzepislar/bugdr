@@ -3,13 +3,24 @@ import type { CategorySlug, Difficulty } from "@/lib/types/problem";
 export const EXPERIENCE_LEVELS = ["student", "junior", "mid", "senior"] as const;
 export type ExperienceLevel = (typeof EXPERIENCE_LEVELS)[number];
 
-// ponytail: year ranges are a guess until the onboarding screen defines the answers.
+// Answers of onboarding step 2.
 export const EXPERIENCE_LABEL: Record<ExperienceLevel, string> = {
-  student: "Student",
-  junior: "0–2 years",
+  student: "Just getting started",
+  junior: "Less than 2 years",
   mid: "2–4 years",
   senior: "5+ years",
 };
+
+// D19: recommendations start at a difficulty matching the user's experience.
+export const STARTING_DIFFICULTY: Record<ExperienceLevel, Difficulty> = {
+  student: "easy",
+  junior: "easy",
+  mid: "medium",
+  senior: "hard",
+};
+
+export const PLATFORM_GOALS = ["get_hired", "improve_skills", "both"] as const;
+export type PlatformGoal = (typeof PLATFORM_GOALS)[number];
 
 /** Signed-in user, as the app shell needs it (user_profiles + users). */
 export interface Me {
@@ -94,4 +105,12 @@ export interface Dashboard {
   stats: DashboardStats;
   activity: ActivityDay[];
   recentWins: RecentWin[];
+}
+
+/** Body of PUT /me/onboarding (F4). "exploring" and `languages` are open (D41, D34). */
+export interface OnboardingAnswers {
+  goalRole: CategorySlug | "exploring";
+  experienceLevel: ExperienceLevel;
+  platformGoal: PlatformGoal;
+  languages: string[];
 }

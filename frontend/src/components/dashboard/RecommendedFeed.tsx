@@ -5,16 +5,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
-import type { ExperienceLevel, FeedProblem } from "@/lib/types/dashboard";
+import { STARTING_DIFFICULTY, type ExperienceLevel, type FeedProblem } from "@/lib/types/dashboard";
 import { CATEGORIES, DIFFICULTIES, DIFFICULTY_LABEL, type CategorySlug, type Difficulty } from "@/lib/types/problem";
-
-// D19: the feed starts at the user's goal role and a difficulty matching their experience.
-const DEFAULT_DIFFICULTY: Record<ExperienceLevel, Difficulty> = {
-  student: "easy",
-  junior: "easy",
-  mid: "medium",
-  senior: "hard",
-};
 
 const SORTS = { best: "Best match", rating: "Highest rated", shortest: "Shortest" } as const;
 
@@ -39,7 +31,7 @@ export function RecommendedFeed({
 }) {
   const defaults: Filters = {
     category: goalRole,
-    difficulty: DEFAULT_DIFFICULTY[experienceLevel],
+    difficulty: STARTING_DIFFICULTY[experienceLevel],
     hideSolved: true,
     sort: "best",
   };

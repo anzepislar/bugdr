@@ -2,13 +2,23 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { ErrorMessage, secondaryButton } from "@/components/admin/problems/shared";
 
 export const authFieldClass = "py-3";
 
-// Logo on the left, optional "Already a member? [Sign in]" on the right.
-export function AuthHeader({ prompt, href, label }: { prompt?: string; href?: string; label?: string }) {
+// Logo on the left, optional "Already a member? [Sign in]" (or `children`) on the right.
+export function AuthHeader({
+  prompt,
+  href,
+  label,
+  children,
+}: {
+  prompt?: string;
+  href?: string;
+  label?: string;
+  children?: ReactNode;
+}) {
   return (
     <header className="flex items-center justify-between gap-4 px-6 py-5 sm:px-12">
       <Link href="/" className="shrink-0">
@@ -22,6 +32,7 @@ export function AuthHeader({ prompt, href, label }: { prompt?: string; href?: st
           </Link>
         </div>
       )}
+      {children}
     </header>
   );
 }

@@ -166,13 +166,11 @@ When user opens a problem:
 
 When user clicks Start:
 
-- Timer starts immediately
-- Monaco Editor loads with the buggy codebase
-- File tree on the left (same as VS Code)
-- Terminal on the bottom
-- Checks panel on the right (or bottom, depends on screen space)
-- **Test button** — runs checks
-- **Give up button** — marks attempt as abandoned
+- Fullscreen page (own layout, no app sidebar); opens with the editor sliding in from the right
+- Top bar: logo + title, timer, **Give up** (marks attempt as abandoned), **Submit** (runs checks)
+- Left: problem description (resizable, collapsible to 0)
+- Right: Monaco Editor with the buggy codebase, one tab per file + language selector
+- Bottom of the editor: Terminal and Test Results tabs
 
 ### Check Panel States
 
