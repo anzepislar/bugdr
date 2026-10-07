@@ -1,5 +1,5 @@
-// ponytail: mock session = a plain cookie set by the mock login/signup. Slice F2 replaces it with
-// the httpOnly JWT cookie under the same name, so the proxy and the layout keep working.
+// httpOnly JWT cookie set by the backend (/auth/login, /auth/signup). Pages only check that it exists;
+// the API verifies it.
 export const SESSION_COOKIE = "bugdr_session";
 
 /** /login that returns to `path` afterwards. */

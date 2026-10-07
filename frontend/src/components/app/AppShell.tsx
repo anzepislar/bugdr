@@ -4,9 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { useLoginHref, useSignedIn } from "@/components/app/Session";
+import { useLoginHref, useLogout, useSignedIn } from "@/components/app/Session";
 import { Icon, type IconName } from "@/components/Icon";
-import { mockLogout } from "@/lib/mock/auth";
 import { MOCK_ACTIVE_CONTEST_COUNT, MOCK_ME } from "@/lib/mock/dashboard";
 import { EXPERIENCE_LABEL } from "@/lib/types/dashboard";
 import { CATEGORIES } from "@/lib/types/problem";
@@ -61,6 +60,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Guests see the public pages only (no profile).
   const nav = admin ? ADMIN_NAV : signedIn ? NAV : NAV.slice(0, 3);
   const loginLink = useLoginHref();
+  const logout = useLogout();
   const isNavActive = (href: string) => (href === "/admin" ? pathname === href : isActive(href));
   const current = nav.find((item) => isNavActive(item.href));
   const crumb = admin
@@ -142,13 +142,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               >
                 <Icon name="settings" className={`h-5 w-5 ${isActive("/settings") ? "text-action" : ""}`} /> Settings
               </Link>
-              <Link
-                href="/login"
-                onClick={mockLogout}
+              <button
+                type="button"
+                onClick={logout}
                 className="flex items-center gap-3 rounded px-3 py-2 text-sm text-failed hover:opacity-80"
               >
                 <Icon name="logout" /> Log out
-              </Link>
+              </button>
               {/* No route yet. */}
               <a href="#" className="flex items-center gap-3 rounded px-3 py-2 text-sm text-muted hover:text-text">
                 <Icon name="help" /> Help &amp; feedback

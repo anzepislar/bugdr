@@ -18,12 +18,12 @@ povezala na API.
 
 ```
 Zadnja posodobitev: 7. 10. 2026
-Backend: ni začet (nobena rezina ni narejena)
+Backend: F0 ✅ (ogrodje), F1 ✅ (nivoji), F2 ✅ (registracija in prijava), F3 ✅ (zaščita poti), F4 ✅ (onboarding)
 Frontend: 17 zaslonov na mocku - /login, /signup, /forgot-password, /onboarding, /dashboard,
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit
-Naslednja rezina: F0 (ko se začne backend - Faza 2/3 iz 00_bugdr_razvoj.md)
+Naslednja rezina: P1 (seznam problemov); D48 (admin) pred M6
 ```
 
 Oznake: ⬜ ni začeto · 🟨 v delu · ✅ narejeno (z datumom) · ⏸ odloženo
@@ -101,15 +101,17 @@ dokler je uporabnik ne potrdi.
 | D36 | **ODPRTO** - "Starting difficulty" na `/settings` | Dizajn ima polje Starting difficulty, shema hrani `experience_level`, iz katerega D19 izpelje začetno težavnost. Zdaj polje "Production experience" (isto kot v stranski vrstici) z opombo, da določa začetno težavnost | U1, U3 |
 | D32 | **ODPRTO** - "N/M checks passed" v zgodovini tekmovanj | Dizajn kaže preverjanja, `contest_entries` ima `problems_solved` in `total_score`. Zdaj mock vrne `checksPassed`/`checksTotal` (vsota čez probleme tekmovanja), "Completed" = vsa preverjanja uspešna. Predlog: prikaži `problems_solved` / število problemov in točke | T2 |
 | D37 | **ODPRTO** - "Continue with GitHub" na `/login` in `/signup` | Dizajn ima prijavo z GitHubom, stack ima samo JWT z geslom (F2). Zdaj gumb pokaže "not available yet". Predlog: v v1 skrit; OAuth kasneje kot svoja rezina (`users.github_id`) | F2 |
-| D38 | **ODPRTO** - "Full name" namesto `username` na `/signup` | Dizajn ima polno ime, F2 zahteva `username` (gre v `/profile/[username]`), shema nima imena (prim. D34 `display_name`). Predlog: dodati polje Username ali ga izpeljati iz imena/e-pošte in dovoliti spremembo v nastavitvah | F2, U1 |
-| D39 | **ODPRTO** - minimalna dolžina gesla | Dizajn: "At least 12 characters", F2: ≥ 8. Zdaj obrazec zahteva 12. Predlog: 12 tudi v F2 | F2 |
-| D40 | **ODPRTO** - "Remember me" na `/login` | Dokumenti ne določajo trajanja seje. Predlog: brez kljukice piškotek seje, s kljukico JWT za 30 dni | F2 |
-| D41 | **ODPRTO** - "Exploring my path" na onboardingu | Dizajn ima 6. vlogo, `goal_role` dovoli samo 5 kategorij. Zdaj mock pošlje `"exploring"`. Predlog: `goal_role = NULL` = raziskujem; D19 feed brez filtra kategorije | F4, U3 |
+| D38 | ~~"Full name" namesto `username` na `/signup`~~ → **rešeno 7. 10. 2026** (uporabnik): obrazec ima polje **Username** (3-50 znakov: črke, številke, `-`, `_`; unikaten brez razlike v velikosti črk), polno ime odpade do `display_name` (D34) | F2, U1 |
+| D39 | ~~Minimalna dolžina gesla~~ → **rešeno 7. 10. 2026** (uporabnik): **8 znakov** (zgornja meja 200 zaradi cene scrypta) | F2 |
+| D40 | ~~"Remember me" na `/login`~~ → **rešeno 7. 10. 2026** (uporabnik): s kljukico piškotek za 30 dni, brez nje piškotek seje brskalnika; JWT velja največ 30 dni v obeh primerih. Registracija = piškotek seje | F2 |
+| D41 | ~~"Exploring my path" na onboardingu~~ → **rešeno 7. 10. 2026** (uporabnik, F4): `goal_role = NULL` = raziskujem; UI vrednost `"exploring"` se ob oddaji pretvori v `null`. D19 feed brez filtra kategorije | F4, U3 |
 | D43 | ~~Osnutki tekmovanj~~ → **rešeno 7. 10. 2026** (uporabnik): stanje se **nikoli ne shrani**, vedno se izpelje iz datumov (`getContestStatus`): `starts_at IS NULL` = osnutek, `starts_at > now()` = načrtovano, `starts_at <= now() <= ends_at` = aktivno, `ends_at < now()` = končano. Brez `is_published`. Preklic načrtovanega = `starts_at`/`ends_at` nazaj na NULL. Javni `GET /contests` vrne samo tekmovanja z `starts_at IS NOT NULL` | A6, T1 |
 | D44 | ~~Pravila ob objavi tekmovanja~~ → **rešeno 7. 10. 2026** (uporabnik): čarovnik v 4 korakih (`04`). Načrtovanje zahteva naslov, opis, vrsto, ≥ 1 problem, veljavne datume (konec po začetku, začetek v prihodnosti); Hard/Get a job je samo priporočilo. Datumi se izračunajo iz vrste (`getContestDates`, UTC) ali ročno ("Custom dates"). Nagrada: `reward_type` (subscription/merch/points) ali brez, opis obvezen ob izbrani vrsti. Odprto ostaja samo: ali se tekmovanja iste vrste smejo prekrivati | A6 |
 | D45 | **ODPRTO** - Add Problem v 3 korakih (Analysis / Review / Publish) | Po navodilu uporabnika (7. 10. 2026) poteka **nima** polja za naslov, časovno omejitev, sličico in koraka Validate (dry-run, D11/D20). Zdaj mock: naslov = kratek opis (slug iz njega je dolg), časovna omejitev = spodnja meja priporočila za težavnost (`TIME_LIMIT_RANGE`). Kratek opis do 300 znakov (`problems.short_description VARCHAR(300)`), D16 `summary VARCHAR(200)` ostaja v nasprotju. Predlog: vrni polje Title v Review; dry-run naj teče v backendu ob objavi (A4/A5 zavrne objavo brez uspešnega dry-runa). Nova koraka cevovoda: preverjanje dvojnikov (predlog: zgoščena vrednost razpakiranih datotek) in produkcijski test (zagon kode v Dockerju) | A10, A2, A4, A5 |
 | D46 | **ODPRTO** - časovna okna statistike | `/admin` računa "Active users" in "Solves" za Today / 7 / 30 dni / ves čas s trendom glede na prejšnje enako obdobje. Predlog: aktivnost iz `user_daily_activity`, rešitve iz `user_problem_attempts.solved_at`, "Today" po UTC. Grafi so fiksna okna (30 / 14 dni), ne sledijo izbiri | A9 |
-| D42 | **ODPRTO** - jeziki na onboardingu (korak 4) | Dizajn sprašuje po jezikih, F4 in shema jih nimata (prim. D34 `languages TEXT[]`). Zdaj mock pošlje `languages`; povzetek "Your starting path" vzame prvi izbrani jezik. Predlog: `user_profiles.languages` iz D34, F4 sprejme `languages` | F4, U1 |
+| D47 | ~~Gostje na `/contests`, `/contests/[id]` in `/profile/[username]`~~ → **rešeno 7. 10. 2026** (uporabnik, F3): **zahtevana prijava** - vse tri poti so v `src/proxy.ts`, gost gre na `/login?next=…`. Profili zato niso deljivi zunaj aplikacije | F3, T1, U1 |
+| D42 | ~~Jeziki na onboardingu~~ → **rešeno 7. 10. 2026** (uporabnik, F4): shranijo se že v F4 - `user_profiles.languages TEXT[] NOT NULL DEFAULT '{}'`, samo vrednosti iz fiksnega seznama `LANGUAGES` (podvojeni odstranjeni). `/settings` jih uporabi v U1 (D34) | F4, U1 |
+| D48 | **ODPRTO** - admin ni uporabnik (uporabnik 7. 10. 2026) | Admin **ne bo navaden račun** z `users.is_admin`; poverilnice se nastavijo drugače - uporabnik bo dal e-pošto, geslo in morda še kaj za večjo varnost. Predlog: poverilnice v `backend/.env` (ne v klepetu, ne v repozitoriju): `ADMIN_EMAIL` + `ADMIN_PASSWORD_HASH` (scrypt, ustvari ga ukaz `npm run hash-password`), drugi faktor TOTP (`ADMIN_TOTP_SECRET`, stdlib HMAC), ločen piškotek admin seje s krajšim trajanjem; `requireAdmin` preveri admin sejo namesto `users.is_admin`, proxy enako. Nadomesti Z1 (`create-admin`). Do odločitve F3 `requireAdmin` / proxy uporabljata `users.is_admin` | F3, Z1, A1-A10 |
 
 ### Spremembe sheme glede na `01_database.md`
 
@@ -127,7 +129,9 @@ Posledica odločitev - narejene v migraciji rezine, ki tabelo ustvari:
 | `problems` | + `bug_summary TEXT` (interna opomba AI analize, samo admin, nikoli k uporabniku) - zahteva zaslona Create Problem | - | A2 |
 | `contests` | `starts_at`/`ends_at` dovolita NULL (osnutek); stanje se ne shrani | D43 | A6 |
 | `contests` | + `archived_at TIMESTAMP` (NULL = ni arhivirano; arhiviranje končanih tekmovanj, `04`) | - | A6 |
-| `user_profiles` | + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, `languages TEXT[]`, `is_public BOOLEAN DEFAULT TRUE` (predlog, čaka odločitev) | D34 | U1 |
+| `users` | `username` brez `UNIQUE` v stolpcu; namesto tega `UNIQUE INDEX ON lower(username)` (unikaten ne glede na velikost črk, gre v URL) | F2 | F2 |
+| `user_profiles` | + `languages TEXT[] NOT NULL DEFAULT '{}'` (narejeno v F4); `goal_role` NULL = raziskujem | D42, D41 | F4 |
+| `user_profiles` | + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, (`languages` že v F4), `is_public BOOLEAN DEFAULT TRUE` (predlog, čaka odločitev) | D34 | U1 |
 
 `01_database.md` se ob tem **ne spreminja samodejno** - posodobi se le, če
 uporabnik to zahteva. Do takrat velja: `01` + ta tabela.
@@ -175,35 +179,40 @@ polnijo s seed skripto.
 
 ### M0 - Zagon
 
-**F0 · Ogrodje** `S` · odvisno od: - · ⬜
+**F0 · Ogrodje** `S` · odvisno od: - · ✅ 7. 10. 2026
 - Naredi: `backend/` (Express 5 - async napake brez ovojev), konfiguracija iz env (`.env.example` brez skrivnosti), `pg` pool, migracijski runner (D2), enoten format napak, `node:test` zagon, `docker-compose.yml` s PostgreSQL 17 (lokalno).
 - Skripte: `npm run dev`, `npm test`, `npm run migrate`, `npm run seed` (kot v `00` "Local Setup").
 - API: `GET /api/v1/health` (preveri bazo).
 - Frontend: Next `rewrites` `/api/*` → backend (D3), tanek `src/lib/api.ts` (`fetch` s `credentials`).
 - Končano, ko: `npm test` zelen; health vrne 200; dvakratni `migrate` ne naredi nič.
+- **Stanje:** narejeno po načrtu. Runner in seed v `backend/src/migrate.js`; `docker-compose.yml` je v `backend/` (projekt `bugdr`, ustvari tudi `bugdr_test`). Backend teče na `:4000`, frontend ga doseže prek `rewrites` (`BACKEND_URL`). `api.ts` še nima uporabnika - prvi bo F2. `migrations/` je še prazen (prva migracija pride z F1).
 
-**F1 · Nivoji (referenčni podatki)** `S` · odvisno od: F0 · ⬜
+**F1 · Nivoji (referenčni podatki)** `S` · odvisno od: F0 · ✅ 7. 10. 2026
 - Naredi: `level_thresholds` + seed 7 nivojev v migraciji (konfiguracija, ne testni podatki).
 - Čista funkcija `levelFor(points, thresholds)`.
 - Končano, ko: test meja (0 → Intern, 499 → Intern, 500 → Junior, 30000 → Distinguished).
+- **Stanje:** migracija `migrations/0001_level_thresholds.sql` (tabela + 7 nivojev). `backend/src/modules/levels/levels.js`: `getLevels()` (SQL → `{ name, order, minPoints }`) in čista `levelFor(points, levels)` → `{ level, nextLevel }` (oblika `LevelInfo` iz `frontend/src/lib/types/dashboard.ts`, `nextLevel = null` na vrhu). Test bere nivoje iz baze. Testi tečejo zaporedno (`--test-concurrency=1`), ker si delijo testno bazo.
 
-**F2 · Registracija in prijava** `M` · odvisno od: F0 · ⬜
+**F2 · Registracija in prijava** `M` · odvisno od: F0 · ✅ 7. 10. 2026
 - Naredi: `users`, `user_stats` (vrstica ob registraciji), scrypt hash.
 - API: `POST /auth/signup` `{ email, username, password }`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`.
 - Validacija: e-pošta, `username` (dovoljeni znaki, dolžina ≤ 50, unikaten brez razlike v velikosti črk - gre v URL `/profile/[username]`), geslo ≥ 8.
 - Frontend: `/login`, `/signup`. Seja je piškotek `bugdr_session` (httpOnly JWT) - isto ime kot mock (`src/lib/session.ts`), da `src/proxy.ts` in `(app)/layout.tsx` ostaneta enaka; `mockLogin`/`mockSignup`/`mockLogout` v `src/lib/mock/auth.ts` → API. Prijava upošteva `?next=` (samo poti na isti strani, `safeNext`).
 - Končano, ko: napačno geslo → 401 (isto sporočilo kot neznan e-mail); podvojen e-mail/username → 409; v bazi ni gesla v čistem besedilu; `/auth/me` brez piškotka → 401.
+- **Stanje:** `migrations/0002_users.sql` (`users` + `user_stats` iz `01`; `username` unikaten prek indeksa `lower(username)`, e-pošta se shrani z malimi črkami). `backend/src/modules/auth/`: `auth.service.js` (scrypt `scrypt:<salt>:<hash>`, JWT HS256 s samo `sub` = id, piškotek `bugdr_session` httpOnly/Lax/Secure v produkciji, `requireAuth` naloži uporabnika iz baze v `req.user`) in `auth.routes.js`. Odgovor `{ user: { id, email, username, avatarUrl, isAdmin } }`. Napake: `VALIDATION_ERROR` (400, `details` po poljih), `EMAIL_TAKEN`/`USERNAME_TAKEN` (409), `INVALID_CREDENTIALS` (401), `UNAUTHENTICATED` (401). Neznan e-mail vseeno požene scrypt (enak čas odgovora). Nova odvisnost `jsonwebtoken`; `JWT_SECRET` obvezen v produkciji. Frontend: `/signup` (Username, geslo ≥ 8), `/login`, odjava v stranski vrstici in "Sign out" na onboardingu (`useLogout` v `Session.tsx`) kličejo API; `mockLogin`/`mockSignup`/`mockLogout` odstranjeni. Odprto za F3: ban, `last_active_at`, `requireAdmin`; star mock piškotek `bugdr_session=mock` v brskalniku stran še vedno šteje kot prijavo (proxy preveri samo obstoj) - API ga zavrne z 401.
 
-**F3 · Zaščita poti** `S` · odvisno od: F2 · ⬜
+**F3 · Zaščita poti** `S` · odvisno od: F2 · ✅ 7. 10. 2026
 - Naredi: `requireAuth`, `requireAdmin`; banned uporabnik → 403 `BANNED` povsod; `last_active_at` osvežen (največ 1× na minuto).
 - Frontend: zaščita strani je že v `src/proxy.ts` (brez piškotka → `/login?next=…`): `/problems/[slug]/solve`, `/settings`, `/onboarding`, `/admin/*`. **Javne** (odločitev uporabnika 7. 10. 2026): `/dashboard`, `/problems`, `/problems/[slug]` - gost vidi vsebino, osebni deli so zamegljeni z "Log in to unlock" (`Locked` v `src/components/app/Session.tsx`). F3 doda: `/admin/*` samo za admina; `GET /problems`, `GET /problems/:slug`, `GET /dashboard` brez seje vrnejo `status: null`, brez statistike in poskusov (zdaj to naredi frontend).
 - Končano, ko: ne-admin dobi 403 na admin poti; ban velja takoj, brez ponovne prijave.
+- **Stanje:** `auth.service.js`: `requireAuth` zavrne bannanega z 403 `BANNED` in osveži `last_active_at`, ko je starejši od minute (ena poizvedba sicer); `requireAdmin` = `[requireAuth, is_admin]` → 403 `FORBIDDEN`. Prijava bannanega z pravilnim geslom → 403 `BANNED` (z napačnim geslom ostane splošni 401). `app.js` izvozi `api` (router `/api/v1`). Frontend: `src/proxy.ts` preveri sejo z `GET /auth/me` (ne samo obstoja piškotka): neveljaven / tuj / bannan piškotek → `/login?next=…` in piškotek pobrisan; `/admin/*` za ne-admina → `/dashboard`; nedosegljiv backend → prijava (zapre se). D47: `/contests/*` in `/profile/*` zahtevata prijavo. `/login` pokaže "This account has been suspended.". **Ni narejeno (premaknjeno):** `status: null` za goste na `GET /problems`, `/problems/:slug`, `/dashboard` - endpointi še ne obstajajo; naredita ga P1/P2/U3 (neobvezna seja). Stranska vrstica gosta še vedno kaže povezavo Contests (vodi na prijavo).
 
-**F4 · Onboarding** `S` · odvisno od: F3 · ⬜
+**F4 · Onboarding** `S` · odvisno od: F3 · ✅ 7. 10. 2026
 - Naredi: `user_profiles`.
 - API: `PUT /me/onboarding` `{ goalRole, experienceLevel, platformGoal }` (dovoljene vrednosti iz `01`), `/auth/me` vrne `onboardingCompleted`.
 - Frontend: `/onboarding`; po prijavi preusmeritev na onboarding, dokler ni zaključen.
 - Končano, ko: neveljavna vrednost → 400; ponovna oddaja posodobi (ne podvoji).
+- **Stanje:** `migrations/0003_user_profiles.sql` (+ `languages`, D42). `goal_role` hrani slug kategorije (`ai-engineer`, …) kot `problem_categories.slug` in frontend - `01` v komentarju piše `ai_engineer` (glej Nedoslednosti). `backend/src/modules/me/me.routes.js`: `PUT /me/onboarding` `{ goalRole (slug ali null, D41), experienceLevel, platformGoal, languages }` → 204, upsert po `user_id`. `auth.service.js`: `findUser` (users + `onboarding_completed`) in `toUser`; `/auth/me` in odgovor prijave vrneta `onboardingCompleted`. Dovoljene vrednosti so podvojene v backendu (komentar kaže na frontend tipe). Frontend: `/onboarding` shrani prek API-ja; prijava gre na `/onboarding`, dokler ni zaključen (tudi z `?next=`); proxy zaščitene strani (razen `/onboarding`) preusmeri na `/onboarding`. Javni `/dashboard` tega ne vsiljuje. Odjava je zdaj polno nalaganje `/login` (izbriše predpomnilnik usmerjevalnika s prednaloženimi stranmi računa - prej 404 v konzoli).
 
 ### M1 - Problemi
 
@@ -375,10 +384,10 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | `/contests/[id]` | `src/lib/mock/contests.ts`: `mockGetContest` (seznam + `DETAILS`: incident, ime repozitorija (D27), število preverjanj, nagrada, udeležba); problemi tekmovanj so obstoječi mock problemi, da "Enter contest" odpre delujoč zaslon reševanja | T1, T2 | ⬜ |
 | `/profile/[username]` | `src/lib/mock/profile.ts`: `mockGetProfile` (samo `max`, drugi → 404; 147 rešenih problemov, ciklično iz mock problemov; aktivnost 53 tednov = vsak tretji aktivni dan iz `mockActivity`; zgodovina tekmovanj iz `mockGetContests`); neskončno drsenje rešenih na odjemalcu | U1, U2, T2 | ⬜ |
 | `/settings` | `src/lib/mock/profile.ts`: `MOCK_SETTINGS`, `mockSaveSettings` (shrani samo v stanje obrazca - profil in stranska vrstica se ne posodobita); zavihka Practice preferences in Account prazna (D35) | U1 (D34) | ⬜ |
-| `/login` | `src/lib/mock/auth.ts`: `mockLogin` (vedno uspe, nastavi piškotek `bugdr_session`, → `?next=` ali `/dashboard`), `mockLogout` (odjava v stranski vrstici pobriše piškotek); "Continue with GitHub" pokaže napako (D37); "Remember me" se ne uporabi (D40) | F2 | ⬜ |
-| `/signup` | `src/lib/mock/auth.ts`: `mockSignup` (vedno uspe → `/onboarding`); polno ime namesto `username` (D38), geslo ≥ 12 (D39) | F2 | ⬜ |
+| `/login` | ~~`mockLogin`, `mockLogout`~~ → `POST /auth/login`, `POST /auth/logout` (F2). Ostane mock: "Continue with GitHub" pokaže napako (D37) | F2 | ✅ 7. 10. 2026 |
+| `/signup` | ~~`mockSignup`~~ → `POST /auth/signup` (F2): Username (D38), geslo ≥ 8 (D39) | F2 | ✅ 7. 10. 2026 |
 | `/forgot-password` | `src/lib/mock/auth.ts`: `mockRequestPasswordReset` (uspe za vsak e-mail - stran ne razkrije, ali račun obstaja); pošiljanje pošte je odloženo (X5) | X5 (rezina še ne obstaja) | ⏸ |
-| `/onboarding` | `src/lib/mock/auth.ts`: `mockSaveOnboarding` (vedno uspe → `/dashboard`); vloga "exploring" (D41), jeziki (D42); "Sign out" je povezava na `/login` | F4 (F2 za odjavo) | ⬜ |
+| `/onboarding` | ~~`mockSaveOnboarding`~~ → `PUT /me/onboarding` (F4); "exploring" → `null` (D41), jeziki se shranijo (D42); "Sign out" → `POST /auth/logout` (F2) | F4 | ✅ 7. 10. 2026 |
 | `/admin` (Overview) | `src/lib/mock/adminStats.ts`: `mockGetAdminOverview(range)` (realne številke, rast deterministična, datumi relativni na danes; aktivna tekmovanja = `MOCK_ACTIVE_CONTEST_COUNT`) | A9 | ⬜ |
 | `/admin/problems/new` (Add Problem) | `src/lib/mock/adminProblems.ts`: `mockCheckDuplicate` (1,5 s; pade za ime ZIP-a, ki je bilo že shranjeno v tej seji), `mockProductionTest` (2 s; pade za prazen ZIP), `mockAnalyzeProblem` (3 s), `mockSaveProblem`; `mockRunCheck` ni več v uporabi (korak Validate odstranjen, D45) | A10, A2/A5 | ⬜ |
 | `/admin/contests` | `src/lib/mock/adminContests.ts`: `mockGetAdminContests` (10 tekmovanj, datumi relativni na zdaj; aktivna/končana imajo id-je iz `mock/contests.ts`), `mockSetContestDates` (Schedule / Cancel), `mockRemoveContest` (Delete in Archive - arhiviranje vrstico samo odstrani); shramba v pomnilniku modula (velja do ponovnega nalaganja); zavihki Active/Scheduled/Drafts/Ended in iskanje na odjemalcu; "View results" odpre javno `/contests/[id]` (strani rezultatov še ni - A7) | A6, A7 | ⬜ |
@@ -401,6 +410,7 @@ Odprto:
 - **Nagrada poslana:** `04` "Admin marks reward as sent", stolpca ni (A7).
 
 ---
+- `01_database.md` `user_profiles.goal_role` komentar piše `'ai_engineer'`, `problem_categories.slug` in frontend pa `ai-engineer`. F4 hrani `ai-engineer` (enako kot slug kategorije, potrebno za D19).
 
 ## Odloženo
 

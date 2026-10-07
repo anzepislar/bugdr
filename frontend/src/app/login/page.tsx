@@ -5,21 +5,34 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { ErrorMessage, FieldLabel, inputClass, primaryButton, Spinner } from "@/components/admin/problems/shared";
 import { AuthHeader, authFieldClass, GitHubSignIn } from "@/components/auth/AuthShell";
-import { mockLogin } from "@/lib/mock/auth";
+import { api, ApiError } from "@/lib/api";
 import { safeNext } from "@/lib/session";
 
 export default function LoginPage() {
   const router = useRouter();
   const [form, setForm] = useState({ email: "", password: "", remember: false });
   const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
+  const [error, setError] = useState("");
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setStatus("sending");
     try {
-      await mockLogin({ ...form, email: form.email.trim() });
-      router.push(safeNext(new URLSearchParams(window.location.search).get("next")));
-    } catch {
+      const { user } = await api<{ user: { onboardingCompleted: boolean } }>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ ...form, email: form.email.trim() }),
+      });
+      // Until onboarding is done, every login continues there (F4).
+      router.push(user.onboardingCompleted ? safeNext(new URLSearchParams(window.location.search).get("next")) : "/onboarding");
+      router.refresh();
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.status === 401
+          ? "Incorrect email or password."
+          : err instanceof ApiError && err.code === "BANNED"
+            ? "This account has been suspended."
+            : "Could not sign in. Try again.",
+      );
       setStatus("error");
     }
   }
@@ -75,7 +88,7 @@ export default function LoginPage() {
             {status === "sending" && <Spinner />}
             Sign in
           </button>
-          {status === "error" && <ErrorMessage>Incorrect email or password.</ErrorMessage>}
+          {status === "error" && <ErrorMessage>{error}</ErrorMessage>}
         </form>
         <p className="mt-8 text-xs text-muted">By continuing, you agree to the Terms and Privacy Policy.</p>
       </main>

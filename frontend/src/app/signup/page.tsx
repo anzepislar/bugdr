@@ -4,23 +4,31 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { ErrorMessage, FieldLabel, inputClass, primaryButton, Spinner } from "@/components/admin/problems/shared";
 import { AuthHeader, authFieldClass, GitHubSignIn } from "@/components/auth/AuthShell";
-import { mockSignup } from "@/lib/mock/auth";
+import { api, ApiError } from "@/lib/api";
 
-const MIN_PASSWORD = 12; // design; F2 says >= 8 (D39)
+const MIN_PASSWORD = 8; // D39
 
 export default function SignupPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ fullName: "", email: "", password: "" });
+  const [form, setForm] = useState({ username: "", email: "", password: "" });
   const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
+  const [error, setError] = useState("");
   const patch = (p: Partial<typeof form>) => setForm((f) => ({ ...f, ...p }));
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setStatus("sending");
     try {
-      await mockSignup({ ...form, fullName: form.fullName.trim(), email: form.email.trim() });
+      const body = { ...form, username: form.username.trim(), email: form.email.trim() };
+      await api("/auth/signup", { method: "POST", body: JSON.stringify(body) });
       router.push("/onboarding");
-    } catch {
+      router.refresh();
+    } catch (err) {
+      // 409 (email/username taken) and 400 (field details) carry a message for the user.
+      const details = err instanceof ApiError && err.details ? Object.values(err.details as Record<string, string>) : [];
+      setError(
+        details.length ? details.join(". ") : err instanceof ApiError && err.status === 409 ? err.message : "Could not create the account. Try again.",
+      );
       setStatus("error");
     }
   }
@@ -35,17 +43,24 @@ export default function SignupPage() {
         <GitHubSignIn />
 
         <form onSubmit={submit}>
-          <FieldLabel htmlFor="fullName">Full name</FieldLabel>
+          <FieldLabel htmlFor="username">Username</FieldLabel>
           <input
-            id="fullName"
+            id="username"
             required
+            minLength={3}
             maxLength={50}
-            autoComplete="name"
-            placeholder="Max"
-            value={form.fullName}
-            onChange={(e) => patch({ fullName: e.target.value })}
+            pattern="[A-Za-z0-9_\-]+"
+            title="Letters, numbers, - and _"
+            autoComplete="username"
+            placeholder="max_dev"
+            aria-describedby="username-hint"
+            value={form.username}
+            onChange={(e) => patch({ username: e.target.value })}
             className={`${inputClass} ${authFieldClass}`}
           />
+          <p id="username-hint" className="mt-1.5 text-xs text-muted">
+            Your profile address: bugdr.app/profile/{form.username.trim() || "username"}
+          </p>
           <div className="mt-5">
             <FieldLabel htmlFor="email">Email address</FieldLabel>
             <input
@@ -85,7 +100,7 @@ export default function SignupPage() {
             {status === "sending" && <Spinner />}
             Create account
           </button>
-          {status === "error" && <ErrorMessage>Could not create the account. Try again.</ErrorMessage>}
+          {status === "error" && <ErrorMessage>{error}</ErrorMessage>}
         </form>
         <p className="mt-6 text-xs text-muted">Next: personalize your engineering path.</p>
       </main>

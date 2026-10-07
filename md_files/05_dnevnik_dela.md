@@ -836,3 +836,134 @@ Predlagani Summary:
 Predlagani Description:
 
 `Adds /admin: date range pills, five stat cards (total and active users, published problems, solves, active contests) with trends, recharts charts for user growth (signups / DAU), solves per day, solves by difficulty, by role and user streaks, and the Top Problems and Needs Attention tables. Reduces /admin/problems/new from six steps to three: Analysis (ZIP upload and a duplicate check, production test and AI analysis pipeline with per-step states, error card and retry), Review (internal AI note, descriptions, tags, difficulty, role and acceptance checks) and Publish (summary, save as draft or publish, success state). Admin pages get their own sidebar (Overview, Add problem, Contests, Back to app), and Add Problem moves into the (app) group so it has one; the URL is unchanged. Opens /dashboard, /problems and /problems/[slug] to guests: a mock session cookie (set by login and signup, cleared by log out) drives a guest sidebar and top bar, a blurred "Log in to unlock" progress panel, problems without personal status, bookmarks that ask to log in and a "Log in to start" button; a Next 16 proxy redirects the editor, settings, onboarding and admin to /login?next=, and login returns to that page. Adds recharts. Runs on mock data until slices A9, A10, A2, A5, F2 and F3 exist; the missing title, time limit and dry run are open (D45), as are the stats windows (D46).`
+
+## 7. 10. 2026 — Seja 9: Začetek backenda - rezine F0 (ogrodje), F1 (nivoji), F2 (registracija in prijava) F3 (zaščita poti) in F4 (onboarding)
+
+Prva backend rezina iz `06_backend_slices.md`. Frontend ostane na mocku.
+
+- `backend/`: Express 5 + `pg` (edini odvisnosti), ES moduli, Node 24.
+  `src/app.js` (aplikacija, `GET /api/v1/health` preveri bazo, 404 in
+  enoten format napak `{ error: { code, message, details? } }`),
+  `src/errors.js` (`HttpError`), `src/config.js` (env s privzetimi
+  vrednostmi za lokalni razvoj), `src/db.js` (pool), `src/server.js`.
+- Migracijski runner (D2) v `src/migrate.js`: `.sql` iz `migrations/` po
+  imenu, tabela `schema_migrations`, vsaka datoteka v svoji transakciji.
+  `npm run seed` požene vse `seeds/*.sql` v eni transakciji (seedi morajo
+  biti ponovljivi).
+- Skripte: `npm run dev` (`node --watch`), `start`, `migrate`, `seed`,
+  `test` (`node:test`, `NODE_ENV=test` → testna baza `bugdr_test`).
+- `backend/docker-compose.yml`: PostgreSQL 17, projekt `bugdr` (volumen
+  `bugdr_pgdata`), `db-init.sql` ustvari `bugdr_test`. Ime projekta je
+  izrecno, ker na računalniku že obstaja tuj volumen `backend_pgdata`
+  (19. 9. 2026) - ni bil spremenjen.
+- `.env.example` (PORT, DATABASE_URL, TEST_DATABASE_URL), brez skrivnosti.
+- Frontend: `next.config.ts` `rewrites` `/api/*` → `BACKEND_URL`
+  (privzeto `http://localhost:4000`), `src/lib/api.ts` (`api<T>()` +
+  `ApiError` iz enotnega formata napak). Še nič ga ne uporablja.
+
+Preverjeno: `npm test` (3 testi: health 200, 404 v formatu napak,
+dvakratni migrate ne naredi nič), `npm run migrate` 2× → "Nothing to
+apply"; frontend lint, typecheck, build; `next start` + backend →
+`/api/v1/health` prek proxyja vrne 200.
+
+Nadaljevanje - rezina F1 (nivoji):
+
+- `migrations/0001_level_thresholds.sql`: tabela `level_thresholds` iz
+  `01` + 7 nivojev (Intern 0 … Distinguished 30 000) kot konfiguracija.
+- `backend/src/modules/levels/levels.js`: `getLevels()` in čista
+  `levelFor(points, levels)` → `{ level, nextLevel }` v obliki
+  frontendovega `LevelInfo`.
+- `npm test` teče zaporedno (`--test-concurrency=1`), ker si testne
+  datoteke delijo bazo `bugdr_test`.
+
+Preverjeno: 4 testi zeleni (meje 0/499/500/29 999/30 000, `nextLevel`
+na dnu in vrhu), `npm run migrate` 2× → enkrat "Applied", nato "Nothing
+to apply".
+
+Nadaljevanje - rezina F2 (registracija in prijava). Uporabnik je odločil
+D38 (polje Username), D39 (geslo ≥ 8) in D40 (Remember me = 30 dni, sicer
+piškotek seje) in naročil: vsako rezino v celoti preizkusi, naprej šele,
+ko je vse zeleno.
+
+- `migrations/0002_users.sql`: `users`, `user_stats`; `username` unikaten
+  brez razlike v velikosti črk (indeks na `lower(username)`).
+- `backend/src/modules/auth/`: scrypt (stdlib), JWT HS256 z id-jem
+  uporabnika v httpOnly piškotku `bugdr_session`, `requireAuth` bere
+  uporabnika iz baze (D5). `POST /auth/signup` (uporabnik + `user_stats`
+  v eni transakciji), `POST /auth/login`, `POST /auth/logout`,
+  `GET /auth/me`. Nova odvisnost `jsonwebtoken`, `JWT_SECRET` v
+  `.env.example` (obvezen v produkciji).
+- Frontend: `/signup` ima polje Username (z namigom
+  `bugdr.app/profile/…`) in geslo ≥ 8; `/login` in `/signup` kličeta API
+  in pokažeta sporočilo strežnika (napačno geslo, zaseden e-mail /
+  uporabniško ime); odjava v stranski vrstici in "Sign out" na
+  onboardingu prek `useLogout()` (`Session.tsx`). Mock prijava, registracija
+  in odjava odstranjene iz `src/lib/mock/auth.ts`.
+
+Preverjeno: backend `npm test` - 12 testov zelenih (vsa pravila "Končano,
+ko" + piškotek seje / 30 dni, validacija 400, odjava, JWT `alg: none`
+zavrnjen); `npm run migrate` 2×; frontend lint, typecheck, build;
+Playwright proti `next start` + backend: gost na `/settings` →
+`/login?next=`, registracija → `/onboarding` s httpOnly piškotkom, Sign
+out, napačno geslo, prijava z Remember me nazaj na `/settings` (piškotek
+30 dni), zasedeno uporabniško ime (druga velikost črk), odjava iz
+stranske vrstice; `/signup` in `/login` brez vodoravnega drsenja pri
+320-2560 px; brez napak v konzoli.
+
+Nadaljevanje - rezina F3 (zaščita poti). Uporabnik je odločil D47:
+`/contests`, `/contests/[id]` in `/profile/[username]` zahtevajo prijavo.
+
+- Backend: `requireAuth` zavrne bannanega (403 `BANNED`) in osveži
+  `last_active_at` največ enkrat na minuto; nov `requireAdmin` (403
+  `FORBIDDEN`). Bannan uporabnik se ne more prijaviti (403 `BANNED`, samo
+  s pravilnim geslom).
+- Frontend: `src/proxy.ts` sejo preveri pri backendu (`/auth/me`):
+  neveljaven, star (mock) ali bannan piškotek → prijava + piškotek
+  pobrisan; `/admin/*` samo za admina (sicer `/dashboard`); dodane poti
+  tekmovanj in profilov. `/login` pokaže sporočilo za suspendiran račun.
+- `status: null` za goste na seznamu problemov / podrobnostih / dashboardu
+  se premakne v P1/P2/U3 (endpointi še ne obstajajo).
+
+Preverjeno: backend `npm test` - 15 testov zelenih (admin pot: gost 401,
+ne-admin 403, admin 200 brez ponovne prijave; ban takoj na obstoječi
+seji in ob prijavi; `last_active_at` največ 1× na minuto); frontend lint,
+typecheck, build; Playwright: gost na tekmovanjih in profilu → prijava,
+`/dashboard` ostane javen, star mock piškotek → prijava in pobrisan,
+ne-admin na `/admin` → `/dashboard`, povišan v admina v bazi → `/admin`
+se odpre brez ponovne prijave, ban v bazi → naslednja stran prijava in
+"suspended" ob prijavi; brez napak v konzoli.
+
+Nadaljevanje - rezina F4 (onboarding). Uporabnik: admin ne bo navaden
+uporabnik, poverilnice bo nastavil drugače (zapisano kot odprta D48);
+odločil D41 (`goal_role = NULL` = raziskujem) in D42 (jeziki se shranijo).
+
+- `migrations/0003_user_profiles.sql`: `user_profiles` + `languages`.
+- `PUT /me/onboarding` (`backend/src/modules/me/me.routes.js`):
+  validacija vrednosti (400), upsert (ponovna oddaja posodobi isto
+  vrstico). `/auth/me` in prijava vrneta `onboardingCompleted`
+  (`findUser` / `toUser` v `auth.service.js`).
+- Frontend: onboarding shrani prek API-ja ("exploring" → `null`); dokler
+  onboarding ni zaključen, prijava in zaščitene strani vodijo na
+  `/onboarding`. Odjava je zdaj polno nalaganje strani (prej je
+  predpomnilnik usmerjevalnika po odjavi sprožil 404 za prednaložene
+  strani).
+
+Preverjeno: backend `npm test` - 20 testov zelenih (brez seje 401,
+neveljavne vrednosti 400 brez zapisa, shranitev + `onboardingCompleted`,
+ponovna oddaja = ena vrstica, exploring = NULL, podvojeni jeziki
+odstranjeni); `npm run migrate` 2×; frontend lint, typecheck, build;
+Playwright F2, F3 in F4 (vsi zeleni, brez napak v konzoli): pred
+onboardingom `/settings` → `/onboarding`, shranjeni odgovori v bazi,
+ponovna oddaja posodobi, zaključen uporabnik se vrne na `?next=`,
+nezaključen gre na `/onboarding`, `/onboarding` brez vodoravnega
+drsenja 320-2560 px.
+
+### Git zapis
+
+Predlagani Summary:
+
+`Add the backend skeleton, levels, auth, route protection and onboarding (slices F0-F4)`
+
+Predlagani Description:
+
+`Starts the backend (slice F0 from 06_backend_slices.md). backend/ is an Express 5 app with pg as the only other dependency: config from env with local defaults, a pg pool, a shared error format ({ error: { code, message, details? } }) with a 404 and JSON parse handler, and GET /api/v1/health that checks the database. A small migration runner applies migrations/*.sql in name order, each in its own transaction, tracked in schema_migrations; npm run seed runs seeds/*.sql in one transaction. Tests use node:test against a bugdr_test database. backend/docker-compose.yml runs PostgreSQL 17 locally and creates the test database. The frontend proxies /api/* to the backend through next.config.ts rewrites (same origin for the session cookie) and gets a thin api() helper with an ApiError type. Slice F1 adds the first migration, level_thresholds with the seven levels, and levelFor(points, levels), which returns the current and next level in the frontend's LevelInfo shape. Slice F2 adds users and user_stats, scrypt password hashes and a JWT in the httpOnly bugdr_session cookie (30 days with Remember me, otherwise a browser-session cookie), with POST /auth/signup, /auth/login, /auth/logout and GET /auth/me. The signup page now asks for a username (unique in any case) and an 8-character password; login, signup and both log out buttons call the API instead of the mock. Adds jsonwebtoken. Slice F3 adds requireAdmin, blocks banned users on every request and at login (403 BANNED), and refreshes last_active_at at most once a minute. The Next proxy now checks the session with the backend: an invalid or banned session goes to /login and loses its cookie, /admin is admin-only, and /contests and /profile now require login (D47). Slice F4 adds user_profiles (with languages) and PUT /me/onboarding; "Exploring my path" is stored as a NULL goal role. Until onboarding is done, login and account pages lead to /onboarding. Log out is now a full page load, so no prefetched account page survives it.`

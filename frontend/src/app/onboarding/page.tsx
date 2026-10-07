@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ErrorMessage, primaryButton, Spinner } from "@/components/admin/problems/shared";
 import { AuthHeader } from "@/components/auth/AuthShell";
 import { Icon } from "@/components/Icon";
-import { mockSaveOnboarding } from "@/lib/mock/auth";
+import { useLogout } from "@/components/app/Session";
+import { api } from "@/lib/api";
 import {
   EXPERIENCE_LABEL,
   STARTING_DIFFICULTY,
@@ -23,7 +23,10 @@ interface Choice<T> {
   hint: string;
 }
 
-const ROLES: Choice<OnboardingAnswers["goalRole"]>[] = [
+// "exploring" is only a UI value; it is saved as goalRole null (D41).
+type RoleChoice = NonNullable<OnboardingAnswers["goalRole"]> | "exploring";
+
+const ROLES: Choice<RoleChoice>[] = [
   { value: "backend", name: "Backend engineer", hint: "APIs, services and distributed systems" },
   { value: "frontend", name: "Frontend engineer", hint: "Interfaces, accessibility and performance" },
   { value: "fullstack", name: "Full-stack engineer", hint: "From the browser to the database" },
@@ -62,8 +65,9 @@ const cardClass =
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const logout = useLogout();
   const [step, setStep] = useState(0);
-  const [role, setRole] = useState<OnboardingAnswers["goalRole"] | null>(null);
+  const [role, setRole] = useState<RoleChoice | null>(null);
   const [experience, setExperience] = useState<ExperienceLevel | null>(null);
   const [goal, setGoal] = useState<PlatformGoal | null>(null);
   const [languages, setLanguages] = useState<string[]>([]);
@@ -85,8 +89,15 @@ export default function OnboardingPage() {
     if (!role || !experience || !goal) return;
     setStatus("saving");
     try {
-      await mockSaveOnboarding({ goalRole: role, experienceLevel: experience, platformGoal: goal, languages });
+      const answers: OnboardingAnswers = {
+        goalRole: role === "exploring" ? null : role,
+        experienceLevel: experience,
+        platformGoal: goal,
+        languages,
+      };
+      await api("/me/onboarding", { method: "PUT", body: JSON.stringify(answers) });
       router.push("/dashboard");
+      router.refresh();
     } catch {
       setStatus("error");
     }
@@ -105,10 +116,9 @@ export default function OnboardingPage() {
   return (
     <div className="flex flex-1 flex-col">
       <AuthHeader>
-        {/* ponytail: no session yet; slice F2 adds POST /auth/logout. */}
-        <Link href="/login" className="text-sm text-muted hover:text-text">
+        <button type="button" onClick={logout} className="text-sm text-muted hover:text-text">
           Sign out
-        </Link>
+        </button>
       </AuthHeader>
 
       <main className="mx-auto mt-12 w-full max-w-[708px] px-6 pb-8 sm:mt-24">

@@ -107,9 +107,9 @@ export interface Dashboard {
   recentWins: RecentWin[];
 }
 
-/** Body of PUT /me/onboarding (F4). "exploring" and `languages` are open (D41, D34). */
+/** Body of PUT /me/onboarding (F4). `goalRole: null` = "Exploring my path" (D41). */
 export interface OnboardingAnswers {
-  goalRole: CategorySlug | "exploring";
+  goalRole: CategorySlug | null;
   experienceLevel: ExperienceLevel;
   platformGoal: PlatformGoal;
   languages: string[];
