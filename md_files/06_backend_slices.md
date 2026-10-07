@@ -19,10 +19,10 @@ povezala na API.
 ```
 Zadnja posodobitev: 7. 10. 2026
 Backend: ni začet (nobena rezina ni narejena)
-Frontend: 15 zaslonov na mocku - /login, /signup, /forgot-password, /onboarding, /dashboard,
+Frontend: 17 zaslonov na mocku - /login, /signup, /forgot-password, /onboarding, /dashboard,
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
-          /admin/contests, /admin/contests/new
+          /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit
 Naslednja rezina: F0 (ko se začne backend - Faza 2/3 iz 00_bugdr_razvoj.md)
 ```
 
@@ -95,7 +95,7 @@ dokler je uporabnik ne potrdi.
 | D29 | ~~Iskanje in razširitve v levi vrstici zaslona reševanja~~ → **rešeno 7. 10. 2026**: prenova zaslona reševanja (split pane) odstrani levo vrstico in drevo datotek; datoteke so zavihki nad urejevalnikom | R1 |
 | D30 | **ODPRTO** - "helpful" in odgovori na komentarje | Dizajn razprave ima "N helpful", "Reply" in razvrščanje "Most helpful"; `problem_comments` nima ničesar od tega. Predlog: `problem_comments.parent_id UUID NULL REFERENCES problem_comments(id)` (odgovori samo ena raven), tabela `comment_helpful (comment_id, user_id, created_at, PK(comment_id, user_id))` + `problem_comments.helpful_count` (posodobljen v isti transakciji), `PUT/DELETE /comments/:id/helpful`, lastnega komentarja ni mogoče označiti, `GET /problems/:slug/comments?sort=helpful\|newest` | O2 |
 | D31 | ~~Stran posameznega tekmovanja~~ → **rešeno 6. 10. 2026**: uporabnik je dal dizajn, pot `/contests/[id]` (id, ker `contests` nima sluga). En incident na tekmovanje kot v dizajnu, čeprav shema dovoli več problemov (`contest_problems`) | T1, T2 |
-| D33 | **ODPRTO** - en ali več problemov na tekmovanje | Dizajn `/contests/[id]` kaže en incident ("The incident", "Enter contest" → reševanje), `contest_problems` dovoli več. Zdaj tip `ContestDetail.problem` = en problem. Predlog: v1 en problem na tekmovanje (omejitev v A-rezini) | T1, A7 |
+| D33 | ~~En ali več problemov na tekmovanje~~ → **rešeno 7. 10. 2026** (uporabnik, prenova admin tekmovanj): **vsaj 1 problem, lahko več** (`contest_problems`). Javni `ContestDetail.problem` (`/contests/[id]`) je še en problem - T1 ga razširi v seznam | T1, A6 |
 | D34 | **ODPRTO** - polja profila iz `/settings` | Dizajn ima prikazno ime, naslov profila (headline), GitHub uporabniško ime, jezike in stikalo "Public profile"; shema nima nobenega (`users` ima samo `username`). Predlog: `user_profiles` + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, `languages TEXT[]`, `is_public BOOLEAN DEFAULT TRUE`; API `PUT /me/profile`. Zdaj fiksen seznam jezikov (`LANGUAGES`) | U1 |
 | D35 | **ODPRTO** - zavihka "Practice preferences" in "Account" na `/settings` | Dizajn ju ima, vsebine ne. Zdaj prazno stanje "coming soon". Predlog: Account = e-pošta, sprememba gesla, odjava; Practice preferences = `platform_goal` (F4) | U1, F2 |
 | D36 | **ODPRTO** - "Starting difficulty" na `/settings` | Dizajn ima polje Starting difficulty, shema hrani `experience_level`, iz katerega D19 izpelje začetno težavnost. Zdaj polje "Production experience" (isto kot v stranski vrstici) z opombo, da določa začetno težavnost | U1, U3 |
@@ -105,8 +105,10 @@ dokler je uporabnik ne potrdi.
 | D39 | **ODPRTO** - minimalna dolžina gesla | Dizajn: "At least 12 characters", F2: ≥ 8. Zdaj obrazec zahteva 12. Predlog: 12 tudi v F2 | F2 |
 | D40 | **ODPRTO** - "Remember me" na `/login` | Dokumenti ne določajo trajanja seje. Predlog: brez kljukice piškotek seje, s kljukico JWT za 30 dni | F2 |
 | D41 | **ODPRTO** - "Exploring my path" na onboardingu | Dizajn ima 6. vlogo, `goal_role` dovoli samo 5 kategorij. Zdaj mock pošlje `"exploring"`. Predlog: `goal_role = NULL` = raziskujem; D19 feed brez filtra kategorije | F4, U3 |
-| D43 | **ODPRTO** - osnutki tekmovanj | Dizajn `/admin/contests` ima stanje "Draft" in gumb "Save draft", `contests` nima stolpca za objavo, `starts_at`/`ends_at` sta `NOT NULL`. Zdaj mock: osnutek = `isPublished: false`, lahko brez problema in datumov; "Scheduled"/"Live"/"Ended" izpeljano iz datumov. Predlog: `contests.is_published BOOLEAN NOT NULL DEFAULT FALSE`, `starts_at`/`ends_at` NULL dovoljen samo za osnutek (`CHECK (is_published = FALSE OR (starts_at IS NOT NULL AND ends_at IS NOT NULL))`); javni `GET /contests` vrne samo objavljena | A6, T1 |
-| D44 | **ODPRTO** - pravila ob objavi tekmovanja | "Publishing checklist" na `/admin/contests/new`: naslov, problem, težavnost Hard/Get a job (`04` to samo priporoča), ≥ 3 preverjanja problema, začetek v prihodnosti in konec po začetku, opis. Zdaj "Schedule" zahteva vse. Odprto: ali je težavnost blokada ali opozorilo; ali se tekmovanja iste vrste smejo prekrivati; `reward_type` (`04`) ni v dizajnu - zdaj samo `reward_description` | A6 |
+| D43 | ~~Osnutki tekmovanj~~ → **rešeno 7. 10. 2026** (uporabnik): stanje se **nikoli ne shrani**, vedno se izpelje iz datumov (`getContestStatus`): `starts_at IS NULL` = osnutek, `starts_at > now()` = načrtovano, `starts_at <= now() <= ends_at` = aktivno, `ends_at < now()` = končano. Brez `is_published`. Preklic načrtovanega = `starts_at`/`ends_at` nazaj na NULL. Javni `GET /contests` vrne samo tekmovanja z `starts_at IS NOT NULL` | A6, T1 |
+| D44 | ~~Pravila ob objavi tekmovanja~~ → **rešeno 7. 10. 2026** (uporabnik): čarovnik v 4 korakih (`04`). Načrtovanje zahteva naslov, opis, vrsto, ≥ 1 problem, veljavne datume (konec po začetku, začetek v prihodnosti); Hard/Get a job je samo priporočilo. Datumi se izračunajo iz vrste (`getContestDates`, UTC) ali ročno ("Custom dates"). Nagrada: `reward_type` (subscription/merch/points) ali brez, opis obvezen ob izbrani vrsti. Odprto ostaja samo: ali se tekmovanja iste vrste smejo prekrivati | A6 |
+| D45 | **ODPRTO** - Add Problem v 3 korakih (Analysis / Review / Publish) | Po navodilu uporabnika (7. 10. 2026) poteka **nima** polja za naslov, časovno omejitev, sličico in koraka Validate (dry-run, D11/D20). Zdaj mock: naslov = kratek opis (slug iz njega je dolg), časovna omejitev = spodnja meja priporočila za težavnost (`TIME_LIMIT_RANGE`). Kratek opis do 300 znakov (`problems.short_description VARCHAR(300)`), D16 `summary VARCHAR(200)` ostaja v nasprotju. Predlog: vrni polje Title v Review; dry-run naj teče v backendu ob objavi (A4/A5 zavrne objavo brez uspešnega dry-runa). Nova koraka cevovoda: preverjanje dvojnikov (predlog: zgoščena vrednost razpakiranih datotek) in produkcijski test (zagon kode v Dockerju) | A10, A2, A4, A5 |
+| D46 | **ODPRTO** - časovna okna statistike | `/admin` računa "Active users" in "Solves" za Today / 7 / 30 dni / ves čas s trendom glede na prejšnje enako obdobje. Predlog: aktivnost iz `user_daily_activity`, rešitve iz `user_problem_attempts.solved_at`, "Today" po UTC. Grafi so fiksna okna (30 / 14 dni), ne sledijo izbiri | A9 |
 | D42 | **ODPRTO** - jeziki na onboardingu (korak 4) | Dizajn sprašuje po jezikih, F4 in shema jih nimata (prim. D34 `languages TEXT[]`). Zdaj mock pošlje `languages`; povzetek "Your starting path" vzame prvi izbrani jezik. Predlog: `user_profiles.languages` iz D34, F4 sprejme `languages` | F4, U1 |
 
 ### Spremembe sheme glede na `01_database.md`
@@ -123,7 +125,8 @@ Posledica odločitev - narejene v migraciji rezine, ki tabelo ustvari:
 | `contests` / `contest_entries` | + oznaka "nagrada poslana" (`04`) - točna oblika ob rezini | - | A7 |
 | `problem_comments` | + `parent_id`, + `helpful_count`; nova tabela `comment_helpful` (predlog, čaka odločitev) | D30 | O2 |
 | `problems` | + `bug_summary TEXT` (interna opomba AI analize, samo admin, nikoli k uporabniku) - zahteva zaslona Create Problem | - | A2 |
-| `contests` | + `is_published BOOLEAN NOT NULL DEFAULT FALSE`, `starts_at`/`ends_at` NULL za osnutke (predlog, čaka odločitev) | D43 | A6 |
+| `contests` | `starts_at`/`ends_at` dovolita NULL (osnutek); stanje se ne shrani | D43 | A6 |
+| `contests` | + `archived_at TIMESTAMP` (NULL = ni arhivirano; arhiviranje končanih tekmovanj, `04`) | - | A6 |
 | `user_profiles` | + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, `languages TEXT[]`, `is_public BOOLEAN DEFAULT TRUE` (predlog, čaka odločitev) | D34 | U1 |
 
 `01_database.md` se ob tem **ne spreminja samodejno** - posodobi se le, če
@@ -332,11 +335,11 @@ polnijo s seed skripto.
 - API: `POST /admin/problems/:id/publish` / `unpublish`. Objava zavrnjena brez ≥ 3 preverjanj in uspešnega dry-runa (`04` "Quality Guidelines"). Brisanje rešenega problema ni mogoče - samo unpublish (`04` "Admin Rules").
 
 **A6 · Tekmovanja** `M` · odvisno od: A1, T1 · ⬜
-- API: `GET/POST/PATCH /admin/contests`, dodeljevanje objavljenih problemov.
-- Seznam (`/admin/contests`): `AdminContestRow` (`frontend/src/lib/types/contest.ts`) - stanje `draft`/`scheduled`/`live`/`ended` (D43), problem (težavnost, kategorija), `entryCount` = število `contest_entries`; iskanje po naslovu in filter stanja kot query parametra. Brisanje samo osnutkov.
-- Shranjevanje (`/admin/contests/new`): telo je `AdminContestDraft` - `title`, `type`, `problemSlug` (en problem, D33), `startsAt`/`endsAt` (UTC), `description`, `rewardDescription`, `isPublished`. Objava preveri pravila iz D44 tudi na strežniku.
-- Izbirnik problemov: objavljeni problemi s številom preverjanj (`ContestProblemOption`).
-- Frontend: `mockGetAdminContests`, `mockDeleteContest`, `mockSaveContest`, `mockGetContestProblemOptions` v `src/lib/mock/adminContests.ts` → API.
+- API: `GET /admin/contests`, `GET /admin/contests/:id`, `POST /admin/contests`, `PATCH /admin/contests/:id`, `DELETE /admin/contests/:id` (samo osnutki), arhiviranje (samo končana).
+- Odgovor je `AdminContest` (`frontend/src/lib/types/contest.ts`): `type`, `title`, `description`, `startsAt`/`endsAt` (NULL = osnutek), `problems[]` (`ContestProblemOption`: slug, naslov, težavnost, kategorija), `rewardType`, `rewardDescription`. **Brez polja stanja** - odjemalec in strežnik ga izpeljeta z `getContestStatus` (D43).
+- Telo shranjevanja je `AdminContestDraft`: kot zgoraj + `problemSlugs[]` (≥ 1, D33). "Save as Draft" pošlje `startsAt: null`; "Schedule Contest" samodejne (`getContestDates`) ali ročne datume. Strežnik preveri pravila iz D44.
+- Načrtovanje osnutka s seznama = `PATCH` z datumi iz `getContestDates(type)`; preklic = `PATCH` z `startsAt`/`endsAt` = NULL. Urejanje samo za osnutke in načrtovana tekmovanja.
+- Frontend: `mockGetAdminContests`, `mockGetAdminContest`, `mockSaveContest`, `mockSetContestDates`, `mockRemoveContest`, `mockGetContestProblemOptions` v `src/lib/mock/adminContests.ts` → API.
 
 **A7 · Rezultati tekmovanj + CSV** `S` · odvisno od: A6, T2 · ⬜
 - API: `GET /admin/contests/:id/results` (+ `?format=csv`), oznaka "nagrada poslana" (stolpec ni v shemi - dodaj ob rezini).
@@ -345,7 +348,8 @@ polnijo s seed skripto.
 - API: `GET /admin/users?q=`, `GET /admin/users/:id` (profil, statistika, poskusi), `POST /admin/users/:id/ban` / `unban`. Admin se ne more banati sam.
 
 **A9 · Statistika platforme** `S` · odvisno od: A1, R4 · ⬜
-- API: `GET /admin/stats` (`04` §4).
+- API: `GET /admin/stats?range=today|7d|30d|all` (`04` §4) → `AdminOverview` (`frontend/src/lib/types/adminStats.ts`): skupni uporabniki, aktivni uporabniki + trend, objavljeni problemi, rešitve + trend, aktivna tekmovanja, rast uporabnikov (30 dni, prijave in DAU), rešitve na dan (14 dni), rešitve po težavnosti in vlogi, porazdelitev trenutnih nizov, top 8 problemov, 8 problemov z največjim osipom (začeti / rešeni). Okna po D46.
+- Frontend: `mockGetAdminOverview` v `src/lib/mock/adminStats.ts` → API.
 
 ### M7 - Produkcija
 
@@ -375,9 +379,10 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | `/signup` | `src/lib/mock/auth.ts`: `mockSignup` (vedno uspe → `/onboarding`); polno ime namesto `username` (D38), geslo ≥ 12 (D39) | F2 | ⬜ |
 | `/forgot-password` | `src/lib/mock/auth.ts`: `mockRequestPasswordReset` (uspe za vsak e-mail - stran ne razkrije, ali račun obstaja); pošiljanje pošte je odloženo (X5) | X5 (rezina še ne obstaja) | ⏸ |
 | `/onboarding` | `src/lib/mock/auth.ts`: `mockSaveOnboarding` (vedno uspe → `/dashboard`); vloga "exploring" (D41), jeziki (D42); "Sign out" je povezava na `/login` | F4 (F2 za odjavo) | ⬜ |
-| `/admin/problems/new` (Create Problem) | `src/lib/mock/adminProblems.ts`: `mockAnalyzeProblem`, `mockRunCheck` (lint uspe, ostalo pade), `mockSaveProblem` | A10, A4, A2/A5 | ⬜ |
-| `/admin/contests` | `src/lib/mock/adminContests.ts`: `mockGetAdminContests` (12 tekmovanj, datumi relativni na zdaj; objavljena imajo id-je iz `mock/contests.ts`, da "View contest page" deluje), `mockDeleteContest` (samo osnutki, samo v stanju strani); iskanje in zavihki na odjemalcu; neskončno drsenje po 10 | A6 | ⬜ |
-| `/admin/contests/new` | `src/lib/mock/adminContests.ts`: `mockGetContestProblemOptions` (mock problemi, izmišljeno število preverjanj), `mockSaveContest` (vedno uspe, seznam se ne posodobi); časi v UTC (`datetime-local`), konec sledi obdobju, dokler ga admin ne spremeni | A6 (D43, D44) | ⬜ |
+| `/admin` (Overview) | `src/lib/mock/adminStats.ts`: `mockGetAdminOverview(range)` (realne številke, rast deterministična, datumi relativni na danes; aktivna tekmovanja = `MOCK_ACTIVE_CONTEST_COUNT`) | A9 | ⬜ |
+| `/admin/problems/new` (Add Problem) | `src/lib/mock/adminProblems.ts`: `mockCheckDuplicate` (1,5 s; pade za ime ZIP-a, ki je bilo že shranjeno v tej seji), `mockProductionTest` (2 s; pade za prazen ZIP), `mockAnalyzeProblem` (3 s), `mockSaveProblem`; `mockRunCheck` ni več v uporabi (korak Validate odstranjen, D45) | A10, A2/A5 | ⬜ |
+| `/admin/contests` | `src/lib/mock/adminContests.ts`: `mockGetAdminContests` (10 tekmovanj, datumi relativni na zdaj; aktivna/končana imajo id-je iz `mock/contests.ts`), `mockSetContestDates` (Schedule / Cancel), `mockRemoveContest` (Delete in Archive - arhiviranje vrstico samo odstrani); shramba v pomnilniku modula (velja do ponovnega nalaganja); zavihki Active/Scheduled/Drafts/Ended in iskanje na odjemalcu; "View results" odpre javno `/contests/[id]` (strani rezultatov še ni - A7) | A6, A7 | ⬜ |
+| `/admin/contests/new`, `/admin/contests/[id]/edit` | `src/lib/mock/adminContests.ts`: `mockGetContestProblemOptions` (vsi mock problemi štejejo kot objavljeni), `mockGetAdminContest`, `mockSaveContest` (doda/zamenja v shrambi modula); čarovnik `ContestWizard`, datumi iz `src/lib/getContestDates.ts` | A6 | ⬜ |
 
 ---
 
@@ -423,6 +428,7 @@ Odprto:
 | `/profile/[username]` | U1, U2, T2 |
 | `/settings` | U1 (D34-D36) |
 | `/contests`, `/contests/[id]` | T1, T2 |
+| `/admin` | A9 |
 | `/admin/problems/new` | A10, A2, A4, A5 |
-| `/admin/contests`, `/admin/contests/new` | A6 |
+| `/admin/contests`, `/admin/contests/new`, `/admin/contests/[id]/edit` | A6 (A7 za rezultate) |
 | `/admin/*` | A1-A9 |

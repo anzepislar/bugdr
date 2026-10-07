@@ -22,6 +22,7 @@ const PATHS = {
   more: "M5 12h.01M12 12h.01M19 12h.01",
   logout: "M9 21H5V3h4M16 17l5-5-5-5M21 12H9",
   calendar: "M3 5h18v16H3zM3 10h18M8 3v4M16 3v4",
+  upload: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12",
 };
 
 export type IconName = keyof typeof PATHS;

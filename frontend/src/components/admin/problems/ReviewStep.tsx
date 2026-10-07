@@ -2,17 +2,22 @@
 
 import { useState } from "react";
 import {
+  CATEGORIES,
   CHECK_TYPES,
-  toSlug,
+  DIFFICULTIES,
+  DIFFICULTY_LABEL,
   type Check,
   type CheckType,
   type ProblemAnalysis,
   type ProblemForm,
 } from "@/lib/types/problem";
-import { DifficultyBadge, FieldLabel, cardClass, inputClass, secondaryButton } from "./shared";
+import { DIFFICULTY_PEER_CHECKED, FieldLabel, cardClass, inputClass, primaryButton, secondaryButton } from "./shared";
 
 export const MIN_CHECKS = 3; // 04_admin.md "At least 3 checks"
-const SHORT_DESCRIPTION_MAX = 200; // problems.summary VARCHAR(200), D16
+export const SHORT_DESCRIPTION_MAX = 300; // problems.short_description VARCHAR(300)
+
+const optionClass =
+  "block rounded border border-border px-3 py-2.5 text-sm font-medium text-muted hover:text-text peer-focus-visible:ring-2 peer-focus-visible:ring-action";
 
 interface Props {
   analysis: ProblemAnalysis;
@@ -20,12 +25,11 @@ interface Props {
   onFormChange: (patch: Partial<ProblemForm>) => void;
   checks: Check[];
   onChecksChange: (checks: Check[]) => void;
+  canContinue: boolean;
+  onContinue: () => void;
 }
 
-export function ReviewStep({ analysis, form, onFormChange, checks, onChecksChange }: Props) {
-  const hiddenFiles = Object.entries(analysis.hiddenFiles);
-  const slug = toSlug(form.title);
-
+export function ReviewStep({ analysis, form, onFormChange, checks, onChecksChange, canContinue, onContinue }: Props) {
   function updateCheck(id: string, patch: Partial<Check>) {
     onChecksChange(checks.map((c) => (c.id === id ? { ...c, ...patch } : c)));
   }
@@ -45,31 +49,19 @@ export function ReviewStep({ analysis, form, onFormChange, checks, onChecksChang
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded border border-dashed border-border p-5">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted">
-          Internal note · never shown to users
-        </p>
-        <p className="mt-2 text-sm leading-relaxed text-muted">{analysis.bugSummary}</p>
-      </section>
-
-      <section className={`${cardClass} space-y-5`}>
-        <h2 className="text-lg font-semibold">Problem details</h2>
-
-        <div>
-          <FieldLabel htmlFor="title">Title</FieldLabel>
-          <input
-            id="title"
-            value={form.title}
-            onChange={(e) => onFormChange({ title: e.target.value })}
-            placeholder="e.g. Logged out on every refresh"
-            className={inputClass}
-          />
-          {slug && <p className="mt-1.5 font-mono text-xs text-muted">/problems/{slug}</p>}
-        </div>
+    <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
+      <div className="min-w-0 space-y-6 lg:w-3/5">
+        <section className="rounded border-y border-r border-l-[3px] border-border border-l-action bg-surface p-5">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted">
+            AI Analysis <span className="normal-case tracking-normal">(Internal only)</span>
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-text">
+            <span className="font-semibold">Bug identified:</span> {analysis.bugSummary}
+          </p>
+        </section>
 
         <div>
-          <FieldLabel htmlFor="short-description">Short description · problem card</FieldLabel>
+          <FieldLabel htmlFor="short-description">Short description</FieldLabel>
           <input
             id="short-description"
             value={form.shortDescription}
@@ -77,13 +69,16 @@ export function ReviewStep({ analysis, form, onFormChange, checks, onChecksChang
             onChange={(e) => onFormChange({ shortDescription: e.target.value })}
             className={inputClass}
           />
-          <p className="mt-1.5 text-right text-xs text-muted">
-            {form.shortDescription.length}/{SHORT_DESCRIPTION_MAX}
-          </p>
+          <div className="mt-1.5 flex justify-between gap-3 text-xs text-muted">
+            <span>Shown on the problem card (max {SHORT_DESCRIPTION_MAX} chars)</span>
+            <span className="tabular-nums">
+              {form.shortDescription.length}/{SHORT_DESCRIPTION_MAX}
+            </span>
+          </div>
         </div>
 
         <div>
-          <FieldLabel htmlFor="full-description">Full description · problem page</FieldLabel>
+          <FieldLabel htmlFor="full-description">Full description</FieldLabel>
           <textarea
             id="full-description"
             rows={6}
@@ -91,73 +86,102 @@ export function ReviewStep({ analysis, form, onFormChange, checks, onChecksChang
             onChange={(e) => onFormChange({ fullDescription: e.target.value })}
             className={`${inputClass} resize-y leading-relaxed`}
           />
+          <p className="mt-1.5 text-xs text-muted">Written as if the user just joined a company</p>
         </div>
 
         <div>
           <FieldLabel htmlFor="tags">Tags</FieldLabel>
           <TagsEditor tags={form.tags} onChange={(tags) => onFormChange({ tags })} />
         </div>
-      </section>
+      </div>
 
-      <section className={cardClass}>
-        <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-lg font-semibold">Suggested difficulty</h2>
-          <DifficultyBadge difficulty={analysis.suggestedDifficulty} />
-        </div>
-        <p className="mt-2 text-sm leading-relaxed text-muted">{analysis.difficultyReasoning}</p>
-        <p className="mt-2 text-xs text-muted">You can override the level in the next step.</p>
-      </section>
+      <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:w-2/5 lg:overflow-y-auto">
+        <fieldset>
+          <legend className="mb-1.5 text-sm font-medium text-text">Difficulty</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {DIFFICULTIES.map((difficulty) => (
+              <label key={difficulty} className="block cursor-pointer">
+                <input
+                  type="radio"
+                  name="difficulty"
+                  className="peer sr-only"
+                  checked={form.difficulty === difficulty}
+                  onChange={() => onFormChange({ difficulty })}
+                />
+                <span className={`${optionClass} ${DIFFICULTY_PEER_CHECKED[difficulty]}`}>
+                  {DIFFICULTY_LABEL[difficulty]}
+                  {difficulty === analysis.suggestedDifficulty && (
+                    <span className="ml-1 text-xs font-normal text-muted">(AI suggested)</span>
+                  )}
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
-      <section className="space-y-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-lg font-semibold">Checks</h2>
-          <p className={`text-sm ${checks.length < MIN_CHECKS ? "text-highlight" : "text-muted"}`}>
-            {checks.length} checks · minimum {MIN_CHECKS}
-          </p>
-        </div>
-        {checks.map((check, index) => (
-          <CheckCard
-            key={check.id}
-            index={index}
-            check={check}
-            onChange={(patch) => updateCheck(check.id, patch)}
-            onDelete={() => onChecksChange(checks.filter((c) => c.id !== check.id))}
-          />
-        ))}
-        <button type="button" onClick={addCheck} className={secondaryButton}>
-          + Add check
-        </button>
-      </section>
+        <fieldset>
+          <legend className="mb-1.5 text-sm font-medium text-text">Role</legend>
+          <div className="flex flex-wrap gap-2">
+            {CATEGORIES.map((category) => (
+              <label key={category.slug} className="cursor-pointer">
+                <input
+                  type="radio"
+                  name="role"
+                  className="peer sr-only"
+                  checked={form.categorySlug === category.slug}
+                  onChange={() => onFormChange({ categorySlug: category.slug })}
+                />
+                <span className={`${optionClass} py-1.5 peer-checked:border-action peer-checked:text-action`}>
+                  {category.name}
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
-      <details className={cardClass}>
-        <summary className="cursor-pointer text-lg font-semibold">
-          Hidden files <span className="text-sm font-normal text-muted">({hiddenFiles.length})</span>
-        </summary>
-        <p className="mt-2 text-sm text-muted">
-          Copied into the container after the user&apos;s files. Users never see or edit them.
-        </p>
-        <div className="mt-4 space-y-4">
-          {hiddenFiles.map(([name, content]) => (
-            <div key={name}>
-              <p className="font-mono text-xs text-muted">{name}</p>
-              <pre className="mt-1 max-h-80 overflow-auto rounded border border-border bg-canvas p-3 font-mono text-xs leading-relaxed">
-                {content}
-              </pre>
-            </div>
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-medium text-text">Acceptance Checks</h2>
+            <span
+              className={`rounded bg-canvas px-1.5 text-xs font-medium ${checks.length < MIN_CHECKS ? "text-highlight" : "text-muted"}`}
+            >
+              {checks.length}
+            </span>
+            {checks.length < MIN_CHECKS && <span className="text-xs text-muted">minimum {MIN_CHECKS}</span>}
+          </div>
+          {checks.map((check) => (
+            <CheckCard
+              key={check.id}
+              check={check}
+              onChange={(patch) => updateCheck(check.id, patch)}
+              onDelete={() => onChecksChange(checks.filter((c) => c.id !== check.id))}
+            />
           ))}
+          <button type="button" onClick={addCheck} className={secondaryButton}>
+            + Add check
+          </button>
+        </section>
+
+        <div>
+          <button type="button" onClick={onContinue} disabled={!canContinue} className={`${primaryButton} w-full py-3`}>
+            Continue to Publish
+          </button>
+          {!canContinue && (
+            <p className="mt-2 text-xs text-muted">
+              Needs both descriptions, a role and at least {MIN_CHECKS} checks with a description and command.
+            </p>
+          )}
         </div>
-      </details>
+      </aside>
     </div>
   );
 }
 
 function CheckCard({
-  index,
   check,
   onChange,
   onDelete,
 }: {
-  index: number;
   check: Check;
   onChange: (patch: Partial<Check>) => void;
   onDelete: () => void;
@@ -166,7 +190,6 @@ function CheckCard({
   return (
     <div className={`${cardClass} space-y-3`}>
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-sm text-muted">#{index + 1}</span>
         <select
           aria-label="Check type"
           value={check.checkType}
@@ -193,7 +216,7 @@ function CheckCard({
         </button>
       </div>
       <div>
-        <FieldLabel htmlFor={`${id}-description`}>Description · shown to user</FieldLabel>
+        <FieldLabel htmlFor={`${id}-description`}>Description</FieldLabel>
         <input
           id={`${id}-description`}
           value={check.description}

@@ -23,6 +23,21 @@ const NAV: NavItem[] = [
   { href: `/profile/${MOCK_ME.username}`, label: "My profile", icon: "user" },
 ];
 
+// Admin pages get their own sidebar. Overview matches /admin only, the rest by prefix.
+const ADMIN_NAV: NavItem[] = [
+  { href: "/admin", label: "Overview", icon: "dashboard" },
+  { href: "/admin/problems/new", label: "Add problem", icon: "problems" },
+  { href: "/admin/contests", label: "Contests", icon: "trophy" },
+];
+
+const ADMIN_CRUMB: [RegExp, string][] = [
+  [/^\/admin$/, "Overview"],
+  [/^\/admin\/problems\/new$/, "Add problem"],
+  [/^\/admin\/contests\/new$/, "New contest"],
+  [/^\/admin\/contests\/[^/]+\/edit$/, "Edit contest"],
+  [/^\/admin\/contests/, "Contests"],
+];
+
 const goalRoleName = CATEGORIES.find((c) => c.slug === MOCK_ME.goalRole)?.name ?? "";
 
 function Avatar({ className }: { className: string }) {
@@ -39,35 +54,32 @@ function Avatar({ className }: { className: string }) {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-  // Admin pages highlight the user page they manage (/admin/contests → Contests).
-  const navPath = pathname.replace(/^\/admin(?=\/)/, "");
-  const isNavActive = (href: string) => navPath === href || navPath.startsWith(`${href}/`);
-  const current = NAV.find((item) => isNavActive(item.href));
-  const crumb =
-    pathname === "/admin/contests/new"
-      ? "Admin / New contest"
-      : /^\/admin\/contests\/[^/]+\/edit$/.test(pathname)
-        ? "Admin / Edit contest"
-        : pathname.startsWith("/admin/contests")
-          ? "Admin / Contests"
-          : pathname.startsWith("/problems/")
-            ? "Problem details"
-            : pathname.startsWith("/contests/")
-              ? "Contest details"
-              : isActive("/settings")
-                ? "Settings"
-                : current?.label;
+  const admin = pathname === "/admin" || pathname.startsWith("/admin/");
+  const nav = admin ? ADMIN_NAV : NAV;
+  const isNavActive = (href: string) => (href === "/admin" ? pathname === href : isActive(href));
+  const current = nav.find((item) => isNavActive(item.href));
+  const crumb = admin
+    ? ADMIN_CRUMB.find(([re]) => re.test(pathname))?.[1]
+    : pathname.startsWith("/problems/")
+      ? "Problem details"
+      : pathname.startsWith("/contests/")
+        ? "Contest details"
+        : isActive("/settings")
+          ? "Settings"
+          : current?.label;
 
   return (
     <div className="flex min-h-screen flex-1">
       <aside className="sticky top-0 hidden h-screen w-[220px] shrink-0 flex-col border-r border-border bg-canvas px-3 py-4 lg:flex">
-        <Link href="/dashboard" className="mb-6 px-2">
+        <Link href={admin ? "/admin" : "/dashboard"} className="mb-6 px-2">
           <Image src="/logo/bugdr-logo.png" alt="Bugdr" width={447} height={126} priority className="h-10 w-auto" />
         </Link>
 
-        <p className="mb-2 px-2 text-[11px] font-medium uppercase tracking-wide text-muted">Workspace</p>
+        <p className="mb-2 px-2 text-[11px] font-medium uppercase tracking-wide text-muted">
+          {admin ? "Admin" : "Workspace"}
+        </p>
         <nav className="flex flex-col gap-1">
-          {NAV.map((item) => (
+          {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -87,16 +99,24 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <div className="mx-2 my-5 border-t border-border" />
 
-        <p className="mb-2 px-2 text-[11px] font-medium uppercase tracking-wide text-muted">Your path</p>
-        <div className="px-2">
-          <p className="flex items-center gap-3 text-sm font-semibold text-text">
-            <Icon name="problems" className="h-5 w-5 text-action" />
-            {goalRoleName}
-          </p>
-          <p className="mt-2 text-[11px] text-muted">
-            Production experience: {EXPERIENCE_LABEL[MOCK_ME.experienceLevel]}
-          </p>
-        </div>
+        {admin ? (
+          <Link href="/dashboard" className="flex items-center gap-3 rounded px-3 py-2.5 text-sm text-muted hover:text-text">
+            <Icon name="arrowLeft" className="h-5 w-5" /> Back to app
+          </Link>
+        ) : (
+          <>
+          <p className="mb-2 px-2 text-[11px] font-medium uppercase tracking-wide text-muted">Your path</p>
+          <div className="px-2">
+            <p className="flex items-center gap-3 text-sm font-semibold text-text">
+              <Icon name="problems" className="h-5 w-5 text-action" />
+              {goalRoleName}
+            </p>
+            <p className="mt-2 text-[11px] text-muted">
+              Production experience: {EXPERIENCE_LABEL[MOCK_ME.experienceLevel]}
+            </p>
+          </div>
+          </>
+        )}
 
         <div className="mt-auto flex flex-col gap-1">
           <Link
@@ -128,11 +148,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-4 border-b border-border px-4 py-3 sm:px-8">
-          <Link href="/dashboard" className="lg:hidden">
+          <Link href={admin ? "/admin" : "/dashboard"} className="lg:hidden">
             <Image src="/logo/bugdr-mark.png" alt="Bugdr" width={90} height={126} className="h-8 w-auto" />
           </Link>
           <nav aria-label="Breadcrumb" className="hidden items-center gap-3 text-sm sm:flex">
-            <span className="text-muted">Workspace</span>
+            <span className="text-muted">{admin ? "Admin" : "Workspace"}</span>
             <Icon name="chevronRight" className="h-3.5 w-3.5 text-muted" />
             <span className="text-text">
               {crumb}
@@ -158,7 +178,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {/* Below lg the sidebar collapses into this strip. */}
         <nav className="flex gap-1 overflow-x-auto border-b border-border px-4 py-2 lg:hidden">
-          {NAV.map((item) => (
+          {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -170,6 +190,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               {item.label}
             </Link>
           ))}
+          {admin && (
+            <Link href="/dashboard" className="shrink-0 rounded px-3 py-1.5 text-sm text-muted">
+              Back to app
+            </Link>
+          )}
         </nav>
 
         <main className="flex-1">{children}</main>

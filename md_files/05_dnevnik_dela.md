@@ -685,3 +685,121 @@ Preverjeno: lint, typecheck, build; Playwright pri 320-2560 px brez
 vodoravnega drsenja, izbira problema in izpolnjen obrazec, brez napak v
 konzoli.
 
+### Prenova upravljanja tekmovanj (po navodilu uporabnika)
+
+- Stanje tekmovanja se nikoli ne shrani: `src/lib/getContestStatus.ts`
+  (`draft` = brez `starts_at`, `scheduled`, `active`, `ended`).
+  `src/lib/getContestDates.ts` izračuna naslednji termin po vrsti (UTC):
+  dnevno od naslednje polnoči 24 ur, tedensko pon 00:00 - ned 23:59:59,
+  mesečno od 1. naslednjega meseca do zadnjega dne 23:59:59 (preverjeno s
+  skripto, tudi ponedeljek in prehod v novo leto).
+- `/admin/contests/new` je zdaj čarovnik v 4 korakih
+  (`src/components/admin/contests/ContestWizard.tsx`): osnovni podatki
+  (naslov, opis, 3 kartice vrste, pasica "This contest will run from … to
+  …", stikalo "Custom dates"), problemi (iskanje, dodani kot oznake z
+  odstranitvijo, vsaj 1), nagrada (brez / Subscription / Merch / Points +
+  opis), pregled ("Save as Draft" brez datumov, "Schedule Contest").
+- Nova pot `/admin/contests/[id]/edit` (isti čarovnik, samo za osnutke in
+  načrtovana tekmovanja; drugače zaklenjena pasica).
+- `/admin/contests`: zavihki Active / Scheduled / Drafts / Ended s števili
+  (najprej skupine na eni strani, nato na željo uporabnika nazaj v
+  zavihke), stolpci Contest / Type / Status / Dates / Problems / Reward,
+  oznake stanja (Active zelena s pulzirajočo piko), dejanja po stanju:
+  Draft - Edit, Schedule, Delete; Scheduled - Edit, Cancel; Active - View
+  results; Ended - View results, Archive.
+- Tipi: `AdminContest`, `AdminContestDraft`, `RewardType`; mock ima
+  shrambo v pomnilniku modula, da se shranjeno vidi na seznamu.
+- `StepIndicator` premaknjen iz `/admin/problems/new` v
+  `components/admin/problems/shared.tsx` (uporabljata ga oba čarovnika).
+- `04_admin.md` posodobljen (stanja, življenjski cikel, samodejni datumi,
+  ročni datumi, vsaj 1 problem, arhiviranje).
+
+### Odjava
+
+- Gumb "Log out" (rdeč, ikona `logout`) v stranski vrstici pod Settings;
+  zdaj povezava na `/login` (F2 bo pobrisal piškotek).
+
+Rešeno v `06`: D33 (več problemov), D43 (stanje iz datumov), D44 (pravila
+načrtovanja). Nova sprememba sheme: `contests.archived_at`.
+
+Preverjeno: lint, typecheck, build; Playwright pri 320-2560 px - celoten
+potek (ustvari → načrtuj → prekliči → uredi), vsi zavihki, odjava, brez
+vodoravnega drsenja in napak v konzoli.
+
+Git zapis (Summary): `Redesign contest management (status from dates, 4-step wizard) and add log out`
+
+
+## 7. 10. 2026 — Seja 8: Admin - pregled in nov potek Add Problem
+
+### Pregled (`/admin`)
+
+- `src/app/(app)/admin/page.tsx` (v skupini `(app)` kot ostale admin strani,
+  s stransko vrstico; drobtine "Admin / Overview"): naslov "Overview",
+  izbira obdobja Today / 7 days / 30 days / All time (gumbi-tablete).
+- 5 kartic (`src/components/admin/StatCard.tsx`): Total Users, Active
+  Users (+ trend ▲/▼), Problems Published, Solves (+ trend), Active
+  Contests (povezava na `/admin/contests`). Obdobje vpliva samo na kartici
+  z trendom.
+- Grafi (`src/components/admin/Chart.tsx`, knjižnica **recharts** - nova
+  odvisnost po navodilu): User Growth (črta, 30 dni, preklop Signups /
+  DAU), Solves Per Day (stolpci, 14 dni), Solve Distribution (kolobar po
+  težavnosti, skupno v sredini, legenda z %), Solves by Role (vodoravni
+  stolpci s števili), User Streaks (stolpci po razponih nizov).
+- Tabeli Top Problems (8, oznaka težavnosti) in Needs Attention (8,
+  razvrščeno po osipu, nad 70 % rdeče; na telefonu samo naslov in osip).
+- Barve težavnosti ne prestanejo preverjanja za barvno slepoto, zato ima
+  kolobar 2 px razmike med deli in legendo z imeni in %.
+- Mock: `src/lib/mock/adminStats.ts`, tip `AdminOverview` v
+  `src/lib/types/adminStats.ts`.
+
+### Add Problem (`/admin/problems/new`) - 3 koraki namesto 6
+
+- Koraki Analysis / Review / Publish; `StepIndicator` dobil različico
+  `variant="line"` (pike, povezane s črto; čarovnik tekmovanj ostane
+  nespremenjen).
+- Analysis (`UploadStep.tsx`): polje za ZIP (po izbiri ime, velikost,
+  zelena kljukica), cevovod Duplicate Check (1,5 s) → Production Test
+  (2 s) → AI Analysis (3 s) s stanji pending / running / passed / failed /
+  skipped; ob napaki kartica z razlogom in "Try again", ostali koraki
+  "Skipped"; po uspehu samodejno na Review.
+- Review (`ReviewStep.tsx`, 60/40): interna opomba AI, kratek opis (do 300
+  znakov, števec), cel opis, tagi; desno (sticky) težavnost 2×2 z "(AI
+  suggested)", vloga, preverjanja (urejanje, vrsta, must pass, brisanje,
+  dodajanje), "Continue to Publish" (zahteva opisa, vlogo, ≥ 3
+  preverjanja).
+- Publish (`PublishStep.tsx`): povzetek, "Save as Draft" / "Publish
+  Problem", nato potrditev z "View problem" in "Add another problem".
+- `DefineStep.tsx` in `ValidateStep.tsx` nista več v uporabi (nista
+  izbrisana - čakam na potrditev uporabnika).
+- Ikona `upload`.
+
+Odprto v `06`: D45 (naslov, časovna omejitev in dry-run manjkajo v novem
+poteku), D46 (časovna okna statistike).
+
+Preverjeno: lint, typecheck, build; Playwright pri 320-2560 px brez
+vodoravnega drsenja, celoten potek (naloži → analiza → pregled → objava),
+neuspel Duplicate Check za že dodan ZIP, brez napak v konzoli.
+
+### Admin stranska vrstica (po navodilu uporabnika)
+
+- `AppShell` na `/admin/*` pokaže svojo navigacijo: oznaka ADMIN,
+  Overview (samo `/admin`), Add problem, Contests, nato "Back to app"
+  (namesto "Your path"); drobtine "Admin / …", logotip vodi na `/admin`;
+  pas za telefon ima iste povezave + "Back to app".
+- Admin strani ne označujejo več uporabniških (prej `/admin/contests` →
+  Contests v uporabniški navigaciji).
+- `/admin/problems/new` premaknjen v skupino `(app)` (URL enak), da dobi
+  stransko vrstico.
+
+Preverjeno: lint, typecheck, build; Playwright 320-2560 px, pravilna
+aktivna povezava na vseh admin straneh in na `/dashboard`.
+
+### Git zapis
+
+Predlagani Summary:
+
+`Add the admin overview and the 3-step Add Problem flow with an admin sidebar (mock data)`
+
+Predlagani Description:
+
+`Adds /admin: date range pills, five stat cards (total and active users, published problems, solves, active contests) with trends, recharts charts for user growth (signups / DAU), solves per day, solves by difficulty, by role and user streaks, and the Top Problems and Needs Attention tables. Reduces /admin/problems/new from six steps to three: Analysis (ZIP upload and a duplicate check, production test and AI analysis pipeline with per-step states, error card and retry), Review (internal AI note, descriptions, tags, difficulty, role and acceptance checks) and Publish (summary, save as draft or publish, success state). Admin pages get their own sidebar (Overview, Add problem, Contests, Back to app), and Add Problem moves into the (app) group so it has one; the URL is unchanged. Adds recharts. Runs on mock data until slices A9, A10, A2 and A5 exist; the missing title, time limit and dry run are open (D45), as are the stats windows (D46).`

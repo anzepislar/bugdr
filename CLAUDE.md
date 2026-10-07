@@ -85,7 +85,11 @@ and scale with a CSS height. Raster files: for sharp retina display keep the ren
 | `/settings` | Settings (profile, practice preferences, account) |
 | `/contests` | Contest list |
 | `/contests/[id]` | Contest detail |
-| `/admin` | Admin dashboard |
+| `/admin` | Admin overview (stats + charts) |
+| `/admin/problems/new` | Add problem (3 steps: Analysis, Review, Publish) |
+| `/admin/contests` | Contest management (tabs by status) |
+| `/admin/contests/new` | Create contest (4-step wizard) |
+| `/admin/contests/[id]/edit` | Edit a draft or scheduled contest |
 
 ---
 
@@ -144,13 +148,13 @@ Time multiplier:
 Updated at the end of every session. Read this first in a new session.
 
 ```
-Last session: 7. 10. 2026 — Seja 7 (admin contests list + create contest)
+Last session: 7. 10. 2026 — Seja 8 (admin overview with recharts; Add Problem reduced to 3 steps with analysis pipeline)
 Phase: Frontend build from Figma designs (mock data)
-Frontend: 15 screens on mock data — /admin/contests, /admin/contests/new, /onboarding, /login, /signup, /forgot-password, /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new (Create Problem), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx), /problems, /problems/[slug] (Overview + Discussion; + solved state), /problems/[slug]/solve (fullscreen split pane, editor = read-only Monaco stand-in)
+Frontend: 17 screens on mock data — /admin (overview), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit, /onboarding, /login, /signup, /forgot-password, /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new (Add Problem, 3 steps), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx), /problems, /problems/[slug] (Overview + Discussion; + solved state), /problems/[slug]/solve (fullscreen split pane, editor = read-only Monaco stand-in)
 Backend: Not started — plan in md_files/06_backend_slices.md (decisions D1-D19 + D31 locked)
 Database: Schema designed, not created yet
 Next step: next frontend screen (waiting for user)
-Open questions: add schema changes to 01_database.md? · D20 validation rule · D21-D22 · D23 bookmarks · D24 feed filters vs. D19 · D25 notifications · D26 check descriptions on detail · D27 repository name · D28 Give up · D30 comment helpful/replies · D32 contest history checks · D33 one problem per contest · D34 profile fields schema · D35 empty settings tabs · D36 starting difficulty · D37 GitHub sign-in · D38 username on signup · D39 password length · D40 remember me · D41 "exploring" role · D42 onboarding languages · D43 contest drafts · D44 contest publish rules (all in 06)
+Open questions: add schema changes to 01_database.md? · D20 validation rule · D21-D22 · D23 bookmarks · D24 feed filters vs. D19 · D25 notifications · D26 check descriptions on detail · D27 repository name · D28 Give up · D30 comment helpful/replies · D32 contest history checks · D34 profile fields schema · D35 empty settings tabs · D36 starting difficulty · D37 GitHub sign-in · D38 username on signup · D39 password length · D40 remember me · D41 "exploring" role · D42 onboarding languages · D45 Add Problem title/time limit/dry-run · D46 stats windows (all in 06)
 ```
 
 ### Session tracking

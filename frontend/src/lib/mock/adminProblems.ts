@@ -77,9 +77,26 @@ const MOCK_ANALYSIS: ProblemAnalysis = {
   tags: ["jwt", "authentication", "express", "dates"],
 };
 
+// ponytail: duplicates are matched by file name; the backend hashes the unpacked files (A10).
+const savedCodebases = new Set<string>();
+
+export async function mockCheckDuplicate(file: File): Promise<null> {
+  await delay(1500);
+  if (savedCodebases.has(file.name)) {
+    throw new Error(`${file.name} was already added as a problem. Upload a different codebase.`);
+  }
+  return null;
+}
+
+export async function mockProductionTest(file: File): Promise<null> {
+  await delay(2000);
+  if (file.size === 0) throw new Error("The ZIP file is empty, so there is nothing to run. Check the export and upload it again.");
+  return null;
+}
+
 export async function mockAnalyzeProblem(file: File): Promise<ProblemAnalysis> {
-  await delay(1800);
-  if (file.size === 0) throw new Error("The ZIP file is empty.");
+  void file;
+  await delay(3000);
   return structuredClone(MOCK_ANALYSIS);
 }
 
@@ -99,5 +116,6 @@ export async function mockRunCheck(check: Check): Promise<CheckValidationResult>
 
 export async function mockSaveProblem(draft: AdminProblemDraft): Promise<SavedProblem> {
   await delay(800);
+  savedCodebases.add(draft.codebaseFileName);
   return { id: `mock-${Date.now()}`, slug: draft.slug, isPublished: draft.isPublished };
 }

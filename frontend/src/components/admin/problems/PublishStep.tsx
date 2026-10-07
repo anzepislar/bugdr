@@ -1,83 +1,89 @@
 "use client";
 
+import Link from "next/link";
+import { Icon } from "@/components/Icon";
 import type { Difficulty, SavedProblem } from "@/lib/types/problem";
 import { DifficultyBadge, ErrorMessage, Spinner, cardClass, primaryButton, secondaryButton } from "./shared";
 
 interface Props {
   title: string;
-  slug: string;
   difficulty: Difficulty;
-  categoryName: string;
-  timeLimitMinutes: number;
+  roleName: string;
+  tags: string[];
   checksCount: number;
-  validationPassed: boolean;
   saving: "draft" | "publish" | null;
   saved: SavedProblem | null;
   error: string | null;
   onSave: (publish: boolean) => void;
+  onBack: () => void;
   onReset: () => void;
 }
 
 export function PublishStep(props: Props) {
-  const { title, slug, difficulty, categoryName, timeLimitMinutes, checksCount, validationPassed, saving, saved, error } =
-    props;
+  const { title, difficulty, roleName, tags, checksCount, saving, saved, error } = props;
 
   if (saved) {
     return (
-      <section className={cardClass}>
-        <h2 className="text-lg font-semibold">{saved.isPublished ? "Problem published" : "Saved as draft"}</h2>
-        <p className="mt-2 text-sm text-muted">
-          {title} · <span className="font-mono">/problems/{saved.slug}</span>
-        </p>
-        <button type="button" onClick={props.onReset} className={`${secondaryButton} mt-5`}>
-          Create another problem
-        </button>
+      <section className={`${cardClass} flex flex-col items-center px-6 py-12 text-center`}>
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-passed/15 text-passed">
+          <Icon name="check" className="h-6 w-6" />
+        </span>
+        <h2 className="mt-4 text-xl font-semibold">{saved.isPublished ? "Problem published" : "Problem saved"}</h2>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Link href={`/problems/${saved.slug}`} className={secondaryButton}>
+            View problem
+          </Link>
+          <button type="button" onClick={props.onReset} className={primaryButton}>
+            Add another problem
+          </button>
+        </div>
       </section>
     );
   }
 
   return (
-    <section className={cardClass}>
-      <h2 className="text-lg font-semibold">Ready to save</h2>
-      <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
-        <dt className="text-muted">Title</dt>
-        <dd>{title}</dd>
-        <dt className="text-muted">URL</dt>
-        <dd className="break-all font-mono">/problems/{slug}</dd>
-        <dt className="text-muted">Level</dt>
-        <dd>
+    <div className="max-w-3xl">
+      <section className={cardClass}>
+        <p className="flex items-center gap-2 text-sm font-medium text-passed">
+          <Icon name="check" className="h-4 w-4" /> Ready to publish
+        </p>
+        <h2 className="mt-3 text-xl font-semibold leading-snug">{title}</h2>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <DifficultyBadge difficulty={difficulty} />
-        </dd>
-        <dt className="text-muted">Label</dt>
-        <dd>{categoryName}</dd>
-        <dt className="text-muted">Time limit</dt>
-        <dd>{timeLimitMinutes} min</dd>
-        <dt className="text-muted">Checks</dt>
-        <dd>{checksCount}</dd>
-        <dt className="text-muted">Validation</dt>
-        <dd className={validationPassed ? "text-passed" : "text-highlight"}>
-          {validationPassed ? "Passed" : "Not passed"}
-        </dd>
-      </dl>
+          <span className="rounded border border-border px-2 py-0.5 text-xs font-medium text-muted">{roleName}</span>
+        </div>
+        {tags.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <span key={tag} className="rounded bg-canvas px-2 py-0.5 text-xs text-muted">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+        <p className="mt-4 text-sm text-muted">
+          {checksCount} acceptance {checksCount === 1 ? "check" : "checks"}
+        </p>
+      </section>
 
       {error && <ErrorMessage>{error}</ErrorMessage>}
 
-      <div className="mt-6 flex flex-wrap justify-end gap-3">
-        <button type="button" onClick={() => props.onSave(false)} disabled={saving !== null} className={secondaryButton}>
-          {saving === "draft" && <Spinner />} Save as Draft
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <button type="button" onClick={props.onBack} disabled={saving !== null} className="mr-auto text-sm text-muted hover:text-text disabled:opacity-40">
+          ← Back to review
         </button>
         <button
           type="button"
-          onClick={() => props.onSave(true)}
-          disabled={saving !== null || !validationPassed}
-          className={primaryButton}
+          onClick={() => props.onSave(false)}
+          disabled={saving !== null}
+          className={`${secondaryButton} bg-surface`}
         >
-          {saving === "publish" && <Spinner />} Publish
+          {saving === "draft" && <Spinner />} Save as Draft
+        </button>
+        <button type="button" onClick={() => props.onSave(true)} disabled={saving !== null} className={`${primaryButton} font-semibold`}>
+          {saving === "publish" && <Spinner />} Publish Problem
         </button>
       </div>
-      {!validationPassed && (
-        <p className="mt-3 text-right text-xs text-muted">Publish unlocks after a successful validation run.</p>
-      )}
-    </section>
+    </div>
   );
 }

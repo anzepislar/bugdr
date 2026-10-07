@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Icon } from "@/components/Icon";
 import { DIFFICULTY_LABEL, type Difficulty } from "@/lib/types/problem";
 
 export const cardClass = "rounded border border-border bg-surface p-5";
@@ -60,7 +61,47 @@ export function ErrorMessage({ children }: { children: ReactNode }) {
   );
 }
 
-export function StepIndicator({ steps, current }: { steps: string[]; current: number }) {
+export function StepIndicator({
+  steps,
+  current,
+  variant = "boxes",
+}: {
+  steps: string[];
+  current: number;
+  /** "line": dots joined by a line (Add Problem). */
+  variant?: "boxes" | "line";
+}) {
+  if (variant === "line") {
+    return (
+      <ol className="mt-6 flex items-center">
+        {steps.map((label, i) => {
+          const n = i + 1;
+          const state = n < current ? "done" : n === current ? "current" : "todo";
+          return (
+            <li
+              key={label}
+              aria-current={state === "current" ? "step" : undefined}
+              className={`flex items-center ${n < steps.length ? "flex-1" : ""}`}
+            >
+              <span className="flex shrink-0 items-center gap-2 text-sm">
+                {state === "done" ? (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-passed text-canvas">
+                    <Icon name="check" className="h-3.5 w-3.5" />
+                  </span>
+                ) : (
+                  <span className={`h-2.5 w-2.5 rounded-full ${state === "current" ? "bg-action" : "bg-border"}`} />
+                )}
+                <span className={state === "todo" ? "text-muted" : "font-medium text-text"}>{label}</span>
+              </span>
+              {n < steps.length && (
+                <span aria-hidden className={`mx-3 h-px flex-1 ${state === "done" ? "bg-passed" : "bg-border"}`} />
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    );
+  }
   return (
     <ol className={`mt-6 grid grid-cols-3 gap-2 ${steps.length === 4 ? "sm:grid-cols-4" : "sm:grid-cols-6"}`}>
       {steps.map((label, i) => {
