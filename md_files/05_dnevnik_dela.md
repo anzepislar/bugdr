@@ -433,3 +433,77 @@ Predlagani Description:
 
 `Adds /contests with Live, Upcoming and Past tabs, contest cards with countdowns and the user's contest history, and /contests/[id] with the incident, rules, a sticky entry card and the user's participation. Upcoming contests keep their problems hidden. Moves the countdown formatter into src/lib/format.ts, shared with the dashboard. Runs on mock data until slices T1 and T2 exist.`
 
+## 7. 10. 2026 — Seja 5: Profil in nastavitve
+
+### Povzetek
+
+Zaslona `/profile/[username]` in `/settings` po dizajnih iz Figme, na mock
+podatkih. Uporablja pravila "UI Rules" iz `CLAUDE.md`.
+
+### Kaj je narejeno
+
+- `/profile/[username]` (`src/app/(app)/profile/[username]/page.tsx`,
+  strežniška komponenta): avatar z začetnico, ime, naslov + jeziki, gumba
+  "Edit profile" (samo lasten profil → `/settings`) in "Share profile"
+  (kopira povezavo, `ShareProfileButton`). Zavihki kot povezave (`?tab=`):
+  - Overview: rešeni, točke, nivo, streak; aktivnost zadnjih 12 mesecev
+    (53 tednov, oznake dni, legenda Less/More), streak z razlago; zadnji
+    3 rešeni problemi + "View all N".
+  - Solved problems: tabela z neskončnim drsenjem in "Showing X of Y"
+    (`components/profile/SolvedProblems.tsx`).
+  - Contest history: isti seznam kot na `/contests`.
+  - Zaseben profil (tuj) → pasica z ključavnico; neznan username → 404.
+- `/settings` (`src/app/(app)/settings/page.tsx` +
+  `components/settings/ProfileForm.tsx`): zavihki Profile / Practice
+  preferences / Account; Profile ima prikazno ime (obvezno), naslov, GitHub
+  (vzorec GitHub uporabniških imen), vlogo, izkušnje, jezike (preklopni
+  gumbi) in stikalo javnega profila (`role="switch"`), "Save changes" s
+  stanjem shranjevanja.
+- Stranska vrstica: "Settings" vodi na `/settings` in je označen kot
+  aktiven; drobtinice kažejo "Settings".
+- Skupni deli (ponovna uporaba namesto podvajanja):
+  - `components/ActivityGrid.tsx` - mreža aktivnosti, izvlečena iz
+    `ProgressPanel` (dashboard jo zdaj uporablja); pri ozkem zaslonu drsi
+    vodoravno in se odpre na najnovejših tednih.
+  - `components/contests/ContestHistory.tsx` - iz `/contests`, naslovi zdaj
+    vodijo na `/contests/[id]`.
+  - `lib/format.ts`: `duration` (iz podrobnosti problema) in `formatDate`.
+  - `mockActivity` v `mock/dashboard.ts` sprejme število dni.
+  - Polja obrazca uporabljajo `inputClass`, `FieldLabel`, gumbe iz
+    `components/admin/problems/shared.tsx`.
+
+### Odstopanja od dizajna
+
+- "Total XP" → "Total points" (dokumenti govorijo o točkah); "Current
+  level" kaže ime nivoja ("Staff") namesto številke.
+- "Starting difficulty" → "Production experience" (D36).
+- Težavnost v tabeli kot `DifficultyPill`; jeziki imajo tudi neizbrane
+  možnosti (preklop).
+- Statistike iz `03` (po težavnosti, po kategoriji, povprečni čas) niso v
+  dizajnu in niso prikazane.
+- Zavihka Practice preferences in Account sta prazna (D35).
+
+Odprta vprašanja v `06`: D34 (polja profila v shemi), D35, D36.
+
+### Tehnične opombe
+
+- `npm run lint`, `npm run typecheck`, `npm run build` uspešni.
+- Preverjeno s Playwright (skripta ni v repozitoriju): profil (3 zavihki),
+  nastavitve, dashboard in `/contests` pri 320, 390, 768, 1024, 1440 in
+  2560 px brez vodoravnega drsenja strani in brez napak v konzoli;
+  neznan username → 404; neskončno drsenje (1440 px: 12 → 28 od 147);
+  neveljaven GitHub prepreči shranjevanje; jeziki, stikalo, shranjevanje,
+  povezava na javni profil in drobtinice delujejo.
+- Oznake mesecev v mreži aktivnosti segajo v sosednji prazen stolpec
+  (namenoma); zadnja dva stolpca oznake nimata, da se ne odreže.
+
+### Git zapis
+
+Predlagani Summary:
+
+`Add the profile and settings pages (mock data)`
+
+Predlagani Description:
+
+`Adds /profile/[username] (stats, 12-month activity grid, streak, solved problems with infinite scroll, contest history, share and edit buttons, private state) and /settings (profile details, engineering path, languages, public profile switch). Extracts the activity grid and the contest history list into shared components, moves duration and date formatting into src/lib/format.ts, and links Settings in the sidebar. Runs on mock data until slices U1, U2 and T2 exist; profile fields need a schema decision (D34).`
+

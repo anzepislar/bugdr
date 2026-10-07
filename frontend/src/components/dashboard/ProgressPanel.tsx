@@ -1,29 +1,11 @@
 import Link from "next/link";
+import { ActivityGrid, isoDay, mondayOf } from "@/components/ActivityGrid";
 import { Icon } from "@/components/Icon";
 import type { ActivityDay, DashboardStats, RecentWin } from "@/lib/types/dashboard";
 
 const DAY = 86_400_000;
 const WEEKS = 17;
 const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
-const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-
-// Days are UTC (D7).
-const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-
-/** Midnight UTC of the Monday of the week containing `now`. */
-function mondayOf(now: number): number {
-  const midnight = now - (now % DAY);
-  return midnight - ((new Date(midnight).getUTCDay() + 6) % 7) * DAY;
-}
-
-// Literal class names so Tailwind picks them up.
-function heatClass(solved: number | undefined): string {
-  if (solved === undefined) return "";
-  if (solved === 0) return "bg-border";
-  if (solved === 1) return "bg-action/40";
-  if (solved === 2) return "bg-action/70";
-  return "bg-action";
-}
 
 export function ProgressPanel({
   stats,
@@ -42,7 +24,6 @@ export function ProgressPanel({
   const today = isoDay(now);
   const yesterday = isoDay(now - DAY);
   const monday = mondayOf(now);
-  const firstDay = monday - (WEEKS - 1) * 7 * DAY;
 
   const { level, nextLevel, totalPoints } = stats;
   const progress = nextLevel ? (totalPoints - level.minPoints) / (nextLevel.minPoints - level.minPoints) : 1;
@@ -121,25 +102,7 @@ export function ProgressPanel({
       </ol>
 
       <div className="mt-8">
-        <div className="grid text-[10px] text-muted" style={{ gridTemplateColumns: `repeat(${WEEKS}, minmax(0, 1fr))` }}>
-          {Array.from({ length: WEEKS }, (_, w) => {
-            const month = new Date(firstDay + w * 7 * DAY).getUTCMonth();
-            const prev = new Date(firstDay + (w - 1) * 7 * DAY).getUTCMonth();
-            return <span key={w}>{w === 0 || month !== prev ? MONTHS[month] : ""}</span>;
-          })}
-        </div>
-        <div
-          aria-label="Problems solved per day"
-          role="img"
-          className="mt-2 grid grid-flow-col grid-rows-7 gap-1"
-          style={{ gridTemplateColumns: `repeat(${WEEKS}, minmax(0, 1fr))` }}
-        >
-          {Array.from({ length: WEEKS * 7 }, (_, i) => {
-            const date = isoDay(firstDay + i * DAY);
-            const solved = date > today ? undefined : (byDate.get(date)?.problemsSolved ?? 0);
-            return <span key={date} title={`${date}: ${solved ?? 0} solved`} className={`aspect-square rounded-[2px] ${heatClass(solved)}`} />;
-          })}
-        </div>
+        <ActivityGrid activity={activity} now={now} weeks={WEEKS} />
         <p className="mt-4 text-xs text-muted">{solvedThisMonth} solved this month</p>
       </div>
 

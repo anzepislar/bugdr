@@ -182,6 +182,7 @@ PostgreSQL
 | Problem detail | `/problems/[slug]` | Description + start |
 | Problem editor | `/problems/[slug]/solve` | Monaco + terminal + checks |
 | Profile | `/profile/[username]` | Stats + solved problems |
+| Settings | `/settings` | Profile details, engineering path, public profile |
 | Contests | `/contests` | Daily/weekly/monthly |
 | Contest detail | `/contests/[id]` | Incident, rules, entry + your participation |
 | Admin | `/admin` | Problem + contest management |

@@ -81,6 +81,7 @@ and scale with a CSS height. Raster files: for sharp retina display keep the ren
 | `/problems/[slug]` | Problem detail |
 | `/problems/[slug]/solve` | Editor + terminal + checks |
 | `/profile/[username]` | User profile |
+| `/settings` | Settings (profile, practice preferences, account) |
 | `/contests` | Contest list |
 | `/contests/[id]` | Contest detail |
 | `/admin` | Admin dashboard |
@@ -142,13 +143,13 @@ Time multiplier:
 Updated at the end of every session. Read this first in a new session.
 
 ```
-Last session: 6. 10. 2026 — Seja 4 (contests list + contest detail)
+Last session: 7. 10. 2026 — Seja 5 (profile + settings)
 Phase: Frontend build from Figma designs (mock data)
-Frontend: 7 screens on mock data — /contests, /contests/[id], /admin/problems/new (Create Problem), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx), /problems, /problems/[slug] (+ solved state + discussion), /problems/[slug]/solve (editor = read-only Monaco stand-in)
-Backend: Not started — plan in md_files/06_backend_slices.md (decisions D1-D19 locked)
+Frontend: 9 screens on mock data — /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new (Create Problem), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx), /problems, /problems/[slug] (+ solved state + discussion), /problems/[slug]/solve (editor = read-only Monaco stand-in)
+Backend: Not started — plan in md_files/06_backend_slices.md (decisions D1-D19 + D31 locked)
 Database: Schema designed, not created yet
 Next step: next frontend screen (waiting for user)
-Open questions: add schema changes to 01_database.md? · D20 validation rule · D21-D22 · D23 bookmarks · D24 feed filters vs. D19 · D25 notifications · D26 check descriptions on detail · D27 repository name · D28 Give up · D29 activity bar · D30 comment helpful/replies · D32 contest history checks · D33 one problem per contest (all in 06)
+Open questions: add schema changes to 01_database.md? · D20 validation rule · D21-D22 · D23 bookmarks · D24 feed filters vs. D19 · D25 notifications · D26 check descriptions on detail · D27 repository name · D28 Give up · D29 activity bar · D30 comment helpful/replies · D32 contest history checks · D33 one problem per contest · D34 profile fields schema · D35 empty settings tabs · D36 starting difficulty (all in 06)
 ```
 
 ### Session tracking

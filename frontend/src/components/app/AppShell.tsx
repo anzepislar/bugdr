@@ -82,10 +82,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <div className="mt-auto flex flex-col gap-1">
-          {/* No routes yet for these two. */}
-          <a href="#" className="flex items-center gap-3 rounded px-3 py-2 text-sm text-muted hover:text-text">
-            <Icon name="settings" /> Settings
-          </a>
+          <Link
+            href="/settings"
+            aria-current={isActive("/settings") ? "page" : undefined}
+            className={`flex items-center gap-3 rounded px-3 py-2 text-sm ${
+              isActive("/settings") ? "bg-surface font-semibold text-text" : "text-muted hover:text-text"
+            }`}
+          >
+            <Icon name="settings" className={`h-5 w-5 ${isActive("/settings") ? "text-action" : ""}`} /> Settings
+          </Link>
+          {/* No route yet. */}
           <a href="#" className="flex items-center gap-3 rounded px-3 py-2 text-sm text-muted hover:text-text">
             <Icon name="help" /> Help &amp; feedback
           </a>
@@ -112,7 +118,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 ? "Problem details"
                 : pathname.startsWith("/contests/")
                   ? "Contest details"
-                  : current?.label}
+                  : isActive("/settings")
+                    ? "Settings"
+                    : current?.label}
             </span>
           </nav>
           <form action="/problems" role="search" className="relative ml-auto w-full max-w-[275px]">

@@ -94,6 +94,9 @@ dokler je uporabnik ne potrdi.
 | D30 | **ODPRTO** - "helpful" in odgovori na komentarje | Dizajn razprave ima "N helpful", "Reply" in razvrščanje "Most helpful"; `problem_comments` nima ničesar od tega. Predlog: `problem_comments.parent_id UUID NULL REFERENCES problem_comments(id)` (odgovori samo ena raven), tabela `comment_helpful (comment_id, user_id, created_at, PK(comment_id, user_id))` + `problem_comments.helpful_count` (posodobljen v isti transakciji), `PUT/DELETE /comments/:id/helpful`, lastnega komentarja ni mogoče označiti, `GET /problems/:slug/comments?sort=helpful\|newest` | O2 |
 | D31 | ~~Stran posameznega tekmovanja~~ → **rešeno 6. 10. 2026**: uporabnik je dal dizajn, pot `/contests/[id]` (id, ker `contests` nima sluga). En incident na tekmovanje kot v dizajnu, čeprav shema dovoli več problemov (`contest_problems`) | T1, T2 |
 | D33 | **ODPRTO** - en ali več problemov na tekmovanje | Dizajn `/contests/[id]` kaže en incident ("The incident", "Enter contest" → reševanje), `contest_problems` dovoli več. Zdaj tip `ContestDetail.problem` = en problem. Predlog: v1 en problem na tekmovanje (omejitev v A-rezini) | T1, A7 |
+| D34 | **ODPRTO** - polja profila iz `/settings` | Dizajn ima prikazno ime, naslov profila (headline), GitHub uporabniško ime, jezike in stikalo "Public profile"; shema nima nobenega (`users` ima samo `username`). Predlog: `user_profiles` + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, `languages TEXT[]`, `is_public BOOLEAN DEFAULT TRUE`; API `PUT /me/profile`. Zdaj fiksen seznam jezikov (`LANGUAGES`) | U1 |
+| D35 | **ODPRTO** - zavihka "Practice preferences" in "Account" na `/settings` | Dizajn ju ima, vsebine ne. Zdaj prazno stanje "coming soon". Predlog: Account = e-pošta, sprememba gesla, odjava; Practice preferences = `platform_goal` (F4) | U1, F2 |
+| D36 | **ODPRTO** - "Starting difficulty" na `/settings` | Dizajn ima polje Starting difficulty, shema hrani `experience_level`, iz katerega D19 izpelje začetno težavnost. Zdaj polje "Production experience" (isto kot v stranski vrstici) z opombo, da določa začetno težavnost | U1, U3 |
 | D32 | **ODPRTO** - "N/M checks passed" v zgodovini tekmovanj | Dizajn kaže preverjanja, `contest_entries` ima `problems_solved` in `total_score`. Zdaj mock vrne `checksPassed`/`checksTotal` (vsota čez probleme tekmovanja), "Completed" = vsa preverjanja uspešna. Predlog: prikaži `problems_solved` / število problemov in točke | T2 |
 
 ### Spremembe sheme glede na `01_database.md`
@@ -110,6 +113,7 @@ Posledica odločitev - narejene v migraciji rezine, ki tabelo ustvari:
 | `contests` / `contest_entries` | + oznaka "nagrada poslana" (`04`) - točna oblika ob rezini | - | A7 |
 | `problem_comments` | + `parent_id`, + `helpful_count`; nova tabela `comment_helpful` (predlog, čaka odločitev) | D30 | O2 |
 | `problems` | + `bug_summary TEXT` (interna opomba AI analize, samo admin, nikoli k uporabniku) - zahteva zaslona Create Problem | - | A2 |
+| `user_profiles` | + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, `languages TEXT[]`, `is_public BOOLEAN DEFAULT TRUE` (predlog, čaka odločitev) | D34 | U1 |
 
 `01_database.md` se ob tem **ne spreminja samodejno** - posodobi se le, če
 uporabnik to zahteva. Do takrat velja: `01` + ta tabela.
@@ -258,11 +262,12 @@ polnijo s seed skripto.
 
 **U1 · Profil** `M` · odvisno od: R4 · ⬜
 - API: `GET /users/:username` → statistika iz `03` "Stats Shown on Profile" (točke, nivo + napredek do naslednjega, rešeni, streak, najdaljši streak, po težavnosti, po kategoriji, povprečni čas) + seznam rešenih problemov. Brez e-pošte.
-- Frontend: `/profile/[username]`.
+- API: `PUT /me/profile` (polja iz D34, `goalRole`, `experienceLevel`) za `/settings`; zaseben profil (`is_public = false`) drugim vrne samo ime.
+- Frontend: `/profile/[username]`, `/settings`. Oblika odgovora je `Profile` v `frontend/src/lib/types/profile.ts` (+ `contests` = zgodovina tekmovanj iz T2).
 - Končano, ko: neznan username → 404; banned uporabnik → 404; števci se ujemajo z `user_problem_attempts`.
 
 **U2 · Graf aktivnosti in streak** `S` · odvisno od: U1, P2 · ⬜
-- API: `GET /users/:username/activity` → zadnjih 52 tednov iz `user_daily_activity` (intenziteta = rešeni na dan, `03`).
+- API: `GET /users/:username/activity` → zadnjih 52 tednov iz `user_daily_activity` (intenziteta = rešeni na dan, `03`). Mreža na profilu ima 53 stolpcev (52 polnih tednov + tekoči), zato naj API vrne od ponedeljka pred 52 tedni naprej.
 - Streak na branje: če je `last_activity_date` starejši od včeraj, se prikaže `current_streak = 0` (brez cron opravila).
 - Končano, ko: dan brez aktivnosti prekine streak; najdaljši streak se ne zmanjša.
 
@@ -349,6 +354,8 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | `/problems/[slug]/solve` | `src/lib/mock/attempts.ts`: `mockStartAttempt` (timer teče od zdaj, za `in_progress` od 18:42), `mockRunTests` (vnaprej določeni rezultati); koda v `mockCodebase` (`mock/problems.ts`); urejevalnik je `CodeEditorMock` (samo branje) | R1, R2 (Give up), R4, R5 (terminal), R6 | ⬜ |
 | `/contests` | `src/lib/mock/contests.ts`: `mockGetContests` (live/upcoming/past + zgodovina uporabnika, datumi relativni na zdaj); prihajajoča tekmovanja brez težavnosti, oznak in sličice (T1); "View contest" vodi na `/contests/[id]` | T1, T2 | ⬜ |
 | `/contests/[id]` | `src/lib/mock/contests.ts`: `mockGetContest` (seznam + `DETAILS`: incident, ime repozitorija (D27), število preverjanj, nagrada, udeležba); problemi tekmovanj so obstoječi mock problemi, da "Enter contest" odpre delujoč zaslon reševanja | T1, T2 | ⬜ |
+| `/profile/[username]` | `src/lib/mock/profile.ts`: `mockGetProfile` (samo `max`, drugi → 404; 147 rešenih problemov, ciklično iz mock problemov; aktivnost 53 tednov = vsak tretji aktivni dan iz `mockActivity`; zgodovina tekmovanj iz `mockGetContests`); neskončno drsenje rešenih na odjemalcu | U1, U2, T2 | ⬜ |
+| `/settings` | `src/lib/mock/profile.ts`: `MOCK_SETTINGS`, `mockSaveSettings` (shrani samo v stanje obrazca - profil in stranska vrstica se ne posodobita); zavihka Practice preferences in Account prazna (D35) | U1 (D34) | ⬜ |
 | `/admin/problems/new` (Create Problem) | `src/lib/mock/adminProblems.ts`: `mockAnalyzeProblem`, `mockRunCheck` (lint uspe, ostalo pade), `mockSaveProblem` | A10, A4, A2/A5 | ⬜ |
 
 ---
@@ -391,7 +398,8 @@ Odprto:
 | `/problems` | P1 |
 | `/problems/[slug]` | P2, O1, O2 |
 | `/problems/[slug]/solve` | R1-R6 |
-| `/profile/[username]` | U1, U2 |
+| `/profile/[username]` | U1, U2, T2 |
+| `/settings` | U1 (D34-D36) |
 | `/contests`, `/contests/[id]` | T1, T2 |
 | `/admin/problems/new` | A10, A2, A4, A5 |
 | `/admin/*` | A1-A9 |

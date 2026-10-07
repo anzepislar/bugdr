@@ -122,10 +122,10 @@ const FEED: FeedProblem[] = [
   },
 ];
 
-// ~4 months of activity ending today: an 18-day streak, a gap before it.
-function mockActivity(now: number): ActivityDay[] {
-  return Array.from({ length: 130 }, (_, i) => {
-    const daysAgo = 129 - i;
+// Activity ending today (~4 months by default): an 18-day streak, a gap before it.
+export function mockActivity(now: number, days = 130): ActivityDay[] {
+  return Array.from({ length: days }, (_, i) => {
+    const daysAgo = days - 1 - i;
     const solved = daysAgo === 18 || i % 5 === 0 ? 0 : (i * 13) % 4;
     const opened = daysAgo === 18 ? 0 : daysAgo < 18 ? Math.max(1, solved) : solved;
     return {

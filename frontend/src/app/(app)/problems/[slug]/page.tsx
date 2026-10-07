@@ -4,6 +4,7 @@ import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
 import { Discussion } from "@/components/problems/Discussion";
 import { RateProblem } from "@/components/problems/RateProblem";
+import { duration } from "@/lib/format";
 import { mockGetComments, mockGetProblem } from "@/lib/mock/problems";
 import { CATEGORIES, DIFFICULTY_LABEL, type ProblemDetail, type SolveResult } from "@/lib/types/problem";
 
@@ -13,12 +14,6 @@ const TABS = {
   discussion: "Discussion",
 } as const;
 type Tab = keyof typeof TABS;
-
-const pad = (n: number) => String(n).padStart(2, "0");
-const duration = (s: number) =>
-  s >= 3600
-    ? `${Math.floor(s / 3600)}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`
-    : `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
 
 // Tabs are ?tab= links, so the page needs no client JS (except the rating).
 // A solved problem shows its result first and the problem itself below it.

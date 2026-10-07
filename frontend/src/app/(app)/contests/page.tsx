@@ -1,10 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ContestHistory } from "@/components/contests/ContestHistory";
 import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
-import { countdown } from "@/lib/format";
+import { countdown, formatDate } from "@/lib/format";
 import { mockGetContests } from "@/lib/mock/contests";
-import type { Contest, ContestHistoryEntry } from "@/lib/types/contest";
+import type { Contest } from "@/lib/types/contest";
 
 const TABS = { live: "Live", upcoming: "Upcoming", past: "Past contests" } as const;
 type Tab = keyof typeof TABS;
@@ -14,9 +15,6 @@ const EMPTY: Record<Tab, string> = {
   upcoming: "No contests are scheduled yet.",
   past: "No contests have ended yet.",
 };
-
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 // Rendered per request (searchParams), so the countdowns are as of this load.
 async function load() {
@@ -61,7 +59,12 @@ export default async function ContestsPage({ searchParams }: { searchParams: Pro
         </p>
       )}
 
-      <ContestHistory entries={data.history} />
+      <section aria-labelledby="history-heading" className="mt-12 border-t border-border pt-8">
+        <h2 id="history-heading" className="text-xl font-semibold text-text">
+          Your contest history
+        </h2>
+        <ContestHistory entries={data.history} />
+      </section>
     </div>
   );
 }
@@ -118,43 +121,5 @@ function ContestCard({ contest: c, tab, now }: { contest: Contest; tab: Tab; now
         </div>
       </div>
     </li>
-  );
-}
-
-function ContestHistory({ entries }: { entries: ContestHistoryEntry[] }) {
-  return (
-    <section aria-labelledby="history-heading" className="mt-12 border-t border-border pt-8">
-      <h2 id="history-heading" className="text-xl font-semibold text-text">
-        Your contest history
-      </h2>
-      {entries.length > 0 ? (
-        <ul className="mt-4 divide-y divide-border">
-          {entries.map((e) => {
-            const completed = e.checksPassed === e.checksTotal;
-            return (
-              <li
-                key={e.contestId}
-                className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3 text-sm sm:grid sm:grid-cols-[minmax(0,1fr)_8rem_10rem_7rem] sm:items-center sm:gap-6"
-              >
-                <span className="w-full truncate text-text sm:w-auto">{e.title}</span>
-                <span
-                  className={`w-fit rounded px-2 py-1 text-xs font-semibold ${
-                    completed ? "bg-action/15 text-action" : "bg-border/60 text-muted"
-                  }`}
-                >
-                  {completed ? "Completed" : "Incomplete"}
-                </span>
-                <span className="text-muted">
-                  {e.checksPassed}/{e.checksTotal} checks passed
-                </span>
-                <span className="text-muted sm:text-right">{formatDate(e.endedAt)}</span>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="mt-4 text-sm text-muted">You haven&apos;t entered a contest yet.</p>
-      )}
-    </section>
   );
 }

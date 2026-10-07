@@ -9,3 +9,13 @@ export function countdown(ms: number): string {
   if (days > 0) return `${days}d ${pad(hours)}h`;
   return `${pad(hours)}h ${pad(minutes % 60)}m`;
 }
+
+/** Solve time from seconds: "32:18", or "1:04:09" from an hour up. */
+export const duration = (s: number) =>
+  s >= 3600
+    ? `${Math.floor(s / 3600)}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`
+    : `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
+
+/** "Sep 28, 2026" */
+export const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
