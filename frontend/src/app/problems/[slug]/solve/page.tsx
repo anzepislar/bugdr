@@ -10,5 +10,5 @@ export default async function SolvePage({ params }: { params: Promise<{ slug: st
   // A solved problem never reopens (R1: 409 ALREADY_SOLVED).
   if (problem.status === "solved") redirect(`/problems/${slug}`);
 
-  return <Workspace slug={slug} />;
+  return <Workspace slug={slug} description={problem.description} checks={problem.checks} />;
 }

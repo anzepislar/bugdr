@@ -75,11 +75,12 @@ and scale with a CSS height. Raster files: for sharp retina display keep the ren
 |-------|------|
 | `/login` | Login |
 | `/signup` | Signup |
+| `/forgot-password` | Password reset request |
 | `/onboarding` | Onboarding (3 questions) |
 | `/dashboard` | Main feed + contests |
 | `/problems` | Browse all problems |
 | `/problems/[slug]` | Problem detail |
-| `/problems/[slug]/solve` | Editor + terminal + checks |
+| `/problems/[slug]/solve` | Fullscreen split pane: description + editor + terminal/test results |
 | `/profile/[username]` | User profile |
 | `/settings` | Settings (profile, practice preferences, account) |
 | `/contests` | Contest list |
@@ -143,13 +144,13 @@ Time multiplier:
 Updated at the end of every session. Read this first in a new session.
 
 ```
-Last session: 7. 10. 2026 — Seja 5 (profile + settings)
+Last session: 7. 10. 2026 — Seja 6 (login, signup, forgot password, solve page redesign)
 Phase: Frontend build from Figma designs (mock data)
-Frontend: 9 screens on mock data — /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new (Create Problem), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx), /problems, /problems/[slug] (+ solved state + discussion), /problems/[slug]/solve (editor = read-only Monaco stand-in)
+Frontend: 12 screens on mock data — /login, /signup, /forgot-password, /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new (Create Problem), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx), /problems, /problems/[slug] (Overview + Discussion; + solved state), /problems/[slug]/solve (fullscreen split pane, editor = read-only Monaco stand-in)
 Backend: Not started — plan in md_files/06_backend_slices.md (decisions D1-D19 + D31 locked)
 Database: Schema designed, not created yet
-Next step: next frontend screen (waiting for user)
-Open questions: add schema changes to 01_database.md? · D20 validation rule · D21-D22 · D23 bookmarks · D24 feed filters vs. D19 · D25 notifications · D26 check descriptions on detail · D27 repository name · D28 Give up · D29 activity bar · D30 comment helpful/replies · D32 contest history checks · D33 one problem per contest · D34 profile fields schema · D35 empty settings tabs · D36 starting difficulty (all in 06)
+Next step: /onboarding (design coming from user)
+Open questions: add schema changes to 01_database.md? · D20 validation rule · D21-D22 · D23 bookmarks · D24 feed filters vs. D19 · D25 notifications · D26 check descriptions on detail · D27 repository name · D28 Give up · D29 activity bar · D30 comment helpful/replies · D32 contest history checks · D33 one problem per contest · D34 profile fields schema · D35 empty settings tabs · D36 starting difficulty · D37 GitHub sign-in · D38 username on signup · D39 password length · D40 remember me (all in 06)
 ```
 
 ### Session tracking
@@ -205,6 +206,9 @@ Learned from fixes on `/problems` and `/problems/[slug]`. Apply to every new scr
 - Keep side panels short (the primary action + a few facts). Content the user reads (descriptions, check lists) belongs in the main column, otherwise short tabs leave a gap under the main column.
 - A tab with little content (empty / locked state) fills the column height (`lg:self-stretch` + `h-full` empty-state card) instead of leaving space next to the side panel.
 - When a side panel spans full width (below `lg`), lay it out horizontally and give buttons `sm:w-fit` — never a full-width card with a 700px button.
+
+- The solve page is fullscreen (100vw 100vh) with its own layout — never use the main app layout wrapper on this page
+- Split pane layouts always have a collapse option for the description panel — users must be able to hide it completely
 
 **Content**
 - Never hide information the user needs to make a decision (e.g. acceptance checks) behind a toggle on first load. Long lists go in two columns (`sm:grid-cols-2`) rather than a collapsed list.

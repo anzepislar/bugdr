@@ -1,0 +1,94 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState, type FormEvent } from "react";
+import { ErrorMessage, FieldLabel, inputClass, primaryButton, Spinner } from "@/components/admin/problems/shared";
+import { AuthHeader, authFieldClass, GitHubSignIn } from "@/components/auth/AuthShell";
+import { mockSignup } from "@/lib/mock/auth";
+
+const MIN_PASSWORD = 12; // design; F2 says >= 8 (D39)
+
+export default function SignupPage() {
+  const router = useRouter();
+  const [form, setForm] = useState({ fullName: "", email: "", password: "" });
+  const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
+  const patch = (p: Partial<typeof form>) => setForm((f) => ({ ...f, ...p }));
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setStatus("sending");
+    try {
+      await mockSignup({ ...form, fullName: form.fullName.trim(), email: form.email.trim() });
+      router.push("/onboarding");
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  return (
+    <div>
+      <AuthHeader prompt="Already a member?" href="/login" label="Sign in" />
+
+      <main className="mx-auto mt-12 w-full max-w-[468px] px-6 pb-8 sm:mt-24">
+        <h1 className="text-3xl font-bold text-text">Create your account</h1>
+        <p className="mt-3 text-muted">Build your skills on real production problems.</p>
+        <GitHubSignIn />
+
+        <form onSubmit={submit}>
+          <FieldLabel htmlFor="fullName">Full name</FieldLabel>
+          <input
+            id="fullName"
+            required
+            maxLength={50}
+            autoComplete="name"
+            placeholder="Max"
+            value={form.fullName}
+            onChange={(e) => patch({ fullName: e.target.value })}
+            className={`${inputClass} ${authFieldClass}`}
+          />
+          <div className="mt-5">
+            <FieldLabel htmlFor="email">Email address</FieldLabel>
+            <input
+              id="email"
+              type="email"
+              required
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={form.email}
+              onChange={(e) => patch({ email: e.target.value })}
+              className={`${inputClass} ${authFieldClass}`}
+            />
+          </div>
+          <div className="mt-5">
+            <FieldLabel htmlFor="password">Password</FieldLabel>
+            <input
+              id="password"
+              type="password"
+              required
+              minLength={MIN_PASSWORD}
+              autoComplete="new-password"
+              placeholder="Create a password"
+              aria-describedby="password-hint"
+              value={form.password}
+              onChange={(e) => patch({ password: e.target.value })}
+              className={`${inputClass} ${authFieldClass}`}
+            />
+            <p id="password-hint" className="mt-1.5 text-xs text-muted">
+              At least {MIN_PASSWORD} characters
+            </p>
+          </div>
+          <label className="mt-8 flex items-center gap-2 text-sm text-text">
+            <input type="checkbox" required className="h-4 w-4 shrink-0 accent-action" />
+            I agree to the Terms and Privacy Policy.
+          </label>
+          <button type="submit" disabled={status === "sending"} className={`${primaryButton} mt-8 w-full py-2.5`}>
+            {status === "sending" && <Spinner />}
+            Create account
+          </button>
+          {status === "error" && <ErrorMessage>Could not create the account. Try again.</ErrorMessage>}
+        </form>
+        <p className="mt-6 text-xs text-muted">Next: personalize your engineering path.</p>
+      </main>
+    </div>
+  );
+}

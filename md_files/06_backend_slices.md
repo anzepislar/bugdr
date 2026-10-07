@@ -89,8 +89,8 @@ dokler je uporabnik ne potrdi.
 | D25 | **ODPRTO** - ikona obvestil v zgornji vrstici | Dizajn ima zvonec, shema in dokumenti nimajo obvestil. Predlog: v v1 ikona brez funkcije ali skrita; obvestila kasneje kot svoja rezina | - |
 | D26 | **ODPRTO** - opisi preverjanj na strani podrobnosti | Dizajn `/problems/[slug]` ima "Acceptance checks" (opisi) in "N checks total", P2 pravi "brez preverjanj". Predlog: `GET /problems/:slug` vrne `checks: string[]` = samo `problem_checks.description` po `check_order` (nikoli `check_command`/`expected_output`) | P2 |
 | D27 | **ODPRTO** - ime repozitorija in sklad na strani podrobnosti | Dizajn kaže "northstar / checkout-worker" in "TypeScript · Node 20 · Redis", shema nima imena. Predlog: `problem_codebase.repository_name VARCHAR(100)`, sklad = `language` + `framework` + tagi; zavihek Repository pokaže poti iz `repository_structure` (brez vsebine) | P2, A2 |
-| D28 | **ODPRTO** - "Give up" na zaslonu reševanja | `02` zahteva gumb Give up, dizajn ga nima. Zdaj: besedilni gumb v glavi (na telefonu v statusni vrstici) s potrditvijo → R2 | R2 |
-| D29 | **ODPRTO** - iskanje in razširitve v levi vrstici zaslona reševanja | Dizajn ima ikoni, dokumenti ne opisujejo funkcije. Zdaj neaktivni. Predlog: iskanje po datotekah poskusa na odjemalcu (brez API), razširitve odstraniti | R1 |
+| D28 | **ODPRTO** - "Give up" na zaslonu reševanja | `02` zahteva gumb Give up, dizajn ga nima. Zdaj: besedilni gumb "Give up" v zgornji vrstici (tudi na telefonu) s potrditvijo → R2 | R2 |
+| D29 | ~~Iskanje in razširitve v levi vrstici zaslona reševanja~~ → **rešeno 7. 10. 2026**: prenova zaslona reševanja (split pane) odstrani levo vrstico in drevo datotek; datoteke so zavihki nad urejevalnikom | R1 |
 | D30 | **ODPRTO** - "helpful" in odgovori na komentarje | Dizajn razprave ima "N helpful", "Reply" in razvrščanje "Most helpful"; `problem_comments` nima ničesar od tega. Predlog: `problem_comments.parent_id UUID NULL REFERENCES problem_comments(id)` (odgovori samo ena raven), tabela `comment_helpful (comment_id, user_id, created_at, PK(comment_id, user_id))` + `problem_comments.helpful_count` (posodobljen v isti transakciji), `PUT/DELETE /comments/:id/helpful`, lastnega komentarja ni mogoče označiti, `GET /problems/:slug/comments?sort=helpful\|newest` | O2 |
 | D31 | ~~Stran posameznega tekmovanja~~ → **rešeno 6. 10. 2026**: uporabnik je dal dizajn, pot `/contests/[id]` (id, ker `contests` nima sluga). En incident na tekmovanje kot v dizajnu, čeprav shema dovoli več problemov (`contest_problems`) | T1, T2 |
 | D33 | **ODPRTO** - en ali več problemov na tekmovanje | Dizajn `/contests/[id]` kaže en incident ("The incident", "Enter contest" → reševanje), `contest_problems` dovoli več. Zdaj tip `ContestDetail.problem` = en problem. Predlog: v1 en problem na tekmovanje (omejitev v A-rezini) | T1, A7 |
@@ -98,6 +98,10 @@ dokler je uporabnik ne potrdi.
 | D35 | **ODPRTO** - zavihka "Practice preferences" in "Account" na `/settings` | Dizajn ju ima, vsebine ne. Zdaj prazno stanje "coming soon". Predlog: Account = e-pošta, sprememba gesla, odjava; Practice preferences = `platform_goal` (F4) | U1, F2 |
 | D36 | **ODPRTO** - "Starting difficulty" na `/settings` | Dizajn ima polje Starting difficulty, shema hrani `experience_level`, iz katerega D19 izpelje začetno težavnost. Zdaj polje "Production experience" (isto kot v stranski vrstici) z opombo, da določa začetno težavnost | U1, U3 |
 | D32 | **ODPRTO** - "N/M checks passed" v zgodovini tekmovanj | Dizajn kaže preverjanja, `contest_entries` ima `problems_solved` in `total_score`. Zdaj mock vrne `checksPassed`/`checksTotal` (vsota čez probleme tekmovanja), "Completed" = vsa preverjanja uspešna. Predlog: prikaži `problems_solved` / število problemov in točke | T2 |
+| D37 | **ODPRTO** - "Continue with GitHub" na `/login` in `/signup` | Dizajn ima prijavo z GitHubom, stack ima samo JWT z geslom (F2). Zdaj gumb pokaže "not available yet". Predlog: v v1 skrit; OAuth kasneje kot svoja rezina (`users.github_id`) | F2 |
+| D38 | **ODPRTO** - "Full name" namesto `username` na `/signup` | Dizajn ima polno ime, F2 zahteva `username` (gre v `/profile/[username]`), shema nima imena (prim. D34 `display_name`). Predlog: dodati polje Username ali ga izpeljati iz imena/e-pošte in dovoliti spremembo v nastavitvah | F2, U1 |
+| D39 | **ODPRTO** - minimalna dolžina gesla | Dizajn: "At least 12 characters", F2: ≥ 8. Zdaj obrazec zahteva 12. Predlog: 12 tudi v F2 | F2 |
+| D40 | **ODPRTO** - "Remember me" na `/login` | Dokumenti ne določajo trajanja seje. Predlog: brez kljukice piškotek seje, s kljukico JWT za 30 dni | F2 |
 
 ### Spremembe sheme glede na `01_database.md`
 
@@ -212,7 +216,7 @@ polnijo s seed skripto.
 - API: `POST /problems/:slug/start` → ustvari poskus (ali vrne obstoječega `in_progress`, timer teče naprej od `started_at`), vrne datoteke, drevo, `startedAt`, `timeLimitMinutes`, opise preverjanj (samo `description` + `check_order`).
 - `abandoned` poskus: ista vrstica nazaj v `in_progress`, nov `started_at` (D8).
 - Frontend shranjuje neshranjene spremembe v `localStorage` po poskusu (D14).
-- Frontend: `/problems/[slug]/solve` (Monaco, drevo datotek, timer). Oblika odgovora je `Attempt` v `frontend/src/lib/types/attempt.ts` (+ `repositoryName` po D27); zdaj `CodeEditorMock` namesto Monaca.
+- Frontend: `/problems/[slug]/solve` (Monaco, zavihki datotek, timer). Oblika odgovora je `Attempt` v `frontend/src/lib/types/attempt.ts` (+ `repositoryName` po D27); zdaj `CodeEditorMock` namesto Monaca.
 - Končano, ko: že rešen problem → 409 `ALREADY_SOLVED`; ponoven start ne resetira časa; skrite datoteke niso v odgovoru.
 
 **R2 · Odstop** `S` · odvisno od: R1 · ⬜
@@ -351,11 +355,14 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | `/dashboard` + stranska vrstica (`(app)/layout.tsx`) | `src/lib/mock/dashboard.ts`: `mockGetDashboard` (datumi relativni na zdaj), `MOCK_ME` (uporabnik, cilj, izkušnje), `MOCK_ACTIVE_CONTEST_COUNT`; sličice v `public/mock/` | U3, T1, U2, F4 | ⬜ |
 | `/problems` | `src/lib/mock/problems.ts`: `mockGetProblems` (vsi problemi, filtri/razvrščanje/straničenje na odjemalcu v `ProblemBrowser.tsx`); zaznamki samo v brskalniku (D23) | P1 | ⬜ |
 | `/problems/[slug]` | `src/lib/mock/problems.ts`: `mockGetProblem` (+ `RESULTS` za rešen problem; ocena v `RateProblem` samo v stanju), `mockGetComments` (komentarji samo za rešen problem; objave, odgovori in helpful samo v stanju `Discussion.tsx`) (polni opis samo za `payment-retries-disappear`) | P2 (O1, O2 za oceno in komentarje) | ⬜ |
-| `/problems/[slug]/solve` | `src/lib/mock/attempts.ts`: `mockStartAttempt` (timer teče od zdaj, za `in_progress` od 18:42), `mockRunTests` (vnaprej določeni rezultati); koda v `mockCodebase` (`mock/problems.ts`); urejevalnik je `CodeEditorMock` (samo branje) | R1, R2 (Give up), R4, R5 (terminal), R6 | ⬜ |
+| `/problems/[slug]/solve` | `src/lib/mock/attempts.ts`: `mockStartAttempt` (timer teče od zdaj, za `in_progress` od 18:42), `mockRunTests` (vnaprej določeni rezultati); koda v `mockCodebase` (`mock/problems.ts`); urejevalnik je `CodeEditorMock` (samo branje); split pane: opis (`ProblemOverview`) levo, urejevalnik desno, spodaj Terminal + Test Results; vsaka datoteka je zavihek, izbirnik jezika je samo prikaz; "Submit" = zagon preverjanj | R1, R2 (Give up), R4, R5 (terminal), R6 | ⬜ |
 | `/contests` | `src/lib/mock/contests.ts`: `mockGetContests` (live/upcoming/past + zgodovina uporabnika, datumi relativni na zdaj); prihajajoča tekmovanja brez težavnosti, oznak in sličice (T1); "View contest" vodi na `/contests/[id]` | T1, T2 | ⬜ |
 | `/contests/[id]` | `src/lib/mock/contests.ts`: `mockGetContest` (seznam + `DETAILS`: incident, ime repozitorija (D27), število preverjanj, nagrada, udeležba); problemi tekmovanj so obstoječi mock problemi, da "Enter contest" odpre delujoč zaslon reševanja | T1, T2 | ⬜ |
 | `/profile/[username]` | `src/lib/mock/profile.ts`: `mockGetProfile` (samo `max`, drugi → 404; 147 rešenih problemov, ciklično iz mock problemov; aktivnost 53 tednov = vsak tretji aktivni dan iz `mockActivity`; zgodovina tekmovanj iz `mockGetContests`); neskončno drsenje rešenih na odjemalcu | U1, U2, T2 | ⬜ |
 | `/settings` | `src/lib/mock/profile.ts`: `MOCK_SETTINGS`, `mockSaveSettings` (shrani samo v stanje obrazca - profil in stranska vrstica se ne posodobita); zavihka Practice preferences in Account prazna (D35) | U1 (D34) | ⬜ |
+| `/login` | `src/lib/mock/auth.ts`: `mockLogin` (vedno uspe → `/dashboard`); "Continue with GitHub" pokaže napako (D37); "Remember me" se ne uporabi (D40) | F2 | ⬜ |
+| `/signup` | `src/lib/mock/auth.ts`: `mockSignup` (vedno uspe → `/onboarding`); polno ime namesto `username` (D38), geslo ≥ 12 (D39) | F2 | ⬜ |
+| `/forgot-password` | `src/lib/mock/auth.ts`: `mockRequestPasswordReset` (uspe za vsak e-mail - stran ne razkrije, ali račun obstaja); pošiljanje pošte je odloženo (X5) | X5 (rezina še ne obstaja) | ⏸ |
 | `/admin/problems/new` (Create Problem) | `src/lib/mock/adminProblems.ts`: `mockAnalyzeProblem`, `mockRunCheck` (lint uspe, ostalo pade), `mockSaveProblem` | A10, A4, A2/A5 | ⬜ |
 
 ---
@@ -393,6 +400,7 @@ Odprto:
 | Stran | Rezine |
 | --- | --- |
 | `/login`, `/signup` | F2 |
+| `/forgot-password` | X5 (odloženo) |
 | `/onboarding` | F4 |
 | `/dashboard` | U3, T1 |
 | `/problems` | P1 |

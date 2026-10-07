@@ -31,12 +31,12 @@ export function CodeEditorMock({ path, code }: { path: string; code: string }) {
       role="region"
       aria-label={`Editor: ${path}`}
       tabIndex={0}
-      className="min-h-0 flex-1 overflow-auto bg-canvas py-3 font-mono text-[13px] leading-[25px] focus:outline-none"
+      className="min-h-0 flex-1 overflow-auto bg-[#1e1e1e] py-3 font-mono text-[13px] leading-[25px] focus:outline-none"
     >
       <div className="min-w-max">
         {lines.map((line, i) => (
           <div key={i} className="flex">
-            <span aria-hidden className="sticky left-0 w-14 shrink-0 select-none bg-canvas pr-6 text-right text-muted/60">
+            <span aria-hidden className="sticky left-0 w-14 shrink-0 select-none bg-[#1e1e1e] pr-6 text-right text-[#858585]">
               {i + 1}
             </span>
             <code className="whitespace-pre pr-8 text-text">{highlight(line)}</code>

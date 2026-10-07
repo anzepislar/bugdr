@@ -507,3 +507,98 @@ Predlagani Description:
 
 `Adds /profile/[username] (stats, 12-month activity grid, streak, solved problems with infinite scroll, contest history, share and edit buttons, private state) and /settings (profile details, engineering path, languages, public profile switch). Extracts the activity grid and the contest history list into shared components, moves duration and date formatting into src/lib/format.ts, and links Settings in the sidebar. Runs on mock data until slices U1, U2 and T2 exist; profile fields need a schema decision (D34).`
 
+
+## 7. 10. 2026 — Seja 6: Prijava, registracija, pozabljeno geslo, prenova reševanja
+
+### Narejeno
+
+- `/login`: glava z logotipom in "New to Bugdr? [Sign up]", "Continue
+  with GitHub", ločilo "or", e-pošta, geslo, "Remember me", "Forgot
+  password?" (→ `/forgot-password`), "Sign in" (→ `/dashboard`), opomba o
+  pogojih, noga "© 2026 Bugdr" na dnu zaslona.
+- `/signup`: glava "Already a member? [Sign in]", GitHub, polno ime,
+  e-pošta, geslo (≥ 12 znakov, namig pod poljem), obvezna kljukica za
+  pogoje, "Create account" (→ `/onboarding`, ki še ne obstaja).
+- `/forgot-password`: naslov, e-pošta, "Send reset link", "Back to sign
+  in". Po oddaji sporočilo "If an account exists for …" - enako za vsak
+  e-mail, da stran ne razkrije, ali račun obstaja.
+- Skupno: `components/auth/AuthShell.tsx` (`AuthHeader`, `GitHubSignIn`);
+  polja in gumbi iz `components/admin/problems/shared.tsx`. Strani so
+  zunaj `(app)` postavitve.
+- Mock: `src/lib/mock/auth.ts` → `mockLogin`, `mockSignup`,
+  `mockRequestPasswordReset`.
+
+### Odstopanja od dizajna
+
+- "ProofSignal" → "Bugdr" (v glavi in nogi).
+- Ozadje je `canvas` (kot ostale strani), besedilo gumbov je na sredini.
+- "Continue with GitHub" pokaže "not available yet" (D37).
+- Na telefonu se besedilo pred gumbom v glavi skrije.
+- Stanje po oddaji pozabljenega gesla ni v dizajnu.
+
+Odprta vprašanja v `06`: D37 (GitHub), D38 (polno ime vs. `username`),
+D39 (dolžina gesla), D40 (Remember me). Pošiljanje e-pošte za pozabljeno
+geslo je odloženo (X5).
+
+### Tehnične opombe
+
+- `npm run lint`, `npm run typecheck`, `npm run build` uspešni.
+- Preverjeno s Playwright (skripta ni v repozitoriju): vse tri strani pri
+  320, 390, 768, 1024, 1440 in 2560 px brez vodoravnega drsenja; prijava
+  → `/dashboard`; registracija s kratkim geslom ali brez kljukice ostane
+  na strani, sicer → `/onboarding`; pozabljeno geslo pokaže potrditev.
+  Edine napake v konzoli so 404 za prefetch strani, ki še ne obstajajo.
+
+### Git zapis
+
+Predlagani Summary:
+
+`Add the login, signup and forgot password pages (mock data)`
+
+Predlagani Description:
+
+`Adds /login (GitHub button, email and password, remember me, forgot password link), /signup (full name, email, password with a 12 character minimum, terms checkbox) and /forgot-password (confirmation that does not reveal whether an account exists). Shares the auth header and GitHub block in src/components/auth/AuthShell.tsx. Runs on mocks until slice F2; GitHub sign-in, username on signup, password length and remember me are open (D37-D40), password reset email is deferred (X5).`
+
+### Prenova reševanja (split pane)
+
+- `/problems/[slug]`: odstranjen zavihek Repository (seznam datotek);
+  ostaneta Overview in Discussion. "Start problem" že vodi na `/solve`.
+- Opis in "Acceptance checks" premaknjena v
+  `components/problems/ProblemOverview.tsx` (`Description`,
+  `AcceptanceChecks`) - ista vsebina na podrobnostih in v levem panelu.
+- `/problems/[slug]/solve` (`components/solve/Workspace.tsx`), celozaslonsko
+  (100vw × 100vh, brez `(app)` postavitve):
+  - zgornja vrstica 48 px: logotip + naslov, timer na sredini, "Give up",
+    "Submit" (zažene preverjanja; namesto "Run tests");
+  - levo opis (privzeto 40 %, najmanj 300 px, svoj drsnik), ročaj 4 px
+    za spreminjanje širine z miško (urejevalnik ostane ≥ 300 px), gumb
+    za skrivanje (chevron) → širina 0 z animacijo, gumb za ponovno
+    odprtje na levem robu urejevalnika vrne prejšnjo širino;
+  - desno urejevalnik (#1e1e1e): vrstica 36 px z zavihkom za vsako
+    datoteko in izbirnikom jezika (samo prikaz), številke vrstic #858585;
+  - spodaj panel 200 px: Terminal in Test Results (pike: čaka / teče
+    (rumena) / uspe (zelena) / pade (rdeča) + izpis napake). Ročaj nad
+    panelom je zaenkrat samo videz.
+- Pod `md` je odprt opis čez celo širino; chevron preklopi na urejevalnik.
+- Odstranjeno: leva vrstica z ikonami, drevo datotek, desni panel s
+  preverjanji, statusna vrstica, zavihka Output in Problems (D29 rešeno).
+  `components/solve/FileTree.tsx` se ne uporablja več (ni izbrisan).
+- `Icon`: dodan `chevronLeft`.
+
+Odstopanja od navodil: timer za nadaljevan poskus (`in_progress`) teče od
+začetka poskusa, ne od 00:00 (R1). Namesto enega zavihka so zavihki za vse
+datoteke, ker ni več drevesa datotek.
+
+Preverjeno: lint, typecheck, build; Playwright pri 320-2560 px brez
+vodoravnega drsenja, `/solve` brez navpičnega drsenja strani; privzeta
+širina 40 %, vlečenje omejeno na 300 px / širina − 300 px, skrij → 0,
+odpri → prejšnja širina, Submit pokaže rezultate; brez napak v konzoli.
+
+Git zapis (Summary): `Redesign the solve page as a fullscreen split pane`
+
+Animacija ob začetku: na `/solve` se opis najprej izriše čez celo širino
+(kot na podrobnostih), nato se v 500 ms (ease-out) skrči na 40 %, levi rob
+urejevalnika se premakne z njim - urejevalnik "pripelje" z desne. Ista
+animacija velja za skrivanje/odpiranje opisa (prej 300 ms); z
+`prefers-reduced-motion` brez animacije. Preverjeno s Playwright
+(širina 883 → 737 → 646 → 595 → 576 px).
