@@ -39,7 +39,24 @@ function Avatar({ className }: { className: string }) {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-  const current = NAV.find((item) => isActive(item.href));
+  // Admin pages highlight the user page they manage (/admin/contests → Contests).
+  const navPath = pathname.replace(/^\/admin(?=\/)/, "");
+  const isNavActive = (href: string) => navPath === href || navPath.startsWith(`${href}/`);
+  const current = NAV.find((item) => isNavActive(item.href));
+  const crumb =
+    pathname === "/admin/contests/new"
+      ? "Admin / New contest"
+      : /^\/admin\/contests\/[^/]+\/edit$/.test(pathname)
+        ? "Admin / Edit contest"
+        : pathname.startsWith("/admin/contests")
+          ? "Admin / Contests"
+          : pathname.startsWith("/problems/")
+            ? "Problem details"
+            : pathname.startsWith("/contests/")
+              ? "Contest details"
+              : isActive("/settings")
+                ? "Settings"
+                : current?.label;
 
   return (
     <div className="flex min-h-screen flex-1">
@@ -54,12 +71,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              aria-current={isActive(item.href) ? "page" : undefined}
+              aria-current={isNavActive(item.href) ? "page" : undefined}
               className={`flex items-center gap-3 rounded px-3 py-2.5 text-sm ${
-                isActive(item.href) ? "bg-surface font-semibold text-text" : "text-muted hover:text-text"
+                isNavActive(item.href) ? "bg-surface font-semibold text-text" : "text-muted hover:text-text"
               }`}
             >
-              <Icon name={item.icon} className={`h-5 w-5 ${isActive(item.href) ? "text-action" : ""}`} />
+              <Icon name={item.icon} className={`h-5 w-5 ${isNavActive(item.href) ? "text-action" : ""}`} />
               <span className="flex-1">{item.label}</span>
               {item.badge ? (
                 <span className="rounded bg-surface px-1.5 text-xs font-medium text-action">{item.badge}</span>
@@ -91,6 +108,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Icon name="settings" className={`h-5 w-5 ${isActive("/settings") ? "text-action" : ""}`} /> Settings
           </Link>
+          {/* ponytail: no session to end yet; F2 clears the JWT cookie, then redirects. */}
+          <Link href="/login" className="flex items-center gap-3 rounded px-3 py-2 text-sm text-failed hover:opacity-80">
+            <Icon name="logout" /> Log out
+          </Link>
           {/* No route yet. */}
           <a href="#" className="flex items-center gap-3 rounded px-3 py-2 text-sm text-muted hover:text-text">
             <Icon name="help" /> Help &amp; feedback
@@ -114,13 +135,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="text-muted">Workspace</span>
             <Icon name="chevronRight" className="h-3.5 w-3.5 text-muted" />
             <span className="text-text">
-              {pathname.startsWith("/problems/")
-                ? "Problem details"
-                : pathname.startsWith("/contests/")
-                  ? "Contest details"
-                  : isActive("/settings")
-                    ? "Settings"
-                    : current?.label}
+              {crumb}
             </span>
           </nav>
           <form action="/problems" role="search" className="relative ml-auto w-full max-w-[275px]">
@@ -147,9 +162,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              aria-current={isActive(item.href) ? "page" : undefined}
+              aria-current={isNavActive(item.href) ? "page" : undefined}
               className={`shrink-0 rounded px-3 py-1.5 text-sm ${
-                isActive(item.href) ? "bg-surface font-semibold text-text" : "text-muted"
+                isNavActive(item.href) ? "bg-surface font-semibold text-text" : "text-muted"
               }`}
             >
               {item.label}

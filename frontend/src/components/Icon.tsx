@@ -19,6 +19,9 @@ const PATHS = {
   check: "M20 6 9 17l-5-5",
   lock: "M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4",
   terminal: "M4 17l6-6-6-6M12 19h8",
+  more: "M5 12h.01M12 12h.01M19 12h.01",
+  logout: "M9 21H5V3h4M16 17l5-5-5-5M21 12H9",
+  calendar: "M3 5h18v16H3zM3 10h18M8 3v4M16 3v4",
 };
 
 export type IconName = keyof typeof PATHS;

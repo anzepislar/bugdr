@@ -49,27 +49,68 @@ Route: `/admin` — fully protected, redirects non-admins.
 
 ### 2. Contests Management (`/admin/contests`)
 
-**View all contests:**
-- Table with title, type, start date, end date, status (upcoming/active/ended)
-- Filter by type and status
+**Status is calculated, never stored.**
+There is no status column. Every screen and API derives it from the dates
+(frontend: `src/lib/getContestStatus.ts`):
 
-**Create contest:**
-- Title
-- Description
-- Type: daily / weekly / monthly
-- Start date + time
-- End date + time
-- Reward type: subscription / merch / points
-- Reward description (free text — "1 year free subscription" or "Bugdr hoodie")
+| Status | Rule |
+|--------|------|
+| Draft | `starts_at` is null (not scheduled yet) |
+| Scheduled | `starts_at` is set and `starts_at > now()` |
+| Active | `starts_at <= now()` and `ends_at >= now()` |
+| Ended | `ends_at < now()` |
 
-**Assign problems to contest:**
-- Search and select from published problems
-- Recommended: Hard or Get a job difficulty
+Lifecycle: **Draft → Scheduled → Active → Ended.** A scheduled contest can be
+cancelled, which sets `starts_at` (and `ends_at`) back to null, so it is a
+draft again. Contests become active and end on their own; there is no
+manual "start" or "end".
+
+Schema impact: `contests.starts_at` / `ends_at` must allow NULL (drafts).
+
+**View all contests (`/admin/contests`):**
+- Search by title
+- Contests grouped by status: Active, Scheduled, Drafts, Ended
+- Status badges: Draft and Ended muted gray, Scheduled Action blue,
+  Active green with a pulsing dot
+- Each row: title, type, status, date range ("Not scheduled" for drafts),
+  number of problems, reward
+- Actions per status:
+  - Draft: Edit, Schedule (uses the automatic dates for its type), Delete
+  - Scheduled: Edit, Cancel (back to draft)
+  - Active: View results (read only)
+  - Ended: View results, Archive
+- Only drafts and scheduled contests can be edited.
+
+**Create / edit contest (`/admin/contests/new`, `/admin/contests/[id]/edit`) - 4 steps:**
+
+1. **Basic info** - title, description, contest type.
+   The type drives the dates automatically (UTC, frontend: `src/lib/getContestDates.ts`):
+   - Daily: starts at the next midnight, runs 24 hours (00:00-23:59:59)
+   - Weekly: starts next Monday 00:00, ends Sunday 23:59:59
+   - Monthly: starts on the 1st of next month 00:00, ends on its last day 23:59:59
+
+   A preview shows "This contest will run from [date] to [date]".
+   **Custom dates** (off by default) overrides the automatic dates with a
+   manual start and end. Custom dates must end after they start and start
+   in the future.
+2. **Problems** - search published problems (title, difficulty, category),
+   click to add, remove from the added list. **At least 1 problem per
+   contest.** Recommended: Hard or Get a job difficulty.
+3. **Reward** - reward type (subscription / merch / points) or no reward;
+   reward description is free text ("1 year free subscription", "Bugdr
+   hoodie") and required once a type is chosen.
+4. **Review** - summary of everything, then:
+   - **Save as Draft** - saved with `starts_at = null` (status Draft)
+   - **Schedule Contest** - saved with the automatic or custom dates
+     (status Scheduled)
 
 **View contest results:**
 - Leaderboard for ended contests
 - Rank, username, score, solve time
 - Export to CSV (for sending rewards)
+
+**Archive:** ended contests can be archived to hide them from the list.
+Not in the schema yet - needs `contests.archived_at TIMESTAMP` (null = not archived).
 
 ---
 

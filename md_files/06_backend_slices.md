@@ -19,9 +19,10 @@ povezala na API.
 ```
 Zadnja posodobitev: 7. 10. 2026
 Backend: ni začet (nobena rezina ni narejena)
-Frontend: 13 zaslonov na mocku - /login, /signup, /forgot-password, /onboarding, /dashboard,
+Frontend: 15 zaslonov na mocku - /login, /signup, /forgot-password, /onboarding, /dashboard,
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
-          /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new
+          /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
+          /admin/contests, /admin/contests/new
 Naslednja rezina: F0 (ko se začne backend - Faza 2/3 iz 00_bugdr_razvoj.md)
 ```
 
@@ -104,6 +105,8 @@ dokler je uporabnik ne potrdi.
 | D39 | **ODPRTO** - minimalna dolžina gesla | Dizajn: "At least 12 characters", F2: ≥ 8. Zdaj obrazec zahteva 12. Predlog: 12 tudi v F2 | F2 |
 | D40 | **ODPRTO** - "Remember me" na `/login` | Dokumenti ne določajo trajanja seje. Predlog: brez kljukice piškotek seje, s kljukico JWT za 30 dni | F2 |
 | D41 | **ODPRTO** - "Exploring my path" na onboardingu | Dizajn ima 6. vlogo, `goal_role` dovoli samo 5 kategorij. Zdaj mock pošlje `"exploring"`. Predlog: `goal_role = NULL` = raziskujem; D19 feed brez filtra kategorije | F4, U3 |
+| D43 | **ODPRTO** - osnutki tekmovanj | Dizajn `/admin/contests` ima stanje "Draft" in gumb "Save draft", `contests` nima stolpca za objavo, `starts_at`/`ends_at` sta `NOT NULL`. Zdaj mock: osnutek = `isPublished: false`, lahko brez problema in datumov; "Scheduled"/"Live"/"Ended" izpeljano iz datumov. Predlog: `contests.is_published BOOLEAN NOT NULL DEFAULT FALSE`, `starts_at`/`ends_at` NULL dovoljen samo za osnutek (`CHECK (is_published = FALSE OR (starts_at IS NOT NULL AND ends_at IS NOT NULL))`); javni `GET /contests` vrne samo objavljena | A6, T1 |
+| D44 | **ODPRTO** - pravila ob objavi tekmovanja | "Publishing checklist" na `/admin/contests/new`: naslov, problem, težavnost Hard/Get a job (`04` to samo priporoča), ≥ 3 preverjanja problema, začetek v prihodnosti in konec po začetku, opis. Zdaj "Schedule" zahteva vse. Odprto: ali je težavnost blokada ali opozorilo; ali se tekmovanja iste vrste smejo prekrivati; `reward_type` (`04`) ni v dizajnu - zdaj samo `reward_description` | A6 |
 | D42 | **ODPRTO** - jeziki na onboardingu (korak 4) | Dizajn sprašuje po jezikih, F4 in shema jih nimata (prim. D34 `languages TEXT[]`). Zdaj mock pošlje `languages`; povzetek "Your starting path" vzame prvi izbrani jezik. Predlog: `user_profiles.languages` iz D34, F4 sprejme `languages` | F4, U1 |
 
 ### Spremembe sheme glede na `01_database.md`
@@ -120,6 +123,7 @@ Posledica odločitev - narejene v migraciji rezine, ki tabelo ustvari:
 | `contests` / `contest_entries` | + oznaka "nagrada poslana" (`04`) - točna oblika ob rezini | - | A7 |
 | `problem_comments` | + `parent_id`, + `helpful_count`; nova tabela `comment_helpful` (predlog, čaka odločitev) | D30 | O2 |
 | `problems` | + `bug_summary TEXT` (interna opomba AI analize, samo admin, nikoli k uporabniku) - zahteva zaslona Create Problem | - | A2 |
+| `contests` | + `is_published BOOLEAN NOT NULL DEFAULT FALSE`, `starts_at`/`ends_at` NULL za osnutke (predlog, čaka odločitev) | D43 | A6 |
 | `user_profiles` | + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, `languages TEXT[]`, `is_public BOOLEAN DEFAULT TRUE` (predlog, čaka odločitev) | D34 | U1 |
 
 `01_database.md` se ob tem **ne spreminja samodejno** - posodobi se le, če
@@ -329,6 +333,10 @@ polnijo s seed skripto.
 
 **A6 · Tekmovanja** `M` · odvisno od: A1, T1 · ⬜
 - API: `GET/POST/PATCH /admin/contests`, dodeljevanje objavljenih problemov.
+- Seznam (`/admin/contests`): `AdminContestRow` (`frontend/src/lib/types/contest.ts`) - stanje `draft`/`scheduled`/`live`/`ended` (D43), problem (težavnost, kategorija), `entryCount` = število `contest_entries`; iskanje po naslovu in filter stanja kot query parametra. Brisanje samo osnutkov.
+- Shranjevanje (`/admin/contests/new`): telo je `AdminContestDraft` - `title`, `type`, `problemSlug` (en problem, D33), `startsAt`/`endsAt` (UTC), `description`, `rewardDescription`, `isPublished`. Objava preveri pravila iz D44 tudi na strežniku.
+- Izbirnik problemov: objavljeni problemi s številom preverjanj (`ContestProblemOption`).
+- Frontend: `mockGetAdminContests`, `mockDeleteContest`, `mockSaveContest`, `mockGetContestProblemOptions` v `src/lib/mock/adminContests.ts` → API.
 
 **A7 · Rezultati tekmovanj + CSV** `S` · odvisno od: A6, T2 · ⬜
 - API: `GET /admin/contests/:id/results` (+ `?format=csv`), oznaka "nagrada poslana" (stolpec ni v shemi - dodaj ob rezini).
@@ -368,6 +376,8 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | `/forgot-password` | `src/lib/mock/auth.ts`: `mockRequestPasswordReset` (uspe za vsak e-mail - stran ne razkrije, ali račun obstaja); pošiljanje pošte je odloženo (X5) | X5 (rezina še ne obstaja) | ⏸ |
 | `/onboarding` | `src/lib/mock/auth.ts`: `mockSaveOnboarding` (vedno uspe → `/dashboard`); vloga "exploring" (D41), jeziki (D42); "Sign out" je povezava na `/login` | F4 (F2 za odjavo) | ⬜ |
 | `/admin/problems/new` (Create Problem) | `src/lib/mock/adminProblems.ts`: `mockAnalyzeProblem`, `mockRunCheck` (lint uspe, ostalo pade), `mockSaveProblem` | A10, A4, A2/A5 | ⬜ |
+| `/admin/contests` | `src/lib/mock/adminContests.ts`: `mockGetAdminContests` (12 tekmovanj, datumi relativni na zdaj; objavljena imajo id-je iz `mock/contests.ts`, da "View contest page" deluje), `mockDeleteContest` (samo osnutki, samo v stanju strani); iskanje in zavihki na odjemalcu; neskončno drsenje po 10 | A6 | ⬜ |
+| `/admin/contests/new` | `src/lib/mock/adminContests.ts`: `mockGetContestProblemOptions` (mock problemi, izmišljeno število preverjanj), `mockSaveContest` (vedno uspe, seznam se ne posodobi); časi v UTC (`datetime-local`), konec sledi obdobju, dokler ga admin ne spremeni | A6 (D43, D44) | ⬜ |
 
 ---
 
@@ -414,4 +424,5 @@ Odprto:
 | `/settings` | U1 (D34-D36) |
 | `/contests`, `/contests/[id]` | T1, T2 |
 | `/admin/problems/new` | A10, A2, A4, A5 |
+| `/admin/contests`, `/admin/contests/new` | A6 |
 | `/admin/*` | A1-A9 |

@@ -144,13 +144,13 @@ Time multiplier:
 Updated at the end of every session. Read this first in a new session.
 
 ```
-Last session: 7. 10. 2026 — Seja 6 (login, signup, forgot password, solve page redesign, onboarding)
+Last session: 7. 10. 2026 — Seja 7 (admin contests list + create contest)
 Phase: Frontend build from Figma designs (mock data)
-Frontend: 13 screens on mock data — /onboarding, /login, /signup, /forgot-password, /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new (Create Problem), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx), /problems, /problems/[slug] (Overview + Discussion; + solved state), /problems/[slug]/solve (fullscreen split pane, editor = read-only Monaco stand-in)
+Frontend: 15 screens on mock data — /admin/contests, /admin/contests/new, /onboarding, /login, /signup, /forgot-password, /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new (Create Problem), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx), /problems, /problems/[slug] (Overview + Discussion; + solved state), /problems/[slug]/solve (fullscreen split pane, editor = read-only Monaco stand-in)
 Backend: Not started — plan in md_files/06_backend_slices.md (decisions D1-D19 + D31 locked)
 Database: Schema designed, not created yet
 Next step: next frontend screen (waiting for user)
-Open questions: add schema changes to 01_database.md? · D20 validation rule · D21-D22 · D23 bookmarks · D24 feed filters vs. D19 · D25 notifications · D26 check descriptions on detail · D27 repository name · D28 Give up · D30 comment helpful/replies · D32 contest history checks · D33 one problem per contest · D34 profile fields schema · D35 empty settings tabs · D36 starting difficulty · D37 GitHub sign-in · D38 username on signup · D39 password length · D40 remember me · D41 "exploring" role · D42 onboarding languages (all in 06)
+Open questions: add schema changes to 01_database.md? · D20 validation rule · D21-D22 · D23 bookmarks · D24 feed filters vs. D19 · D25 notifications · D26 check descriptions on detail · D27 repository name · D28 Give up · D30 comment helpful/replies · D32 contest history checks · D33 one problem per contest · D34 profile fields schema · D35 empty settings tabs · D36 starting difficulty · D37 GitHub sign-in · D38 username on signup · D39 password length · D40 remember me · D41 "exploring" role · D42 onboarding languages · D43 contest drafts · D44 contest publish rules (all in 06)
 ```
 
 ### Session tracking

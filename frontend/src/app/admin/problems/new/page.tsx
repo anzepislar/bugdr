@@ -4,7 +4,7 @@ import { useState } from "react";
 import { DefineStep } from "@/components/admin/problems/DefineStep";
 import { PublishStep } from "@/components/admin/problems/PublishStep";
 import { MIN_CHECKS, ReviewStep } from "@/components/admin/problems/ReviewStep";
-import { ErrorMessage, Spinner, cardClass, primaryButton, secondaryButton } from "@/components/admin/problems/shared";
+import { ErrorMessage, Spinner, StepIndicator, cardClass, primaryButton, secondaryButton } from "@/components/admin/problems/shared";
 import { UploadStep } from "@/components/admin/problems/UploadStep";
 import { ValidateStep } from "@/components/admin/problems/ValidateStep";
 import { mockAnalyzeProblem, mockRunCheck, mockSaveProblem } from "@/lib/mock/adminProblems";
@@ -161,7 +161,7 @@ function CreateProblemWizard({ onReset }: { onReset: () => void }) {
       <p className="text-sm text-muted">Admin · Problems</p>
       <h1 className="mt-1 text-2xl font-semibold">Create problem</h1>
 
-      <StepIndicator current={step} />
+      <StepIndicator steps={STEPS} current={step} />
 
       <div className="mt-8">
         {step === 1 && <UploadStep file={file} onFileChange={setFile} onAnalyze={analyze} />}
@@ -263,38 +263,5 @@ function CreateProblemWizard({ onReset }: { onReset: () => void }) {
         </div>
       )}
     </main>
-  );
-}
-
-function StepIndicator({ current }: { current: number }) {
-  return (
-    <ol className="mt-6 grid grid-cols-3 gap-2 sm:grid-cols-6">
-      {STEPS.map((label, i) => {
-        const n = i + 1;
-        const state = n < current ? "done" : n === current ? "current" : "todo";
-        return (
-          <li
-            key={label}
-            aria-current={state === "current" ? "step" : undefined}
-            className={`flex items-center gap-2 rounded border px-3 py-2 text-sm ${
-              state === "current" ? "border-action bg-surface text-text" : "border-border"
-            } ${state === "todo" ? "text-muted" : ""}`}
-          >
-            <span
-              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs ${
-                state === "current"
-                  ? "bg-action text-canvas"
-                  : state === "done"
-                    ? "border border-action text-action"
-                    : "border border-border text-muted"
-              }`}
-            >
-              {state === "done" ? "✓" : n}
-            </span>
-            {label}
-          </li>
-        );
-      })}
-    </ol>
   );
 }

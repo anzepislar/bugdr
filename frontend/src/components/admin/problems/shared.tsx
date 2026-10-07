@@ -59,3 +59,36 @@ export function ErrorMessage({ children }: { children: ReactNode }) {
     </p>
   );
 }
+
+export function StepIndicator({ steps, current }: { steps: string[]; current: number }) {
+  return (
+    <ol className={`mt-6 grid grid-cols-3 gap-2 ${steps.length === 4 ? "sm:grid-cols-4" : "sm:grid-cols-6"}`}>
+      {steps.map((label, i) => {
+        const n = i + 1;
+        const state = n < current ? "done" : n === current ? "current" : "todo";
+        return (
+          <li
+            key={label}
+            aria-current={state === "current" ? "step" : undefined}
+            className={`flex items-center gap-2 rounded border px-3 py-2 text-sm ${
+              state === "current" ? "border-action bg-surface text-text" : "border-border"
+            } ${state === "todo" ? "text-muted" : ""}`}
+          >
+            <span
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs ${
+                state === "current"
+                  ? "bg-action text-canvas"
+                  : state === "done"
+                    ? "border border-action text-action"
+                    : "border border-border text-muted"
+              }`}
+            >
+              {state === "done" ? "✓" : n}
+            </span>
+            {label}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}

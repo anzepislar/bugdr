@@ -635,3 +635,53 @@ Preverjeno: lint, typecheck, build; Playwright pri 320-2560 px brez
 vodoravnega drsenja, celoten potek do `/dashboard`, brez napak v konzoli.
 
 Git zapis (Summary): `Add the onboarding flow (mock data)`
+
+## 7. 10. 2026 — Seja 7: Admin - tekmovanja
+
+### Seznam tekmovanj
+
+- `/admin/contests` (`src/app/(app)/admin/contests/page.tsx`): naslov,
+  oznaka ADMIN, iskanje po naslovu, "+ Create contest", zavihki All
+  contests (N) / Drafts / Scheduled, tabela Contest (naslov + težavnost ·
+  kategorija problema) / Period / Status / Closes (UTC) / Entries / meni
+  "⋯" ("View contest page" za objavljena, "Delete draft" s potrditvijo za
+  osnutke).
+- Pod `md` se stolpci Period, Closes in Entries preselijo pod naslov.
+- Neskončno drsenje (po 10) namesto "Next page" iz dizajna - pravilo iz
+  CLAUDE.md; "Showing X of Y contests" pod seznamom.
+
+### Ustvarjanje tekmovanja
+
+- `/admin/contests/new` (`.../admin/contests/new/page.tsx`): povezava nazaj,
+  "Save draft" (zahteva naslov) in "Schedule" (zahteva cel kontrolni
+  seznam), polja naslov, obdobje (Daily/Weekly/Monthly), izbirnik problema
+  (iskanje → izbran problem s "Change"), začetek in konec v UTC
+  (`datetime-local`), opis, nagrada (neobvezno).
+- Konec se samodejno nastavi na zadnjo minuto obdobja (dnevno 00:00 →
+  23:59), dokler ga admin ne spremeni ročno.
+- "Publishing checklist" desno (na telefonu pod obrazcem), se sproti
+  posodablja; po shranjevanju kartica z "Back to contest management" /
+  "Create another contest".
+
+### Skupno
+
+- Strani sta v skupini `(app)` (stranska vrstica); `AppShell` za
+  `/admin/...` označi stran, ki jo upravlja (Contests), drobtine
+  "Admin / Contests" in "Admin / New contest".
+- Tipi `AdminContestRow`, `AdminContestDraft`, `ContestProblemOption` v
+  `lib/types/contest.ts`; `formatUtcDateTime` v `lib/format.ts`; ikona
+  `more`.
+- Mock: `src/lib/mock/adminContests.ts`.
+
+Odstopanja: "ProofSignal" → "Bugdr"; kontrolni seznam ima še "Title added",
+težavnost je "Hard or Get a job" (`04`); stanje "Ended" za končana
+tekmovanja; obrazec začne prazen (dizajn kaže izpolnjenega); podnaslov
+vrstice je kategorija problema namesto "Production incident".
+
+Odprto v `06`: D43 (osnutki - `contests` nima stolpca), D44 (pravila
+objave, `reward_type`).
+
+Preverjeno: lint, typecheck, build; Playwright pri 320-2560 px brez
+vodoravnega drsenja, izbira problema in izpolnjen obrazec, brez napak v
+konzoli.
+

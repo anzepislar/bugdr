@@ -19,3 +19,14 @@ export const duration = (s: number) =>
 /** "Sep 28, 2026" */
 export const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+/** "Oct 6, 23:59" in UTC (contest times are set in UTC). */
+export const formatUtcDateTime = (iso: string) =>
+  new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: "UTC",
+  });
