@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 import { ErrorMessage, FieldLabel, inputClass, primaryButton, Spinner } from "@/components/admin/problems/shared";
 import { AuthHeader, authFieldClass, GitHubSignIn } from "@/components/auth/AuthShell";
 import { mockLogin } from "@/lib/mock/auth";
+import { safeNext } from "@/lib/session";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function LoginPage() {
     setStatus("sending");
     try {
       await mockLogin({ ...form, email: form.email.trim() });
-      router.push("/dashboard");
+      router.push(safeNext(new URLSearchParams(window.location.search).get("next")));
     } catch {
       setStatus("error");
     }

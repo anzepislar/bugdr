@@ -794,12 +794,45 @@ neuspel Duplicate Check za že dodan ZIP, brez napak v konzoli.
 Preverjeno: lint, typecheck, build; Playwright 320-2560 px, pravilna
 aktivna povezava na vseh admin straneh in na `/dashboard`.
 
+
+### Dostop brez prijave (po navodilu uporabnika)
+
+- `/dashboard`, `/problems` in `/problems/[slug]` so javni. Urejevalnik
+  (`/problems/[slug]/solve`), `/settings`, `/onboarding` in `/admin/*`
+  preusmerijo na `/login?next=…` (`src/proxy.ts` - v Next 16 se
+  middleware imenuje proxy).
+- Mock seja: piškotek `bugdr_session` (`src/lib/session.ts`), nastavita
+  ga `mockLogin` (s "Remember me" 30 dni) in `mockSignup`, pobriše ga
+  "Log out" (`mockLogout`). F2 ga zamenja s pravim JWT piškotkom pod
+  istim imenom.
+- `(app)/layout.tsx` prebere piškotek in ga poda v `SessionProvider`
+  (`src/components/app/Session.tsx`: `useSignedIn`, `useLoginHref`,
+  `Locked`).
+- Gost v stranski vrstici: Dashboard, Problems, Contests (brez My
+  profile), namesto "Your path" kratko besedilo, spodaj Log in / Sign up;
+  v glavi gumb "Log in" namesto avatarja in zvonca.
+- Dashboard za gosta: naslov "Debug real code. Get real results.",
+  brez pasice "Pick up where you left off", seznam "Start with these
+  problems" brez filtra vloge in težavnosti, "Your progress" zamegljen z
+  "Log in to unlock" (pod zameglitvijo so vzorčni podatki).
+- `/problems` za gosta: brez stanj Solved / In progress; zaznamek in
+  "Saved problems" vodita na prijavo.
+- `/problems/[slug]` za gosta: brez rešenega stanja, gumb "Log in to
+  start" (po prijavi naravnost v urejevalnik) + "Sign up free", besedilo
+  zaklenjene razprave omeni prijavo.
+- Prijava upošteva `?next=` (samo poti na isti strani - `safeNext`).
+
+Preverjeno: lint, typecheck, build; Playwright - gost na dashboardu,
+problemih in podrobnostih, vse štiri zaščitene poti → `/login?next=…`,
+prijava iz "Log in to start" pristane v urejevalniku, odjava znova zaklene
+urejevalnik; 320-2560 px brez vodoravnega drsenja, brez napak v konzoli.
+
 ### Git zapis
 
 Predlagani Summary:
 
-`Add the admin overview and the 3-step Add Problem flow with an admin sidebar (mock data)`
+`Add the admin overview, the 3-step Add Problem flow, an admin sidebar and guest access (mock data)`
 
 Predlagani Description:
 
-`Adds /admin: date range pills, five stat cards (total and active users, published problems, solves, active contests) with trends, recharts charts for user growth (signups / DAU), solves per day, solves by difficulty, by role and user streaks, and the Top Problems and Needs Attention tables. Reduces /admin/problems/new from six steps to three: Analysis (ZIP upload and a duplicate check, production test and AI analysis pipeline with per-step states, error card and retry), Review (internal AI note, descriptions, tags, difficulty, role and acceptance checks) and Publish (summary, save as draft or publish, success state). Admin pages get their own sidebar (Overview, Add problem, Contests, Back to app), and Add Problem moves into the (app) group so it has one; the URL is unchanged. Adds recharts. Runs on mock data until slices A9, A10, A2 and A5 exist; the missing title, time limit and dry run are open (D45), as are the stats windows (D46).`
+`Adds /admin: date range pills, five stat cards (total and active users, published problems, solves, active contests) with trends, recharts charts for user growth (signups / DAU), solves per day, solves by difficulty, by role and user streaks, and the Top Problems and Needs Attention tables. Reduces /admin/problems/new from six steps to three: Analysis (ZIP upload and a duplicate check, production test and AI analysis pipeline with per-step states, error card and retry), Review (internal AI note, descriptions, tags, difficulty, role and acceptance checks) and Publish (summary, save as draft or publish, success state). Admin pages get their own sidebar (Overview, Add problem, Contests, Back to app), and Add Problem moves into the (app) group so it has one; the URL is unchanged. Opens /dashboard, /problems and /problems/[slug] to guests: a mock session cookie (set by login and signup, cleared by log out) drives a guest sidebar and top bar, a blurred "Log in to unlock" progress panel, problems without personal status, bookmarks that ask to log in and a "Log in to start" button; a Next 16 proxy redirects the editor, settings, onboarding and admin to /login?next=, and login returns to that page. Adds recharts. Runs on mock data until slices A9, A10, A2, A5, F2 and F3 exist; the missing title, time limit and dry run are open (D45), as are the stats windows (D46).`

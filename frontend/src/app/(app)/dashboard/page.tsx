@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Locked, useSignedIn } from "@/components/app/Session";
 import { ProgressPanel } from "@/components/dashboard/ProgressPanel";
 import { RecommendedFeed } from "@/components/dashboard/RecommendedFeed";
 import { DifficultyPill } from "@/components/DifficultyPill";
@@ -29,6 +30,7 @@ function elapsed(startedAt: string, now: number): string {
 export default function DashboardPage() {
   // Data only exists client-side (like the real fetch will), so time-based text never mismatches on hydration.
   const [state, setState] = useState<{ data: Dashboard; now: number } | null>(null);
+  const signedIn = useSignedIn();
 
   useEffect(() => {
     mockGetDashboard().then((data) => setState({ data, now: Date.now() }));
@@ -46,9 +48,11 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h1 className="text-3xl font-semibold text-text">
-            {greeting(date)}, {MOCK_ME.displayName}
+            {signedIn ? `${greeting(date)}, ${MOCK_ME.displayName}` : "Debug real code. Get real results."}
           </h1>
-          <p className="mt-2 text-muted">A little progress. A stronger engineer.</p>
+          <p className="mt-2 text-muted">
+            {signedIn ? "A little progress. A stronger engineer." : "Fix real production bugs and prove your skills."}
+          </p>
         </div>
         <p className="pt-3 text-xs font-medium uppercase tracking-wide text-muted">
           {date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
@@ -77,16 +81,33 @@ export default function DashboardPage() {
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_324px] xl:items-start">
         <div className="flex min-w-0 flex-col gap-6">
-          {data.inProgress ? <ResumeBanner attempt={data.inProgress} now={now} /> : null}
-          <RecommendedFeed problems={data.feed} goalRole={MOCK_ME.goalRole} experienceLevel={MOCK_ME.experienceLevel} />
+          {signedIn && data.inProgress ? <ResumeBanner attempt={data.inProgress} now={now} /> : null}
+          {signedIn ? (
+            <RecommendedFeed problems={data.feed} goalRole={MOCK_ME.goalRole} experienceLevel={MOCK_ME.experienceLevel} />
+          ) : (
+            <RecommendedFeed problems={data.feed.map((p) => ({ ...p, solved: false }))} />
+          )}
         </div>
-        <ProgressPanel
-          stats={data.stats}
-          activity={data.activity}
-          recentWins={data.recentWins}
-          now={now}
-          profileHref={`/profile/${MOCK_ME.username}`}
-        />
+        {signedIn ? (
+          <ProgressPanel
+            stats={data.stats}
+            activity={data.activity}
+            recentWins={data.recentWins}
+            now={now}
+            profileHref={`/profile/${MOCK_ME.username}`}
+          />
+        ) : (
+          // ponytail: sample stats under the blur; GET /dashboard (U3) sends none to guests.
+          <Locked label="your progress, level and streak">
+            <ProgressPanel
+              stats={data.stats}
+              activity={data.activity}
+              recentWins={data.recentWins}
+              now={now}
+              profileHref="/login"
+            />
+          </Locked>
+        )}
       </div>
     </div>
   );

@@ -110,6 +110,7 @@ and scale with a CSS height. Raster files: for sharp retina display keep the ren
 - Streak continues if user opens at least one problem per day
 - Points are never updated directly — always insert a new `point_transactions` row
 - Frontend never reads the database directly — always through API
+- Public without login: `/dashboard`, `/problems`, `/problems/[slug]` (+ auth pages, contests, profiles). Account-only parts are blurred with "Log in to unlock" (`Locked`, `src/components/app/Session.tsx`). The editor (`/problems/[slug]/solve`), `/settings`, `/onboarding` and `/admin/*` redirect to `/login?next=…` (`src/proxy.ts`)
 
 ---
 
@@ -148,7 +149,7 @@ Time multiplier:
 Updated at the end of every session. Read this first in a new session.
 
 ```
-Last session: 7. 10. 2026 — Seja 8 (admin overview with recharts; Add Problem reduced to 3 steps with analysis pipeline)
+Last session: 7. 10. 2026 — Seja 8 (admin overview with recharts; Add Problem in 3 steps; admin sidebar; guest access with mock session cookie)
 Phase: Frontend build from Figma designs (mock data)
 Frontend: 17 screens on mock data — /admin (overview), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit, /onboarding, /login, /signup, /forgot-password, /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new (Add Problem, 3 steps), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx), /problems, /problems/[slug] (Overview + Discussion; + solved state), /problems/[slug]/solve (fullscreen split pane, editor = read-only Monaco stand-in)
 Backend: Not started — plan in md_files/06_backend_slices.md (decisions D1-D19 + D31 locked)

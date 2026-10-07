@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLoginHref, useSignedIn } from "@/components/app/Session";
 import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
 import { MOCK_ME } from "@/lib/mock/dashboard";
@@ -68,10 +70,14 @@ export function ProblemBrowser({ initialQuery }: { initialQuery: string }) {
   const loaded = problems !== null;
   // ponytail: bookmarks are UI-only and not shared with the dashboard, there is no table for them yet (see 06, D23).
   const [saved, setSaved] = useState<Set<string>>(new Set());
+  const signedIn = useSignedIn();
+  const router = useRouter();
+  const loginHref = useLoginHref();
 
   useEffect(() => {
-    mockGetProblems().then(setProblems);
-  }, []);
+    // Guests have no attempts (P1 returns status null without a session).
+    mockGetProblems().then((list) => setProblems(signedIn ? list : list.map((p) => ({ ...p, status: null }))));
+  }, [signedIn]);
 
   const patch = (p: Partial<Filters>) => {
     setFilters((f) => ({ ...f, ...p }));
@@ -79,6 +85,7 @@ export function ProblemBrowser({ initialQuery }: { initialQuery: string }) {
   };
 
   function toggleSaved(slug: string) {
+    if (!signedIn) return router.push(loginHref);
     setSaved((prev) => {
       const next = new Set(prev);
       if (!next.delete(slug)) next.add(slug);
@@ -206,7 +213,7 @@ export function ProblemBrowser({ initialQuery }: { initialQuery: string }) {
         <button
           type="button"
           aria-pressed={filters.savedOnly}
-          onClick={() => patch({ savedOnly: !filters.savedOnly })}
+          onClick={() => (signedIn ? patch({ savedOnly: !filters.savedOnly }) : router.push(loginHref))}
           className={`rounded border px-4 py-2.5 text-sm md:w-[184px] md:self-end md:text-left ${
             filters.savedOnly ? "border-action text-action" : "border-border bg-surface text-text hover:border-action"
           }`}

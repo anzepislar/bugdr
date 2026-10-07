@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DifficultyPill } from "@/components/DifficultyPill";
@@ -6,6 +7,7 @@ import { Discussion } from "@/components/problems/Discussion";
 import { AcceptanceChecks, Description } from "@/components/problems/ProblemOverview";
 import { RateProblem } from "@/components/problems/RateProblem";
 import { duration } from "@/lib/format";
+import { loginHref, SESSION_COOKIE } from "@/lib/session";
 import { mockGetComments, mockGetProblem } from "@/lib/mock/problems";
 import { CATEGORIES, DIFFICULTY_LABEL, type ProblemDetail, type SolveResult } from "@/lib/types/problem";
 
@@ -25,8 +27,11 @@ export default async function ProblemPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const [{ slug }, { tab: rawTab }] = await Promise.all([params, searchParams]);
-  const problem = await mockGetProblem(slug);
-  if (!problem) notFound();
+  const [found, cookieStore] = await Promise.all([mockGetProblem(slug), cookies()]);
+  if (!found) notFound();
+  // Guests see the public problem: no attempt, so no solved state (P2 sends status null without a session).
+  const signedIn = cookieStore.has(SESSION_COOKIE);
+  const problem: ProblemDetail = signedIn ? found : { ...found, status: null };
 
   const tab: Tab = rawTab && rawTab in TABS ? (rawTab as Tab) : "overview";
   const result = problem.status === "solved" ? problem.result : null;
@@ -97,21 +102,21 @@ export default async function ProblemPage({
                 <Description text={problem.description} />
                 {/* A solved problem lists its checks in the validation results above. */}
                 {solved ? null : <AcceptanceChecks checks={problem.checks} />}
-                {!solved ? <DiscussionLocked className="mt-10" /> : null}
+                {!solved ? <DiscussionLocked className="mt-10" signedIn={signedIn} /> : null}
               </>
             ) : null}
             {tab === "discussion" ? (
               comments ? (
                 <Discussion initial={comments} />
               ) : (
-                <DiscussionEmpty count={problem.commentCount} />
+                <DiscussionEmpty count={problem.commentCount} signedIn={signedIn} />
               )
             ) : null}
           </div>
 
           {solved ? null : (
             <aside className="w-full shrink-0 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:w-80 lg:overflow-y-auto xl:w-96">
-              <StartCard problem={problem} />
+              <StartCard problem={problem} signedIn={signedIn} />
             </aside>
           )}
         </div>
@@ -212,7 +217,7 @@ function SolvedSummary({ problem, result }: { problem: ProblemDetail; result: So
   );
 }
 
-function StartCard({ problem }: { problem: ProblemDetail }) {
+function StartCard({ problem, signedIn }: { problem: ProblemDetail; signedIn: boolean }) {
   const solveHref = `/problems/${problem.slug}/solve`;
   const buttonClass =
     "mt-6 flex w-full items-center justify-center gap-2 rounded bg-action px-4 py-2.5 text-sm font-medium text-canvas hover:opacity-90 sm:w-fit sm:px-6 lg:w-full lg:justify-start lg:px-4";
@@ -227,10 +232,25 @@ function StartCard({ problem }: { problem: ProblemDetail }) {
           <p className="mt-2 text-sm leading-relaxed text-muted">
             A codebase, terminal and {problem.checks.length} checks are ready in your workspace.
           </p>
-          <Link href={solveHref} className={buttonClass}>
-            {problem.status === "in_progress" ? "Resume problem" : "Start problem"}{" "}
-            <Icon name="arrowRight" className="h-4 w-4" />
-          </Link>
+          {signedIn ? (
+            <Link href={solveHref} className={buttonClass}>
+              {problem.status === "in_progress" ? "Resume problem" : "Start problem"}{" "}
+              <Icon name="arrowRight" className="h-4 w-4" />
+            </Link>
+          ) : (
+            <>
+              {/* The editor needs an account: log in, then land straight in the workspace. */}
+              <Link href={loginHref(solveHref)} className={buttonClass}>
+                <Icon name="lock" className="h-4 w-4" /> Log in to start
+              </Link>
+              <p className="mt-3 text-xs text-muted">
+                No account?{" "}
+                <Link href="/signup" className="text-action hover:underline">
+                  Sign up free
+                </Link>
+              </p>
+            </>
+          )}
           <p className="mt-6 text-xs leading-relaxed text-muted">
             Your timer starts when you begin.
             <br />
@@ -247,7 +267,12 @@ function StartCard({ problem }: { problem: ProblemDetail }) {
   );
 }
 
-function DiscussionLocked({ className = "" }: { className?: string }) {
+const LOCKED_TEXT = (signedIn: boolean) =>
+  signedIn
+    ? "complete this problem to join the discussion and rate your experience."
+    : "log in and complete this problem to join the discussion and rate your experience.";
+
+function DiscussionLocked({ className = "", signedIn }: { className?: string; signedIn: boolean }) {
   return (
     <section
       aria-label="Discussion locked"
@@ -256,8 +281,7 @@ function DiscussionLocked({ className = "" }: { className?: string }) {
       <Icon name="lock" className="mt-0.5 h-5 w-5 shrink-0 text-muted" />
       <div>
         <p className="text-sm text-text">
-          <span className="font-semibold">Discussion is locked</span> — complete this problem to join the discussion and
-          rate your experience.
+          <span className="font-semibold">Discussion is locked</span> — {LOCKED_TEXT(signedIn)}
         </p>
       </div>
     </section>
@@ -265,7 +289,7 @@ function DiscussionLocked({ className = "" }: { className?: string }) {
 }
 
 // Locked state of the Discussion tab: fills the column, so a short tab leaves no gap next to the side panel.
-function DiscussionEmpty({ count }: { count: number }) {
+function DiscussionEmpty({ count, signedIn }: { count: number; signedIn: boolean }) {
   return (
     <section
       aria-label="Discussion locked"
@@ -276,7 +300,7 @@ function DiscussionEmpty({ count }: { count: number }) {
       </span>
       <h2 className="mt-4 text-lg font-semibold text-text">Discussion is locked</h2>
       <p className="mt-2 max-w-md text-sm text-muted">
-        Complete this problem to join the discussion and rate your experience.
+        {LOCKED_TEXT(signedIn).replace(/^./, (c) => c.toUpperCase())}
       </p>
       <p className="mt-3 text-xs text-muted">{count} engineers have commented.</p>
     </section>

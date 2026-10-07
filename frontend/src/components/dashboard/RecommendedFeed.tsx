@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useLoginHref, useSignedIn } from "@/components/app/Session";
 import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
 import { STARTING_DIFFICULTY, type ExperienceLevel, type FeedProblem } from "@/lib/types/dashboard";
@@ -26,12 +28,16 @@ export function RecommendedFeed({
   experienceLevel,
 }: {
   problems: FeedProblem[];
-  goalRole: CategorySlug;
-  experienceLevel: ExperienceLevel;
+  /** Missing for guests: the feed starts unfiltered. */
+  goalRole?: CategorySlug;
+  experienceLevel?: ExperienceLevel;
 }) {
+  const signedIn = useSignedIn();
+  const router = useRouter();
+  const loginHref = useLoginHref();
   const defaults: Filters = {
-    category: goalRole,
-    difficulty: STARTING_DIFFICULTY[experienceLevel],
+    category: goalRole ?? "all",
+    difficulty: experienceLevel ? STARTING_DIFFICULTY[experienceLevel] : "all",
     hideSolved: true,
     sort: "best",
   };
@@ -52,6 +58,7 @@ export function RecommendedFeed({
   const patch = (p: Partial<Filters>) => setFilters((f) => ({ ...f, ...p }));
 
   function toggleBookmark(slug: string) {
+    if (!signedIn) return router.push(loginHref);
     setBookmarked((prev) => {
       const next = new Set(prev);
       if (!next.delete(slug)) next.add(slug);
@@ -63,7 +70,7 @@ export function RecommendedFeed({
     <section aria-labelledby="recommended-heading">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <h2 id="recommended-heading" className="text-xl font-semibold text-text">
-          Recommended for you
+          {goalRole ? "Recommended for you" : "Start with these problems"}
         </h2>
         <span className="text-sm text-muted">{shown.length} problems</span>
         <select

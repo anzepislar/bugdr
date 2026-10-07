@@ -191,12 +191,12 @@ polnijo s seed skripto.
 - Naredi: `users`, `user_stats` (vrstica ob registraciji), scrypt hash.
 - API: `POST /auth/signup` `{ email, username, password }`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`.
 - Validacija: e-pošta, `username` (dovoljeni znaki, dolžina ≤ 50, unikaten brez razlike v velikosti črk - gre v URL `/profile/[username]`), geslo ≥ 8.
-- Frontend: `/login`, `/signup`.
+- Frontend: `/login`, `/signup`. Seja je piškotek `bugdr_session` (httpOnly JWT) - isto ime kot mock (`src/lib/session.ts`), da `src/proxy.ts` in `(app)/layout.tsx` ostaneta enaka; `mockLogin`/`mockSignup`/`mockLogout` v `src/lib/mock/auth.ts` → API. Prijava upošteva `?next=` (samo poti na isti strani, `safeNext`).
 - Končano, ko: napačno geslo → 401 (isto sporočilo kot neznan e-mail); podvojen e-mail/username → 409; v bazi ni gesla v čistem besedilu; `/auth/me` brez piškotka → 401.
 
 **F3 · Zaščita poti** `S` · odvisno od: F2 · ⬜
 - Naredi: `requireAuth`, `requireAdmin`; banned uporabnik → 403 `BANNED` povsod; `last_active_at` osvežen (največ 1× na minuto).
-- Frontend: zaščita strani (preusmeritev na `/login`), `/admin/*` samo za admina.
+- Frontend: zaščita strani je že v `src/proxy.ts` (brez piškotka → `/login?next=…`): `/problems/[slug]/solve`, `/settings`, `/onboarding`, `/admin/*`. **Javne** (odločitev uporabnika 7. 10. 2026): `/dashboard`, `/problems`, `/problems/[slug]` - gost vidi vsebino, osebni deli so zamegljeni z "Log in to unlock" (`Locked` v `src/components/app/Session.tsx`). F3 doda: `/admin/*` samo za admina; `GET /problems`, `GET /problems/:slug`, `GET /dashboard` brez seje vrnejo `status: null`, brez statistike in poskusov (zdaj to naredi frontend).
 - Končano, ko: ne-admin dobi 403 na admin poti; ban velja takoj, brez ponovne prijave.
 
 **F4 · Onboarding** `S` · odvisno od: F3 · ⬜
@@ -375,7 +375,7 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | `/contests/[id]` | `src/lib/mock/contests.ts`: `mockGetContest` (seznam + `DETAILS`: incident, ime repozitorija (D27), število preverjanj, nagrada, udeležba); problemi tekmovanj so obstoječi mock problemi, da "Enter contest" odpre delujoč zaslon reševanja | T1, T2 | ⬜ |
 | `/profile/[username]` | `src/lib/mock/profile.ts`: `mockGetProfile` (samo `max`, drugi → 404; 147 rešenih problemov, ciklično iz mock problemov; aktivnost 53 tednov = vsak tretji aktivni dan iz `mockActivity`; zgodovina tekmovanj iz `mockGetContests`); neskončno drsenje rešenih na odjemalcu | U1, U2, T2 | ⬜ |
 | `/settings` | `src/lib/mock/profile.ts`: `MOCK_SETTINGS`, `mockSaveSettings` (shrani samo v stanje obrazca - profil in stranska vrstica se ne posodobita); zavihka Practice preferences in Account prazna (D35) | U1 (D34) | ⬜ |
-| `/login` | `src/lib/mock/auth.ts`: `mockLogin` (vedno uspe → `/dashboard`); "Continue with GitHub" pokaže napako (D37); "Remember me" se ne uporabi (D40) | F2 | ⬜ |
+| `/login` | `src/lib/mock/auth.ts`: `mockLogin` (vedno uspe, nastavi piškotek `bugdr_session`, → `?next=` ali `/dashboard`), `mockLogout` (odjava v stranski vrstici pobriše piškotek); "Continue with GitHub" pokaže napako (D37); "Remember me" se ne uporabi (D40) | F2 | ⬜ |
 | `/signup` | `src/lib/mock/auth.ts`: `mockSignup` (vedno uspe → `/onboarding`); polno ime namesto `username` (D38), geslo ≥ 12 (D39) | F2 | ⬜ |
 | `/forgot-password` | `src/lib/mock/auth.ts`: `mockRequestPasswordReset` (uspe za vsak e-mail - stran ne razkrije, ali račun obstaja); pošiljanje pošte je odloženo (X5) | X5 (rezina še ne obstaja) | ⏸ |
 | `/onboarding` | `src/lib/mock/auth.ts`: `mockSaveOnboarding` (vedno uspe → `/dashboard`); vloga "exploring" (D41), jeziki (D42); "Sign out" je povezava na `/login` | F4 (F2 za odjavo) | ⬜ |
