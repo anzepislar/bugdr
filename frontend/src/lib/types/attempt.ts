@@ -21,6 +21,21 @@ export interface Attempt {
   checks: Pick<Check, "id" | "checkOrder" | "description">[];
 }
 
+export interface SolvedRun {
+  pointsEarned: number;
+  timeTakenSeconds: number;
+  timeMultiplier: number;
+}
+
+/**
+ * One line of the POST /attempts/:id/test stream (R6): running → result per check, then done with every result and
+ * `solved` when this run solved the problem (R4).
+ */
+export type TestRunEvent =
+  | { type: "running"; checkId: string }
+  | ({ type: "result" } & CheckRunResult)
+  | { type: "done"; results: CheckRunResult[]; solved: SolvedRun | null };
+
 /** One check of POST /attempts/:id/test (slice R4). `output` only when the check failed. */
 export interface CheckRunResult {
   checkId: string;

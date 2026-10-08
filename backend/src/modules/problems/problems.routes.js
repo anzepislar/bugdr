@@ -54,7 +54,9 @@ problemsRouter.get("/:slug", optionalAuth, async (req, res) => {
        cb.repository_name, cb.language, cb.framework, cb.repository_structure,
        nullif(a.status, 'abandoned') AS status, b.user_id IS NOT NULL AS saved,
        a.solved_at AT TIME ZONE 'UTC' AS solved_at, a.time_taken_seconds, a.lines_added, a.lines_deleted, a.points_earned,
-       a.time_bonus_multiplier::float AS time_multiplier, r.rating AS my_rating
+       a.time_bonus_multiplier::float AS time_multiplier, r.rating AS my_rating,
+       (SELECT json_agg(json_build_object('tryNumber', t.try_number, 'outcome', t.outcome, 'durationSeconds', t.duration_seconds)
+          ORDER BY t.try_number) FROM attempt_tries t WHERE t.attempt_id = a.id) AS tries
      FROM problems p
      JOIN problem_categories c ON c.id = p.category_id
      LEFT JOIN problem_codebase cb ON cb.problem_id = p.id
@@ -106,6 +108,8 @@ problemsRouter.get("/:slug", optionalAuth, async (req, res) => {
               pointsEarned: r.points_earned,
               timeMultiplier: r.time_multiplier,
               myRating: r.my_rating,
+              // R4 (D56): every try; the last one is the solving try.
+              tries: r.tries ?? [],
             }
           : null,
     },

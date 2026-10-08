@@ -295,10 +295,13 @@ CREATE TABLE check_results (
   attempt_id   UUID REFERENCES user_problem_attempts(id) ON DELETE CASCADE,
   check_id     UUID REFERENCES problem_checks(id) ON DELETE CASCADE,
   passed       BOOLEAN NOT NULL,
-  output       TEXT,
+  output       TEXT,  -- only for a failed check
   executed_at  TIMESTAMP DEFAULT NOW()
 );
+CREATE INDEX check_results_attempt ON check_results (attempt_id, executed_at);
 ```
+
+Built in R4 (migration 0008): one row per check on every Test run.
 
 ---
 
@@ -495,11 +498,15 @@ CREATE TABLE point_transactions (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id      UUID REFERENCES users(id) ON DELETE CASCADE,
   amount       INTEGER NOT NULL,
-  reason       VARCHAR(50) NOT NULL,  -- 'problem_solved', 'contest_bonus', 'time_bonus'
+  reason       VARCHAR(50) NOT NULL CHECK (reason IN ('problem_solved', 'time_bonus', 'contest_bonus')),
   reference_id UUID,                  -- problem_id or contest_id
   created_at   TIMESTAMP DEFAULT NOW()
 );
+CREATE INDEX point_transactions_user ON point_transactions (user_id);
 ```
+
+Built in R4 (migration 0008). A solve writes two rows (D15): `problem_solved` = the base, `time_bonus` = the rest
+(only when > 0), so their sum = `user_problem_attempts.points_earned`.
 
 ### level_thresholds
 Seeded once. Adjustable without code changes.

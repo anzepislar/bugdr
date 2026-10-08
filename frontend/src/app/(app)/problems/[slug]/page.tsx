@@ -128,6 +128,33 @@ export default async function ProblemPage({
   );
 }
 
+const TRY_OUTCOME = { solved: "Solved", abandoned: "Gave up", in_progress: "Open" } as const;
+
+// R4 (D56): every try, oldest first. The time bonus counted all of them.
+function Tries({ tries, total }: { tries: SolveResult["tries"]; total: number }) {
+  return (
+    <div className="mb-10">
+      <h2 className="text-xl font-semibold text-text">
+        {tries.length === 1 ? "Solved on the first try" : `Solved on try ${tries.at(-1)?.tryNumber}`}
+      </h2>
+      <p className="mt-1 text-sm text-muted">{duration(total)} in total · the time bonus counts every try</p>
+      <ol className="mt-4">
+        {tries.map((t) => (
+          <li key={t.tryNumber} className="flex items-center gap-4 border-b border-border py-3.5 text-sm">
+            <span className="w-14 shrink-0 text-muted">Try {t.tryNumber}</span>
+            <span className={`min-w-0 flex-1 ${t.outcome === "solved" ? "text-action" : "text-text"}`}>
+              {TRY_OUTCOME[t.outcome]}
+            </span>
+            <span className="tabular-nums text-muted">
+              {t.durationSeconds === null ? "time not recorded" : duration(t.durationSeconds)}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 function SolvedSummary({ problem, result }: { problem: ProblemDetail; result: SolveResult }) {
   const stats = [
     { value: duration(result.timeTakenSeconds), label: "Time to solve" },
@@ -181,6 +208,7 @@ function SolvedSummary({ problem, result }: { problem: ProblemDetail; result: So
 
       <div className="mt-8 flex flex-col gap-10 lg:flex-row lg:items-start">
         <section aria-labelledby="validation-heading" className="min-w-0 flex-1">
+          {result.tries.length > 0 ? <Tries tries={result.tries} total={result.timeTakenSeconds} /> : null}
           <h2 id="validation-heading" className="text-xl font-semibold text-text">
             Validation results
           </h2>

@@ -156,6 +156,15 @@ export interface SolveResult {
   timeMultiplier: number;
   /** problem_ratings.rating of this user, 1-5. */
   myRating: number | null;
+  /** attempt_tries in order (R4, D56); the last one solved it. timeTakenSeconds is their sum. */
+  tries: SolveTry[];
+}
+
+export interface SolveTry {
+  tryNumber: number;
+  outcome: "in_progress" | "abandoned" | "solved";
+  /** null for a try given up before try history existed (migration 0007). */
+  durationSeconds: number | null;
 }
 
 /** One comment of GET /problems/:slug/comments (slice O2). Replies are one level deep (D30). */

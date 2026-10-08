@@ -383,6 +383,7 @@ const RESULTS: Record<string, Omit<SolveResult, "checksPassed" | "checksTotal">>
     linesDeleted: 11,
     pointsEarned: 250,
     timeMultiplier: 1,
+    tries: [{ tryNumber: 1, outcome: "solved", durationSeconds: 32 * 60 + 18 }],
     myRating: null,
   },
 };

@@ -144,5 +144,6 @@ test("a solved attempt returns the result with the user's rating", async () => {
     pointsEarned: 250,
     timeMultiplier: 1.25,
     myRating: 4,
+    tries: [], // inserted by hand here; R4 tests the real tries
   });
 });

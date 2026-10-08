@@ -1273,3 +1273,50 @@ ponoven start kaže 05:02, "Try 2", try 1 zaprt s 302 s, brez napak.
 
 Preverjeno: backend testi 53/53 (+7 R3, s pravim Dockerjem), po testih ni
 ostalih kontejnerjev `bugdr-run-*`.
+
+### Rezina R4 (Test in rešitev)
+
+- Migracija `0008_check_results_points.sql`; čiste funkcije
+  `scoring.js` (`timeMultiplier`, `finalPoints`, `lineChanges`).
+- `POST /api/v1/attempts/:id/test`: zažene preverjanja v Dockerju (R3),
+  zapiše rezultate; ko uspejo vsa obvezna, ena transakcija z zaklepom
+  vrstice: try zaprt kot `solved`, čas = vsota poskusov (D56), točke
+  (dve vrstici v knjigi, D15), statistika, nivo, dnevna aktivnost,
+  `solve_count`. Problemi brez skritih preverjanj → `CHECKS_UNAVAILABLE`.
+- Frontend: Submit kliče API; ob rešitvi stran podrobnosti s seznamom
+  poskusov ("Solved on try N"); Monaco brez lažnih tipnih napak.
+
+Preverjeno: backend testi 64/64 (+11: primer iz `03` 375/500, D56 5 + 6 min
+→ 375, dvojni klik = ena nagrada, 500 točk → Junior, knjiga = statistika);
+frontend lint, typecheck, build; Playwright WebKit: neizvedljiv problem →
+sporočilo, nespremenjena koda → 4/7, popravek → rešeno, "Solved on try 2",
++500 (2x).
+
+### Rezina R5 (terminal)
+
+- `POST /api/v1/attempts/:id/terminal`: ukaz se izvede v kontejnerju
+  terminala (en na poskus, ista izolacija kot preverjanja, samo vidne
+  datoteke - nikoli skrite), izhod se pretaka kot NDJSON. En ukaz naenkrat,
+  30 s, Stop/Ctrl+C ga ustavi; kontejner se odstrani po 10 min
+  neaktivnosti, ob odstopu ali rešitvi.
+- Frontend: terminal z datotekami urejevalnika, sproten izpis, Stop in
+  Ctrl+C. `npm test` je zdaj pravi ukaz (prej je sprožil Submit).
+- Popravek med preverjanjem: ukaz takoj po Ctrl+C je dobil 409 - nov ukaz
+  zdaj počaka do 3 s na ustavljenega.
+
+Preverjeno: backend testi 71/71 (+7 R5); frontend lint, typecheck, build;
+Playwright WebKit (prek Next proxyja): izhod prihaja sproti, `npm test`
+"pass 3", Ctrl+C, skrite datoteke niso dosegljive, brez napak v konzoli.
+
+### Rezina R6 (rezultati v živo) - M2 zaključen
+
+- `POST /attempts/:id/test` pretaka NDJSON: `running` in `result` za vsako
+  preverjanje sproti, na koncu `done` (rezultati + `solved`).
+- Frontend: skupni `apiStream` (Submit + terminal); stanje preverjanj se
+  posodablja ob dogodkih, umetni zamik odstranjen.
+- `r5.test.js` je bil "nestabilen", ker je štel tudi kontejnerje terminala
+  dev backenda (iz mojih Playwright preverjanj) - zdaj šteje samo svoje.
+
+Preverjeno: backend testi 72/72; frontend lint, typecheck, build;
+Playwright WebKit: 0 → 1 → … → 7 končanih preverjanj, vedno eno "Running",
+brez napak v konzoli.

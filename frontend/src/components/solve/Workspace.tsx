@@ -11,9 +11,8 @@ import { AcceptanceChecks, Description } from "@/components/problems/ProblemOver
 import { AiChatPanel } from "@/components/solve/AiChatPanel";
 import { ChecksPanel } from "@/components/solve/ChecksPanel";
 import { useSessionTracker } from "@/hooks/useSessionTracker";
-import { api, ApiError } from "@/lib/api";
-import { mockRunTests } from "@/lib/mock/attempts";
-import type { Attempt, CheckRunResult, CheckStatus } from "@/lib/types/attempt";
+import { api, ApiError, apiStream } from "@/lib/api";
+import type { Attempt, CheckRunResult, CheckStatus, TestRunEvent } from "@/lib/types/attempt";
 import type { Difficulty } from "@/lib/types/problem";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -40,16 +39,43 @@ type BottomTab = keyof typeof BOTTOM_TABS;
 
 interface TerminalLine {
   text: string;
-  tone: "command" | "pass" | "fail" | "plain";
+  tone: "command" | "output" | "pass" | "fail" | "plain";
+  /** Command output that has not ended with a newline yet: the next chunk continues it. */
+  open?: boolean;
 }
 const TONE: Record<TerminalLine["tone"], string> = {
   command: "text-text",
+  output: "text-[#cccccc]",
   pass: "text-passed",
   fail: "text-failed",
   plain: "text-[#858585]",
 };
 
-const TEST_COMMAND = "npm run test:scenario";
+/** One line of the terminal stream, POST /attempts/:id/terminal (R5). */
+type TerminalEvent =
+  | { type: "output"; text: string }
+  | { type: "exit"; code: number }
+  | { type: "stopped"; reason: "timeout" | "output" | "aborted" };
+
+const STOPPED: Record<Extract<TerminalEvent, { type: "stopped" }>["reason"], string> = {
+  timeout: "Stopped: commands run for at most 30 seconds.",
+  output: "Stopped: the command printed too much output.",
+  aborted: "^C",
+};
+
+/** Appends streamed output: the first part continues an open line, every newline starts a new one. */
+function appendOutput(lines: TerminalLine[], text: string): TerminalLine[] {
+  const parts = text.split("\n");
+  const next = [...lines];
+  const last = next.at(-1);
+  if (last?.open) next[next.length - 1] = { ...last, text: last.text + parts[0] };
+  else next.push({ text: parts[0], tone: "output", open: true });
+  for (const part of parts.slice(1)) {
+    next[next.length - 1] = { ...next[next.length - 1], open: false };
+    next.push({ text: part, tone: "output", open: true });
+  }
+  return next;
+}
 // px. All three panels are always side by side; 80 + 120 + 80 still fits a 320px screen.
 const MIN_DESCRIPTION = 80;
 const MIN_EDITOR = 120;
@@ -99,6 +125,9 @@ export function Workspace({
   const [bottomTab, setBottomTab] = useState<BottomTab>("terminal");
   const [terminal, setTerminal] = useState<TerminalLine[]>([]);
   const [command, setCommand] = useState("");
+  // R5: the command running in the terminal container, so Stop / Ctrl+C can cancel it.
+  const [commandRunning, setCommandRunning] = useState(false);
+  const commandAbort = useRef<AbortController | null>(null);
   // Side panel widths: null = a third of the screen each (the editor gets the last third) until the user drags.
   const [panelWidth, setPanelWidth] = useState<number | null>(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -208,7 +237,9 @@ export function Workspace({
   // All tries count (D56): earlier tries + the current one.
   const elapsed = attempt.previousSeconds + Math.max(0, Math.floor((now - Date.parse(attempt.startedAt)) / 1000));
   const limit = attempt.timeLimitMinutes * 60;
-  const print = (...lines: TerminalLine[]) => setTerminal((t) => [...t, ...lines]);
+  // A line printed after streamed output closes it; an open line that stayed empty (trailing newline) is dropped.
+  const print = (...lines: TerminalLine[]) =>
+    setTerminal((t) => [...t.filter((l, i) => !(l.open && l.text === "" && i === t.length - 1)).map((l) => ({ ...l, open: false })), ...lines]);
 
   // Mouse events, not pointer events: Safari's pointer events cancelled or broke the drag.
   function startDrag(e: MouseEvent<HTMLDivElement>, panel: "description" | "chat") {
@@ -229,40 +260,91 @@ export function Workspace({
     setBottomTab("results");
     setResults({});
     setStatuses(Object.fromEntries(attempt.checks.map((c) => [c.id, "pending" as const])));
-    print({ text: `$ ${TEST_COMMAND}`, tone: "command" });
+    print({ text: "Submit: running the checks…", tone: "command" });
 
-    const all = await mockRunTests(attempt);
-    // ponytail: results arrive at once and are revealed one by one; R6 streams them per check.
-    for (const c of attempt.checks) {
-      setStatuses((s) => ({ ...s, [c.id]: "running" }));
-      await delay(250);
-      const r = all.find((x) => x.checkId === c.id);
-      if (!r) continue;
-      setStatuses((s) => ({ ...s, [c.id]: r.passed ? "passed" : "failed" }));
-      setResults((prev) => ({ ...prev, [c.id]: r }));
-      print({ text: `${r.passed ? "PASS" : "FAIL"} ${c.description.toLowerCase()}`, tone: r.passed ? "pass" : "fail" });
+    // R4: the server runs the checks in Docker on these files and decides solving; R6: each check streams in live.
+    let done: Extract<TestRunEvent, { type: "done" }> | null = null;
+    const description = (id: string) => attempt.checks.find((c) => c.id === id)?.description.toLowerCase() ?? id;
+    try {
+      await apiStream<TestRunEvent>(
+        `/attempts/${attempt.id}/test`,
+        { method: "POST", body: JSON.stringify({ files }) },
+        (event) => {
+          if (event.type === "running") setStatuses((s) => ({ ...s, [event.checkId]: "running" }));
+          else if (event.type === "result") {
+            const r: CheckRunResult = { checkId: event.checkId, passed: event.passed, output: event.output };
+            setStatuses((s) => ({ ...s, [r.checkId]: r.passed ? "passed" : "failed" }));
+            setResults((prev) => ({ ...prev, [r.checkId]: r }));
+            print({ text: `${r.passed ? "PASS" : "FAIL"} ${description(r.checkId)}`, tone: r.passed ? "pass" : "fail" });
+          } else done = event;
+        },
+      );
+      if (!done) throw new Error("The check run ended early");
+    } catch (e) {
+      setStatuses({});
+      setBottomTab("terminal");
+      print({ text: e instanceof ApiError ? e.message : "Could not run the checks. Try again.", tone: "fail" });
+      setRunning(false);
+      // Solved in another tab: the detail page shows the result.
+      if (e instanceof ApiError && e.code === "ALREADY_SOLVED") router.push(`/problems/${slug}`);
+      return;
     }
+    const response: Extract<TestRunEvent, { type: "done" }> = done;
+    const all = response.results;
     const failed = all.filter((r) => !r.passed).length;
     print(
       { text: "", tone: "plain" },
       { text: `${all.length - failed} passed · ${failed} failed · ${all.length} total`, tone: failed ? "fail" : "pass" },
     );
     setRunning(false);
-    // All checks passed = solved (R4): the detail page now shows the result.
-    if (failed === 0) router.push(`/problems/${slug}`);
+    if (!response.solved) return;
+    print({
+      text: `Solved · +${response.solved.pointsEarned} points (${response.solved.timeMultiplier}x time bonus)`,
+      tone: "pass",
+    });
+    try {
+      localStorage.removeItem(draftKey(attempt));
+    } catch {
+      // Blocked storage: a solved problem never reopens, so the draft is never read again.
+    }
+    // The detail page now shows the result (R4).
+    await delay(1200);
+    router.push(`/problems/${slug}`);
   }
 
-  function submitCommand(e: React.FormEvent) {
+  // R5: runs the command in the attempt's terminal container on the editor's current files; output streams in.
+  async function submitCommand(e: React.FormEvent) {
     e.preventDefault();
     const cmd = command.trim();
+    if (!cmd || !attempt || commandRunning) return;
     setCommand("");
-    if (!cmd) return;
-    if (cmd === TEST_COMMAND || cmd === "npm test") {
-      void submit();
-      return;
+    print({ text: `$ ${cmd}`, tone: "command" });
+    const controller = new AbortController();
+    commandAbort.current = controller;
+    setCommandRunning(true);
+    try {
+      await apiStream<TerminalEvent>(
+        `/attempts/${attempt.id}/terminal`,
+        { method: "POST", body: JSON.stringify({ command: cmd, files }), signal: controller.signal },
+        (event) => {
+          if (event.type === "output") setTerminal((t) => appendOutput(t, event.text));
+          else if (event.type === "stopped") print({ text: STOPPED[event.reason], tone: "fail" });
+          else if (event.code !== 0) print({ text: `exit code ${event.code}`, tone: "fail" });
+          else print();
+        },
+      );
+    } catch (e) {
+      if (e instanceof ApiError) print({ text: e.message, tone: "fail" });
+      else if (controller.signal.aborted) print({ text: "^C", tone: "fail" });
+      else print({ text: "The connection to the terminal was lost.", tone: "fail" });
+    } finally {
+      commandAbort.current = null;
+      setCommandRunning(false);
     }
-    // ponytail: no container behind the terminal yet; slice R5 runs commands for real (D13).
-    print({ text: `$ ${cmd}`, tone: "command" }, { text: "The terminal connects to your workspace container soon.", tone: "plain" });
+  }
+
+  function stopCommand() {
+    commandAbort.current?.abort();
   }
 
   // R2: the attempt becomes abandoned; starting again opens the next try with the original code (D8, R2b).
@@ -437,6 +519,13 @@ export function Workspace({
               defaultValue={files[activePath] ?? ""}
               onChange={(code) => edit(activePath, code)}
               theme="vs-dark"
+              // The browser has no Node types or project config, so type errors would be false alarms (".ts" imports,
+              // process, node:test). Syntax errors stay on; the checks run the real code.
+              beforeMount={(monaco) => {
+                for (const lang of [monaco.typescript.typescriptDefaults, monaco.typescript.javascriptDefaults]) {
+                  lang.setDiagnosticsOptions({ noSemanticValidation: true, noSyntaxValidation: false });
+                }
+              }}
               loading={<p className="p-4 text-sm text-muted">Loading editor…</p>}
               options={{
                 fontSize: 13,
@@ -472,7 +561,9 @@ export function Workspace({
               <div className="flex min-h-0 flex-1 flex-col font-mono text-[13px] leading-6">
                 <div ref={terminalRef} aria-live="polite" className="min-h-0 flex-1 overflow-y-auto px-4 py-2">
                   {terminal.length === 0 ? (
-                    <p className="text-[#858585]">Submit to run the checks, or type `{TEST_COMMAND}`.</p>
+                    <p className="text-[#858585]">
+                      Run commands in your workspace, e.g. `npm test`. Submit runs the acceptance checks.
+                    </p>
                   ) : (
                     terminal.map((l, i) => (
                       <p key={i} className={`min-h-6 whitespace-pre-wrap ${TONE[l.tone]}`}>
@@ -488,11 +579,23 @@ export function Workspace({
                   <input
                     value={command}
                     onChange={(e) => setCommand(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.ctrlKey && e.key === "c" && commandRunning) {
+                        e.preventDefault();
+                        stopCommand();
+                      }
+                    }}
                     aria-label="Terminal command"
+                    placeholder={commandRunning ? "Running… Ctrl+C to stop" : ""}
                     spellCheck={false}
                     autoComplete="off"
-                    className="min-w-0 flex-1 bg-transparent text-text focus:outline-none"
+                    className="min-w-0 flex-1 bg-transparent text-text placeholder:text-[#858585] focus:outline-none"
                   />
+                  {commandRunning ? (
+                    <button type="button" onClick={stopCommand} className="shrink-0 text-xs text-muted hover:text-failed">
+                      Stop
+                    </button>
+                  ) : null}
                 </form>
               </div>
             ) : (

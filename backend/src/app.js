@@ -7,7 +7,8 @@ import { meRouter } from "./modules/me/me.routes.js";
 import { problemsRouter } from "./modules/problems/problems.routes.js";
 
 export const app = express();
-app.use(express.json());
+// 3 MB: a Test submission carries the user's files (runner limit 2 MB, R3).
+app.use(express.json({ limit: "3mb" }));
 
 export const api = express.Router();
 app.use("/api/v1", api);
@@ -31,8 +32,16 @@ app.use((req, res) => {
 
 // Express 5 forwards rejected async handlers here, so routes just throw.
 app.use((err, req, res, next) => {
+  // A streamed response (the terminal, R5) has already sent its status: just end it.
+  if (res.headersSent) {
+    console.error(err);
+    return res.end();
+  }
   if (err instanceof HttpError) {
     return res.status(err.status).json({ error: { code: err.code, message: err.message, details: err.details } });
+  }
+  if (err.type === "entity.too.large") {
+    return res.status(413).json({ error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" } });
   }
   if (err.type === "entity.parse.failed") {
     return res.status(400).json({ error: { code: "INVALID_JSON", message: "Request body is not valid JSON" } });
