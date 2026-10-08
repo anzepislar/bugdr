@@ -1320,3 +1320,15 @@ Playwright WebKit (prek Next proxyja): izhod prihaja sproti, `npm test`
 Preverjeno: backend testi 72/72; frontend lint, typecheck, build;
 Playwright WebKit: 0 → 1 → … → 7 končanih preverjanj, vedno eno "Running",
 brez napak v konzoli.
+
+### Usklajevanje dokumentov po M2
+
+- `00`: Current Status (M2, migracije 0001-0008), Docker v arhitekturi, brez
+  mape `docker/`, testi izvajalnika potrebujejo Docker.
+- `02`: izvajanje (Submit, pretok rezultatov, izolacija, D9), terminal,
+  izvedljivi problemi (D53), zaslon reševanja (tri plošče, Give up z oknom,
+  timer čez poskuse), pravila reševanja (D56).
+- `03`: čas = vsi poskusi (D56), meje strogo "pod", dve vrstici v knjigi
+  točk (D15), učinkovitost 1 do S3.
+- `04`: poskusi pri uporabniku v adminu. `06`: sledljivost. `CLAUDE.md`:
+  vrstica Frontend, odprti vprašanji (incident log, `mock/attempts.ts`).

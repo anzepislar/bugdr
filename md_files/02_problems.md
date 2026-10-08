@@ -133,26 +133,40 @@ Examples: `jwt`, `authentication`, `express`, `async`, `race-condition`
 
 ## Problem Execution Engine
 
-When the user clicks **Test**, this happens:
+When the user clicks **Submit**, this happens (R3, R4, R6):
 
 ```
-1. User's modified files sent to backend
-2. Backend spins up a Docker container
-3. Container loads the problem's base setup
-4. User's files overwrite the base files
-5. Setup commands run (npm install, etc.)
-6. Checks run one by one in order
-7. Results returned to frontend
-8. Pass/fail displayed per check
-9. If all pass → problem solved
+1. User's current files sent to backend (POST /attempts/:id/test)
+2. Backend starts a throwaway Docker container
+3. Problem files are written, then the user's files, then the hidden files last
+4. Setup commands run (if the problem has any)
+5. Checks run one by one in order; each check's "running" and result stream to the browser as they happen
+6. Every result is stored (check_results)
+7. If every must_pass check passes → problem solved, points awarded (03_scoring.md)
+8. Container is removed
 ```
+
+A check passes when its command exits with code 0 (and its output contains `expected_output`, if set).
 
 ### Docker Container Isolation
-- Each attempt runs in its own isolated container
-- Container is destroyed after checks complete
-- User cannot access the host system
-- Network is restricted (no outbound requests unless problem requires it)
-- Time limit enforced — container killed after `time_limit_minutes`
+- Official `node:24-alpine` image (D54: Node/TypeScript only in v1; more images when a problem needs them)
+- A new container for every Submit, removed afterwards; it removes itself after 5 minutes even if the backend dies
+- No network, 512 MB memory, 1 CPU, at most 128 processes, read-only system, non-root user, no capabilities
+- Files are piped in - the host's folders are never mounted
+- 20 seconds per check; a runaway check is killed and the next one still runs
+- The problem's `time_limit_minutes` does not stop anything: past it the attempt stays open with a 1x time bonus (D9)
+
+### Terminal (R5)
+- One terminal container per open attempt, with the same isolation, holding the problem files and the user's
+  current editor files - never the hidden files
+- One command at a time, output streams live, 30 seconds per command, Stop / Ctrl+C
+- Each command starts a fresh shell (`cd` does not carry over); no interactive programs (D13)
+- Removed after 10 minutes without a command, on give up and on solve
+
+### Runnable problems
+Only `payment-retries-disappear` is runnable so far (D53, seed 0002): plain Node 24 (TypeScript through Node's type
+stripping, `node:test`), no npm packages, six hidden check files plus "Existing tests still pass". The other dev
+problems are display-only; Submit answers "Checks for this problem are not available yet".
 
 ### Check Types
 
@@ -198,8 +212,8 @@ When user opens a problem:
 - Acceptance checks: only their descriptions, in order (D26) - never commands or expected output
 - Repository panel: name, stack (language + framework + tags) and file paths, never file contents (D27)
 - Comments (locked until solved — shows count but not content)
-- **Start button** → starts timer, loads editor
-- A solved problem shows its result first (time, checks, lines changed, points, time bonus) and the problem below it
+- **Start button** → starts (or resumes) the attempt, loads the editor
+- A solved problem shows its result first (time, checks, lines changed, points, time bonus, every try - "Solved on try N") and the problem below it
 - Opening the page while signed in counts toward the streak (`03_scoring.md`)
 
 ---
@@ -209,11 +223,14 @@ When user opens a problem:
 When user clicks Start:
 
 - Fullscreen page (own layout, no app sidebar); opens with the editor sliding in from the right
-- Top bar: logo + title, timer, **Give up** (marks attempt as abandoned), **Submit** (runs checks)
-- Left: codebase context + incident report + acceptance checks (resizable, collapsible to 0)
-- Center: Monaco Editor with the buggy codebase, one tab per file + language selector
-- Bottom of the editor: Terminal and Test Results tabs
-- Right: AI chat panel (320px, min 280px, resizable, collapsible): AI tool selector, live session stats (prompts, tokens, test runs), "Session Efficiency" vs. the difficulty benchmark — see "AI Session Capture"
+- Top bar: logo + title, timer, **Give up** (confirm dialog, marks the attempt as abandoned), **Submit** (runs checks)
+- Three panels side by side at every width, each a third of the screen on open, freely resizable by dragging
+  (dragging a side panel past half its minimum closes it; a chevron tab reopens it)
+- Left: codebase context + incident report + acceptance checks
+- Center: Monaco Editor with the buggy codebase, one tab per file (sorted by path) + language selector; unsaved edits
+  are kept in the browser per try (D14)
+- Bottom of the editor: Terminal (real commands, R5) and Test Results (live per check, R6) tabs
+- Right: AI chat panel (open on load, resizable, collapsible): AI tool selector, live session stats (prompts, tokens, test runs), "Session Efficiency" vs. the difficulty benchmark — see "AI Session Capture"
 
 ### Check Panel States
 
@@ -223,8 +240,8 @@ Each check shows:
 - Output (shown on failed)
 
 ### Timer Display
-- Counts up from 0
-- Shows time limit in header
+- Counts up across all tries (D56): after giving up and starting again it continues from the earlier total
+- Hover shows the try number and the time limit
 - Turns red when 80% of time limit passed
 
 ---
@@ -234,9 +251,11 @@ Each check shows:
 - Timer starts on click of Start
 - User can open the problem description at any time during solving
 - User can run the app in the terminal at any time
-- Clicking Test runs all checks — partial results shown in real time
+- Clicking Submit runs all checks — partial results shown in real time
 - If all checks pass → solved, timer stops, points calculated
 - Can only solve each problem once (enforced in DB)
+- Give up → the attempt is abandoned; starting again opens the next try with the original code. Every try is stored
+  (attempt_tries), and the time bonus counts all of them (D56)
 
 ---
 

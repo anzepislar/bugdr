@@ -496,8 +496,8 @@ Odprto:
 | `/onboarding` | F4 |
 | `/dashboard` | U3, T1 |
 | `/problems` | P1 |
-| `/problems/[slug]` | P2, O1, O2 |
-| `/problems/[slug]/solve` | R1-R6, S1-S3 |
+| `/problems/[slug]` | P2, R4 (rezultat + poskusi), O1, O2 |
+| `/problems/[slug]/solve` | R1-R6 + R2b ✅, S1-S3 |
 | `/leaderboard` (ni zgrajen) | S4 |
 | `/profile/[username]` | U1, U2, T2 |
 | `/settings` | U1 (D34-D36) |

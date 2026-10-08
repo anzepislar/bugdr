@@ -123,7 +123,7 @@ Not in the schema yet - needs `contests.archived_at TIMESTAMP` (null = not archi
 **User detail:**
 - Profile info
 - Stats
-- All attempts (solved, abandoned, in progress)
+- All attempts (solved, abandoned, in progress), each with its tries (`attempt_tries`: start, end, outcome, duration)
 - Ban / unban toggle
 
 ---

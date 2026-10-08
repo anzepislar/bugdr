@@ -30,7 +30,12 @@ Solving faster earns a multiplier on top of base points.
 | Under 25% of time limit | 2x |
 | Under 50% of time limit | 1.5x |
 | Under 75% of time limit | 1.25x |
-| Over 75% of time limit | 1x (no bonus) |
+| Over 75% of time limit | 1x (no bonus) — also past the limit; the attempt stays open (D9) |
+
+"Under" is strict: exactly 25% is already 1.5x.
+
+**Time = all tries (D56):** giving up and starting again never resets the clock. The time used for the bonus is the
+sum of every try (`attempt_tries`), measured on the server.
 
 **Example:**
 Problem has 30 minute limit. Base points: 250 (Medium).
@@ -46,7 +51,9 @@ final_points = base_points × time_multiplier × efficiency_score
 ```
 
 Rounded to nearest integer.
-Stored in `point_transactions` with reason `'problem_solved'`.
+Stored in `point_transactions` as two rows (D15): `'problem_solved'` = the base points, `'time_bonus'` = the rest
+(only when there is a bonus). `user_stats.total_points` and the level are updated in the same transaction.
+Until the AI session score exists (S3, D51) the efficiency score is 1.
 
 ### Efficiency Score (0.5 to 2.0 multiplier)
 

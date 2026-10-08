@@ -50,7 +50,7 @@ docker compose up -d     # PostgreSQL 17 (+ test database bugdr_test)
 npm run migrate          # applies new files from /migrations
 npm run seed             # dev data from /seeds
 npm run dev              # API on http://localhost:4000/api/v1
-npm test                 # node:test against bugdr_test
+npm test                 # node:test against bugdr_test (runner tests need Docker + `docker pull node:24-alpine`)
 ```
 
 The frontend proxies `/api/*` to the backend (`next.config.ts`, `BACKEND_URL`, default `http://localhost:4000`).
@@ -63,7 +63,6 @@ The frontend proxies `/api/*` to the backend (`next.config.ts`, `BACKEND_URL`, d
 bugdr/
 ├── frontend/          # Next.js app
 ├── backend/           # Node.js + Express API
-├── docker/            # Docker configs for problem execution
 ├── migrations/        # Plain SQL migration files
 ├── seeds/             # Seed data for development
 └── md_files/          # This documentation
@@ -75,13 +74,14 @@ bugdr/
 
 ```
 Phase: Backend slices (06_backend_slices.md) - frontend screens swap their mocks slice by slice
-Frontend: 17 screens built from Figma; login, signup, logout, onboarding, /problems and /problems/[slug] use the real API;
-  the solve page has an AI chat panel on mock data
-Backend: Milestones M0 (F0-F4: skeleton, levels, auth, route protection, onboarding) and M1 (P1-P2: problem list,
-  bookmarks, problem detail, streak on view) done; next M2 (solving); AI session = M8 (S1-S5)
-Database: PostgreSQL 17 in Docker; migrations 0001-0006 (levels, users, profiles, problems, problem detail,
-  problem brief = codebase context + incident report);
-  `npm run seed` = 12 dev problems with code and checks
+Frontend: 17 screens built from Figma; login, signup, logout, onboarding, /problems, /problems/[slug] and the
+  solve page use the real API; the solve page's AI chat panel is still on mock data
+Backend: Milestones M0 (F0-F4: skeleton, levels, auth, route protection, onboarding), M1 (P1-P2: problem list,
+  bookmarks, problem detail, streak on view) and M2 (R1-R6: start, give up, try history, Docker check runner,
+  solve + points, terminal, live results) done; next M3 (ratings, comments); AI session = M8 (S1-S5)
+Database: PostgreSQL 17 in Docker; migrations 0001-0008 (levels, users, profiles, problems, problem detail,
+  problem brief, attempt tries, check results + points ledger);
+  `npm run seed` = 12 dev problems with code and checks; only payment-retries-disappear is runnable so far
 Detailed status: CLAUDE.md "Current Status" and 06_backend_slices.md "Stanje"
 ```
 
@@ -129,7 +129,7 @@ Phase 3 — Full backend
   Connect everything, implement business logic
 
 Phase 4 — Problem execution engine
-  Docker containers, Monaco editor, test runner, AI chat + session capture
+  Docker containers, Monaco editor, test runner, terminal (done in M2); AI chat + session capture (M8)
 
 Phase 5 — Admin dashboard
   Contest management, problem management
@@ -173,10 +173,11 @@ Backend (Node.js/Express)
   → Docker container management
   → Claude API (built-in AI chat, problem analysis) — key server-side only
 
-Docker (Problem Execution)
-  → Isolated container per problem attempt
-  → Runs user code safely
-  → Returns test results
+Docker (Problem Execution, backend/src/modules/runner)
+  → Official node:24-alpine image, driven through the docker CLI (no extra dependency)
+  → One throwaway container per check run; one terminal container per open attempt
+  → No network, CPU/memory/process limits, read-only system, non-root user
+  → Streams check results and terminal output back to the browser
 
 PostgreSQL
   → Single database
