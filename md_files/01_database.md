@@ -33,6 +33,7 @@ problems
   └── problem_checks       (automated tests)
   └── problem_ratings
   └── problem_comments
+        └── comment_helpful
 
 contests
   └── contest_problems
@@ -368,7 +369,9 @@ CREATE TABLE editor_events (
 ## Ratings & Comments
 
 ### problem_ratings
-One rating per user per problem. Only possible after solving.
+One rating per user per problem. Only possible after solving. Rating again replaces the rating (upsert).
+Built in P2 (D49), used from O1: `PUT /problems/:slug/rating` recomputes `problems.average_rating` and
+`rating_count` from this table in the same transaction (D57) - they are never adjusted incrementally.
 
 ```sql
 CREATE TABLE problem_ratings (
@@ -382,16 +385,33 @@ CREATE TABLE problem_ratings (
 ```
 
 ### problem_comments
-Comments unlocked only after solving. Enforced in API, not DB.
+Comments unlocked only after solving. Enforced in API, not DB. Built in P2 (D49); O2 (migration 0009) adds
+`parent_id`: replies are one level deep (D30, enforced in API), deleting a comment deletes its replies (D58).
+Content is stored trimmed, 1-2000 characters (API). No editing, so `updated_at` stays the creation time.
 
 ```sql
 CREATE TABLE problem_comments (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID REFERENCES users(id) ON DELETE CASCADE,
   problem_id  UUID REFERENCES problems(id) ON DELETE CASCADE,
+  parent_id   UUID REFERENCES problem_comments(id) ON DELETE CASCADE,  -- NULL = top level
   content     TEXT NOT NULL,
   created_at  TIMESTAMP DEFAULT NOW(),
   updated_at  TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX problem_comments_problem ON problem_comments (problem_id);
+```
+
+### comment_helpful
+"Helpful" marks (D30, migration 0009). Only by someone who solved the problem, never on one's own comment (API).
+The helpful count is `count(*)` of this table when comments are read - no stored counter that could drift.
+
+```sql
+CREATE TABLE comment_helpful (
+  comment_id  UUID NOT NULL REFERENCES problem_comments(id) ON DELETE CASCADE,
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (comment_id, user_id)
 );
 ```
 
@@ -537,6 +557,6 @@ CREATE TABLE level_thresholds (
 ## Important Notes
 
 - **Comments** are gated by `status = 'solved'` — enforced in API layer
-- **Ratings** update `problems.average_rating` and `problems.rating_count` — done via trigger or API
+- **Ratings** update `problems.average_rating` and `problems.rating_count` — in the API (O1), recomputed from `problem_ratings`
 - **user_stats** is updated after every solve — never let it get out of sync with point_transactions
 - **UNIQUE(user_id, problem_id)** on attempts means a user cannot retry a solved problem — this is intentional

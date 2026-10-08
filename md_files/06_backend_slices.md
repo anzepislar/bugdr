@@ -131,7 +131,6 @@ Posledica odločitev - narejene v migraciji rezine, ki tabelo ustvari:
 | --- | --- | --- | --- |
 | `contest_entries` | − `attempt_id` | D18 | T2 |
 | `contests` / `contest_entries` | + oznaka "nagrada poslana" (`04`) - točna oblika ob rezini | - | A7 |
-| `problem_comments` | + `parent_id`, + `helpful_count`; nova tabela `comment_helpful` (predlog, čaka odločitev; tabelo ustvari P2 po D49, ti stolpci pridejo v O2) | D30 | O2 |
 | `problems` | + `bug_summary TEXT` (interna opomba AI analize, samo admin, nikoli k uporabniku) - zahteva zaslona Create Problem | - | A2 |
 | `contests` | `starts_at`/`ends_at` dovolita NULL (osnutek); stanje se ne shrani | D43 | A6 |
 | `contests` | + `archived_at TIMESTAMP` (NULL = ni arhivirano; arhiviranje končanih tekmovanj, `04`) | - | A6 |
@@ -144,7 +143,7 @@ migracijo (uporabnik 8. 10. 2026: "update all md files"). Ta tabela ostane
 seznam sprememb za tabele, ki še niso zgrajene. Narejeno v `01`: `users`
 (F2), `user_profiles` + `languages` (F4), `problem_categories`, `problems`, `problem_tags`,
 `problem_bookmarks`, `user_problem_attempts` (P1), `attempt_tries` (R2b), `check_results`, `point_transactions` (R4), `problem_codebase` (+ `hidden_files`, `solution_files`,
-`repository_name`), `problem_checks`, `problem_ratings`, `problem_comments`, `user_daily_activity` (P2);
+`repository_name`), `problem_checks`, `problem_ratings`, `problem_comments`, `user_daily_activity` (P2); `problem_comments.parent_id`, `comment_helpful` (O2, migracija 0009 - brez `helpful_count`, šteje se ob branju);
 `problems.description` → `codebase_context` + `incident_report` (migracija 0006, 8. 10. 2026).
 
 ---
@@ -314,12 +313,12 @@ polnijo s seed skripto.
 - **Stanje:** `PUT /problems/:slug/rating` v `problems.routes.js` (transakcija: zaklene vrstico problema, upsert, povprečje znova iz `problem_ratings`; vrstni red napak 401 → 404 → 400 → 403). Seed 0001 nima več izmišljenih ocen, ob ponovnem zagonu izračuna `average_rating`/`rating_count` iz pravih ocen (popravi tudi obstoječo dev bazo). `RateProblem` shrani z `PUT` + `router.refresh()`, ob napaki vrne prejšnjo oceno. Test `backend/test/o1.test.js` (napake, povprečje več uporabnikov, ponovna ocena, vzporedni oceni). Opaženo, ni popravljeno: brez ocen se kaže `★ 0.0 (0 ratings)` in ednina je `(1 ratings)`.
 
 **O2 · Komentarji** `M` · odvisno od: R4, D30 ✅, D58 ✅ · ✅ 8. 10. 2026
-- Tabela `problem_comments` že obstaja (P2 - D49). Migracija doda `parent_id` + `helpful_count` in tabelo `comment_helpful` (D30).
+- Tabela `problem_comments` že obstaja (P2 - D49). Migracija doda `parent_id` in tabelo `comment_helpful` (D30).
 - API:
   - `GET /problems/:slug/comments?sort=helpful|newest` - nerešen ali gost: samo `{ count, locked: true }`; rešen: `{ comments: ProblemComment[] }` (odgovori v `replies`, razvrščeni od najstarejšega; razvrščanje velja za komentarje prve ravni).
   - `POST /problems/:slug/comments` `{ content, parentId? }` - samo po rešitvi (403 `NOT_SOLVED`); prazna (po `trim`) ali > 2000 znakov → 400; `parentId` mora biti komentar prve ravni istega problema, sicer 400.
   - `DELETE /comments/:id` - samo avtor (403 sicer), izbriše tudi odgovore in oznake (D58).
-  - `PUT/DELETE /comments/:id/helpful` - samo po rešitvi problema; lastni komentar → 403; idempotentno, `helpful_count` v isti transakciji.
+  - `PUT/DELETE /comments/:id/helpful` - samo po rešitvi problema; lastni komentar → 403; idempotentno; števec se šteje iz `comment_helpful` ob branju.
 - Vsebina se hrani surova, izpis je varen (React escapa). `author.displayName` = `username` do U1 (D34), `goalRole` iz `user_profiles`.
 - Frontend: zavihek Discussion na `/problems/[slug]` - `Discussion.tsx` zamenja `mockGetComments` in stanje komponente s klici API; gumb "Delete" pri lastnem komentarju + `ConfirmDialog` (D58). `MOCK_ME` v `Discussion.tsx` zamenja prijavljeni uporabnik. Oblika: `ProblemComment` v `frontend/src/lib/types/problem.ts`.
 - Končano, ko: nerešen uporabnik nikoli ne dobi vsebine; prazna/predolga vsebina → 400; odgovor na odgovor → 400; helpful ne gre na lasten komentar in se ne podvoji; izbris odstrani odgovore; `commentCount` na strani podrobnosti se ujema.

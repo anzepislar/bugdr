@@ -1380,3 +1380,11 @@ Playwright Chromium z dvema uporabnikoma (1440 px): objava, števec na
 zavihku, helpful (lasten onemogočen), odgovor, osvežitev, brisanje z
 odgovorom; 390 px brez vodoravnega drsenja; brez napak v konzoli; testni
 uporabniki izbrisani. `mockGetComments` ni več v uporabi (ni izbrisan).
+
+### Usklajevanje dokumentov po M3
+
+- `00`: Current Status (M3, migracije 0001-0009, seed brez izmišljenih ocen).
+- `01`: `problem_comments.parent_id` + indeks, nova tabela `comment_helpful`,
+  ocene se izračunajo znova iz `problem_ratings` (O1, D57).
+- `02`: pravila komentarjev (odgovori, helpful, 2000 znakov, brisanje) in
+  ocen. `06`: tabela sprememb sheme, besedilo O2 brez `helpful_count`.

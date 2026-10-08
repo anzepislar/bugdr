@@ -290,11 +290,14 @@ Users can use any AI tool. The editor has a built-in AI chat panel (connected to
 - Content unlocked only after solving
 - Users can share approach, tips, alternative solutions
 - No spoilers before solving
+- Replies one level deep; "helpful" marks (not on your own comment); sort by most helpful or newest (D30)
+- Up to 2000 characters, plain text (never rendered as HTML)
+- The author can delete their own comment, with its replies; no editing (D58)
 
 ### Ratings
 - 1-5 stars
-- Only after solving
-- Visible to everyone (average + count)
+- Only after solving; rating again replaces your rating
+- Visible to everyone (average + count), always computed from real ratings (D57)
 - Encourages quality problem curation
 
 ---

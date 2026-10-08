@@ -74,14 +74,16 @@ bugdr/
 
 ```
 Phase: Backend slices (06_backend_slices.md) - frontend screens swap their mocks slice by slice
-Frontend: 17 screens built from Figma; login, signup, logout, onboarding, /problems, /problems/[slug] and the
-  solve page use the real API; the solve page's AI chat panel is still on mock data
+Frontend: 17 screens built from Figma; login, signup, logout, onboarding, /problems, /problems/[slug] (incl. rating
+  and discussion) and the solve page use the real API; the solve page's AI chat panel is still on mock data
 Backend: Milestones M0 (F0-F4: skeleton, levels, auth, route protection, onboarding), M1 (P1-P2: problem list,
   bookmarks, problem detail, streak on view) and M2 (R1-R6: start, give up, try history, Docker check runner,
-  solve + points, terminal, live results) done; next M3 (ratings, comments); AI session = M8 (S1-S5)
-Database: PostgreSQL 17 in Docker; migrations 0001-0008 (levels, users, profiles, problems, problem detail,
-  problem brief, attempt tries, check results + points ledger);
-  `npm run seed` = 12 dev problems with code and checks; only payment-retries-disappear is runnable so far
+  solve + points, terminal, live results) and M3 (O1-O2: ratings, comments) done; next M4 (profile, dashboard);
+  AI session = M8 (S1-S5)
+Database: PostgreSQL 17 in Docker; migrations 0001-0009 (levels, users, profiles, problems, problem detail,
+  problem brief, attempt tries, check results + points ledger, comment replies + helpful);
+  `npm run seed` = 12 dev problems with code and checks, no made-up ratings (D57); only payment-retries-disappear
+  is runnable so far
 Detailed status: CLAUDE.md "Current Status" and 06_backend_slices.md "Stanje"
 ```
 
