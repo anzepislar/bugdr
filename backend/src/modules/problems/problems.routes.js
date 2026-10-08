@@ -224,3 +224,46 @@ problemsRouter.delete("/:slug/bookmark", requireAuth, async (req, res) => {
   ]);
   res.status(204).end();
 });
+
+/**
+ * O1: one rating per user and problem, only after solving. The average is always recomputed from problem_ratings (D57).
+ * The problem row is locked first, so two parallel ratings cannot both compute the average without the other.
+ */
+problemsRouter.put("/:slug/rating", requireAuth, async (req, res) => {
+  const rating = req.body?.rating;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query(
+      `SELECT p.id, a.status = 'solved' AS solved FROM problems p
+       LEFT JOIN user_problem_attempts a ON a.problem_id = p.id AND a.user_id = $2
+       WHERE p.slug = $1 AND p.is_published FOR UPDATE OF p`,
+      [req.params.slug, req.user.id],
+    );
+    const p = rows[0];
+    if (!p) throw new HttpError(404, "PROBLEM_NOT_FOUND", "Problem not found");
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5)
+      throw new HttpError(400, "VALIDATION_ERROR", "Rating must be a whole number from 1 to 5");
+    if (!p.solved) throw new HttpError(403, "NOT_SOLVED", "Solve the problem to rate it");
+
+    await client.query(
+      `INSERT INTO problem_ratings (user_id, problem_id, rating) VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, problem_id) DO UPDATE SET rating = EXCLUDED.rating`,
+      [req.user.id, p.id, rating],
+    );
+    const { rows: totals } = await client.query(
+      `UPDATE problems SET
+         average_rating = (SELECT coalesce(round(avg(rating), 2), 0) FROM problem_ratings WHERE problem_id = $1),
+         rating_count = (SELECT count(*) FROM problem_ratings WHERE problem_id = $1)
+       WHERE id = $1 RETURNING average_rating::float AS average_rating, rating_count`,
+      [p.id],
+    );
+    await client.query("COMMIT");
+    res.json({ averageRating: totals[0].average_rating, ratingCount: totals[0].rating_count, myRating: rating });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+});

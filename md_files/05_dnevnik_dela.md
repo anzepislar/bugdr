@@ -1332,3 +1332,51 @@ brez napak v konzoli.
   točk (D15), učinkovitost 1 do S3.
 - `04`: poskusi pri uporabniku v adminu. `06`: sledljivost. `CLAUDE.md`:
   vrstica Frontend, odprti vprašanji (incident log, `mock/attempts.ts`).
+
+## 8. 10. 2026 — Seja 15: M3 priprava
+
+- Osnovno stanje: backend testi 72/72 zeleni (M2 nespremenjen).
+- Pregled M3 proti kodi: tabeli `problem_ratings` in `problem_comments` že
+  obstajata (0005), `Discussion.tsx` že ima odgovore, "helpful" in
+  razvrščanje (samo stanje komponente), `RateProblem.tsx` samo stanje.
+- Odločitve (uporabnik): **D30** - shranijo se odgovori (ena raven),
+  "helpful" in obe razvrstitvi; **D57** - povprečje ocen samo iz pravih
+  ocen, seed začne z 0 ocenami; **D58** - avtor lahko izbriše svoj
+  komentar (z odgovori), urejanja ni. Prikazno ime = `username` do U1 (D34).
+- `06`: rezini O1 in O2 dopolnjeni (API, napake, frontend, "končano, ko");
+  O2 je zdaj `M`.
+
+### Rezina O1 (ocene)
+
+- `PUT /problems/:slug/rating` `{ rating: 1-5 }`: gost 401, neznan/neobjavljen
+  404, neveljavna ocena 400, nerešen 403 `NOT_SOLVED`. Transakcija zaklene
+  problem, shrani oceno (upsert) in izračuna povprečje znova iz
+  `problem_ratings` (D57).
+- Seed 0001 brez izmišljenih ocen; ponoven `npm run seed` ocene preračuna.
+- `RateProblem` shrani oceno, osveži povprečje v glavi; ob napaki vrne
+  prejšnjo oceno in pokaže sporočilo.
+
+Preverjeno: backend testi 75/75 (+3 O1); frontend lint, typecheck, build;
+Playwright Chromium 1440 px: `0.0 (0 ratings)` → klik 4 zvezdice →
+`4.0 (1 ratings)`, ostane po osvežitvi, brez napak v konzoli (testni
+uporabnik nato izbrisan). Opaženo, ni popravljeno: prikaz brez ocen
+(`0.0 (0 ratings)`) in ednina `(1 ratings)`.
+
+### Rezina O2 (komentarji) - M3 zaključen
+
+- Migracija 0009: `problem_comments.parent_id` (odgovori ena raven, izbris
+  s kaskado), tabela `comment_helpful`.
+- Nov modul `comments.routes.js`: `GET/POST /problems/:slug/comments`
+  (nerešen ali gost dobi samo `{ count, locked }`), `DELETE /comments/:id`
+  (samo avtor), `PUT/DELETE /comments/:id/helpful` (samo po rešitvi, nikoli
+  na lasten komentar).
+- Enostavneje od načrta: števec helpful se šteje ob branju (brez stolpca),
+  razvrščanje ostane na odjemalcu, komentar dobi polje `own`.
+- `Discussion.tsx` na API: objava, odgovor, helpful, brisanje z
+  `ConfirmDialog`; po spremembi se osveži števec na zavihku.
+
+Preverjeno: backend testi 81/81 (+6 O2); frontend lint, typecheck, build;
+Playwright Chromium z dvema uporabnikoma (1440 px): objava, števec na
+zavihku, helpful (lasten onemogočen), odgovor, osvežitev, brisanje z
+odgovorom; 390 px brez vodoravnega drsenja; brez napak v konzoli; testni
+uporabniki izbrisani. `mockGetComments` ni več v uporabi (ni izbrisan).

@@ -18,12 +18,12 @@ povezala na API.
 
 ```
 Zadnja posodobitev: 8. 10. 2026
-Backend: M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6)
+Backend: M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2)
 Frontend: 17 zaslonov na mocku - /login, /signup, /forgot-password, /onboarding, /dashboard,
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit
-Naslednja rezina: M3 (O1 ocene, O2 komentarji) ali M4 (U1 profil); M3-M4 sta odklenjeni (O1, O2, U1 čakajo na R4 - narejeno); D48 (admin) pred M6; M8 (AI seja) čaka D50-D52
+Naslednja rezina: M4 (U1 profil - D34-D36 odprte); testi 81/81; M4 (U1) odklenjen; D48 (admin) pred M6; M8 (AI seja) čaka D50-D52
 ```
 
 Oznake: ⬜ ni začeto · 🟨 v delu · ✅ narejeno (z datumom) · ⏸ odloženo
@@ -93,7 +93,7 @@ dokler je uporabnik ne potrdi.
 | D27 | ~~Ime repozitorija in sklad na strani podrobnosti~~ → **rešeno 8. 10. 2026** (uporabnik): `problem_codebase.repository_name VARCHAR(100)`, sklad = `language` + `framework` + tagi; zavihek Repository pokaže poti iz `repository_structure` (brez vsebine) | P2, A2 |
 | D28 | ~~"Give up" na zaslonu reševanja~~ → **rešeno 8. 10. 2026** (uporabnik): besedilni gumb "Give up" v zgornji vrstici + potrditveno okno v slogu Bugdr (`ConfirmDialog`, nativni `<dialog>`) namesto `window.confirm` | R2 |
 | D29 | ~~Iskanje in razširitve v levi vrstici zaslona reševanja~~ → **rešeno 7. 10. 2026**: prenova zaslona reševanja (split pane) odstrani levo vrstico in drevo datotek; datoteke so zavihki nad urejevalnikom | R1 |
-| D30 | **ODPRTO** - "helpful" in odgovori na komentarje | Dizajn razprave ima "N helpful", "Reply" in razvrščanje "Most helpful"; `problem_comments` nima ničesar od tega. Predlog: `problem_comments.parent_id UUID NULL REFERENCES problem_comments(id)` (odgovori samo ena raven), tabela `comment_helpful (comment_id, user_id, created_at, PK(comment_id, user_id))` + `problem_comments.helpful_count` (posodobljen v isti transakciji), `PUT/DELETE /comments/:id/helpful`, lastnega komentarja ni mogoče označiti, `GET /problems/:slug/comments?sort=helpful\|newest` | O2 |
+| D30 | ~~"Helpful" in odgovori na komentarje~~ → **rešeno 8. 10. 2026** (uporabnik, priprava M3): **vse, kot je v UI** (izvedba O2: števec iz `comment_helpful` ob branju namesto stolpca, razvrščanje na odjemalcu) - `problem_comments.parent_id UUID NULL REFERENCES problem_comments(id) ON DELETE CASCADE` (odgovori samo ena raven: odgovor na odgovor → 400), tabela `comment_helpful (comment_id, user_id, created_at, PK(comment_id, user_id))` + `problem_comments.helpful_count INTEGER NOT NULL DEFAULT 0` (posodobljen v isti transakciji), `PUT/DELETE /comments/:id/helpful` (lastnega komentarja ni mogoče označiti → 403), `GET /problems/:slug/comments?sort=helpful\|newest` | O2 |
 | D31 | ~~Stran posameznega tekmovanja~~ → **rešeno 6. 10. 2026**: uporabnik je dal dizajn, pot `/contests/[id]` (id, ker `contests` nima sluga). En incident na tekmovanje kot v dizajnu, čeprav shema dovoli več problemov (`contest_problems`) | T1, T2 |
 | D33 | ~~En ali več problemov na tekmovanje~~ → **rešeno 7. 10. 2026** (uporabnik, prenova admin tekmovanj): **vsaj 1 problem, lahko več** (`contest_problems`). Javni `ContestDetail.problem` (`/contests/[id]`) je še en problem - T1 ga razširi v seznam | T1, A6 |
 | D34 | **ODPRTO** - polja profila iz `/settings` | Dizajn ima prikazno ime, naslov profila (headline), GitHub uporabniško ime, jezike in stikalo "Public profile"; shema nima nobenega (`users` ima samo `username`). Predlog: `user_profiles` + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, `languages TEXT[]`, `is_public BOOLEAN DEFAULT TRUE`; API `PUT /me/profile`. Zdaj fiksen seznam jezikov (`LANGUAGES`) | U1 |
@@ -120,6 +120,8 @@ dokler je uporabnik ne potrdi.
 | D54 | ~~Jeziki izvajalnika v v1~~ → **rešeno 8. 10. 2026** (uporabnik): **samo Node/TypeScript** (ena osnovna slika); drugi jeziki, ko jih zahteva prvi problem | R3 |
 | D56 | ~~Zgodovina poskusov in čas po odstopu~~ → **rešeno 8. 10. 2026** (uporabnik): **vsak poskus (try) je svoj zapis** - začetek, konec, izid (opustil / rešil / odprt), trajanje; pozneje tudi AI poraba po poskusu. Za točke (časovni bonus) šteje **vsota časa vseh poskusov** - odstop + ponoven start ne resetira ure. Spremeni D8: vrstica `user_problem_attempts` ostane ena na problem, `started_at` se ob ponovnem startu še vedno nastavi (začetek trenutnega poskusa), čas za točke pa je vsota poskusov | R2b, R4, S1 |
 | D55 | ~~Urejevalnik v R1~~ → **rešeno 8. 10. 2026** (uporabnik): R1 doda `@monaco-editor/react` namesto `CodeEditorMock`; spremembe v `localStorage` po poskusu (D14) | R1 |
+| D57 | ~~Izmišljene ocene v seedu~~ → **rešeno 8. 10. 2026** (uporabnik, priprava M3): **samo prave ocene** - `average_rating` in `rating_count` se ob vsaki oceni izračunata znova iz `problem_ratings` (`avg`/`count`) v isti transakciji; seed vseh 12 problemov začne z 0 ocenami (brez izmišljenih 4,9 (41)) | O1 |
+| D58 | ~~Urejanje in brisanje komentarjev~~ → **rešeno 8. 10. 2026** (uporabnik, priprava M3): **samo brisanje lastnega komentarja**, brez urejanja. Povezava "Delete" pri lastnem komentarju + `ConfirmDialog`; izbris komentarja izbriše tudi njegove odgovore (`ON DELETE CASCADE`) in oznake helpful. Prikazno ime avtorja = `username`, dokler U1 ne doda `display_name` (D34) | O2 |
 
 ### Spremembe sheme glede na `01_database.md`
 
@@ -303,17 +305,25 @@ polnijo s seed skripto.
 
 ### M3 - Skupnost
 
-**O1 · Ocene** `S` · odvisno od: R4 · ⬜
+**O1 · Ocene** `S` · odvisno od: R4 · ✅ 8. 10. 2026
 - Tabela `problem_ratings` že obstaja (P2 - D49).
-- API: `PUT /problems/:slug/rating` `{ rating: 1-5 }` - samo po rešitvi (403 `NOT_SOLVED`); posodobi `problems.average_rating` in `rating_count` v isti transakciji.
-- Končano, ko: nerešen → 403; ponovna ocena posodobi, ne podvoji; povprečje pravilno.
+- API: `PUT /problems/:slug/rating` `{ rating: 1-5 }` - samo po rešitvi (403 `NOT_SOLVED`), gost 401, neveljavna ocena 400; upsert (`ON CONFLICT (user_id, problem_id)`), nato `average_rating`/`rating_count` znova iz `problem_ratings` v isti transakciji (D57). Odgovor: `{ averageRating, ratingCount, myRating }`.
+- Seed: vseh 12 problemov začne z `average_rating = 0`, `rating_count = 0` (D57).
+- Frontend: `RateProblem.tsx` (stran `/problems/[slug]`, kartica rešenega problema) shrani oceno z `PUT`; ob napaki vrne prejšnjo oceno. Povprečje v glavi strani se osveži (`router.refresh()`).
+- Končano, ko: nerešen → 403; ponovna ocena posodobi, ne podvoji; povprečje in število pravilna po več ocenah različnih uporabnikov.
+- **Stanje:** `PUT /problems/:slug/rating` v `problems.routes.js` (transakcija: zaklene vrstico problema, upsert, povprečje znova iz `problem_ratings`; vrstni red napak 401 → 404 → 400 → 403). Seed 0001 nima več izmišljenih ocen, ob ponovnem zagonu izračuna `average_rating`/`rating_count` iz pravih ocen (popravi tudi obstoječo dev bazo). `RateProblem` shrani z `PUT` + `router.refresh()`, ob napaki vrne prejšnjo oceno. Test `backend/test/o1.test.js` (napake, povprečje več uporabnikov, ponovna ocena, vzporedni oceni). Opaženo, ni popravljeno: brez ocen se kaže `★ 0.0 (0 ratings)` in ednina je `(1 ratings)`.
 
-**O2 · Komentarji** `S` · odvisno od: R4 · ⬜
-- Tabela `problem_comments` že obstaja (P2 - D49); O2 doda stolpce iz D30.
-- API: `GET /problems/:slug/comments` (nerešen: samo `{ count, locked: true }`), `POST /problems/:slug/comments` (samo po rešitvi).
-- Vsebina se hrani surova, izpis je varen (React escapa).
-- Frontend: zavihek Discussion na `/problems/[slug]` (rešen problem) - `Discussion.tsx`. Oblika komentarja je `ProblemComment` v `frontend/src/lib/types/problem.ts` (avtor z `goalRole`, `helpfulCount`, `markedHelpful`, `replies` po D30). Najdaljša vsebina 2000 znakov (predlog).
-- Končano, ko: nerešen uporabnik nikoli ne dobi vsebine; prazna/predolga vsebina → 400.
+**O2 · Komentarji** `M` · odvisno od: R4, D30 ✅, D58 ✅ · ✅ 8. 10. 2026
+- Tabela `problem_comments` že obstaja (P2 - D49). Migracija doda `parent_id` + `helpful_count` in tabelo `comment_helpful` (D30).
+- API:
+  - `GET /problems/:slug/comments?sort=helpful|newest` - nerešen ali gost: samo `{ count, locked: true }`; rešen: `{ comments: ProblemComment[] }` (odgovori v `replies`, razvrščeni od najstarejšega; razvrščanje velja za komentarje prve ravni).
+  - `POST /problems/:slug/comments` `{ content, parentId? }` - samo po rešitvi (403 `NOT_SOLVED`); prazna (po `trim`) ali > 2000 znakov → 400; `parentId` mora biti komentar prve ravni istega problema, sicer 400.
+  - `DELETE /comments/:id` - samo avtor (403 sicer), izbriše tudi odgovore in oznake (D58).
+  - `PUT/DELETE /comments/:id/helpful` - samo po rešitvi problema; lastni komentar → 403; idempotentno, `helpful_count` v isti transakciji.
+- Vsebina se hrani surova, izpis je varen (React escapa). `author.displayName` = `username` do U1 (D34), `goalRole` iz `user_profiles`.
+- Frontend: zavihek Discussion na `/problems/[slug]` - `Discussion.tsx` zamenja `mockGetComments` in stanje komponente s klici API; gumb "Delete" pri lastnem komentarju + `ConfirmDialog` (D58). `MOCK_ME` v `Discussion.tsx` zamenja prijavljeni uporabnik. Oblika: `ProblemComment` v `frontend/src/lib/types/problem.ts`.
+- Končano, ko: nerešen uporabnik nikoli ne dobi vsebine; prazna/predolga vsebina → 400; odgovor na odgovor → 400; helpful ne gre na lasten komentar in se ne podvoji; izbris odstrani odgovore; `commentCount` na strani podrobnosti se ujema.
+- **Stanje:** migracija 0009 (`parent_id` + indeks, tabela `comment_helpful`), modul `backend/src/modules/comments/comments.routes.js` (priklopljen na `/api/v1`). Odstopanja od zgornjega načrta (enostavneje): **brez stolpca `helpful_count`** - šteje se iz `comment_helpful` ob branju, zato se ne more razhajati; **brez `?sort=`** - odgovor vsebuje vse komentarje, razvršča odjemalec (kot `/problems`); komentar ima novo polje `own` (gledalec je avtor), zato frontend ne potrebuje trenutnega uporabnika. Vsebina se shrani obrezana (`trim`). Frontend: stran naloži komentarje s `serverFetch`, `Discussion.tsx` objavi/odgovori/označi/izbriše prek API (helpful takoj, ob napaki nazaj; obrazec odgovora obdrži besedilo ob napaki), "Delete" + `ConfirmDialog`, po spremembi `router.refresh()` (števec na zavihku). Test `backend/test/o2.test.js` (6 testov).
 
 ### M4 - Profil in dashboard
 
@@ -440,7 +450,7 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | --- | --- | --- | --- |
 | `/dashboard` + stranska vrstica (`(app)/layout.tsx`) | `src/lib/mock/dashboard.ts`: `mockGetDashboard` (datumi relativni na zdaj), `MOCK_ME` (uporabnik, cilj, izkušnje), `MOCK_ACTIVE_CONTEST_COUNT`; sličice v `public/mock/` | U3, T1, U2, F4 | ⬜ |
 | `/problems` | ~~`mockGetProblems`~~ → `GET /problems` (P1), zaznamki → `PUT/DELETE /problems/:slug/bookmark` (D23); filtri/razvrščanje/drsenje ostanejo na odjemalcu. `mockGetProblems` še uporabljata mocka `profile.ts` in `adminContests.ts` | P1 | ✅ 8. 10. 2026 |
-| `/problems/[slug]` | ~~`mockGetProblem`~~ → `GET /problems/:slug` (P2, `serverFetch`); besedilo = `codebaseContext` + `incidentReport` (migracija 0006, seed iz `mock/problemBriefs.ts`). Ostane mock: ocena v `RateProblem` samo v stanju (O1), `mockGetComments` (O2; rešen problem brez mock komentarjev = prazna razprava) | P2 ✅, O1, O2 | 🟨 |
+| `/problems/[slug]` | ~~`mockGetProblem`~~ → `GET /problems/:slug` (P2, `serverFetch`); besedilo = `codebaseContext` + `incidentReport` (migracija 0006, seed iz `mock/problemBriefs.ts`). Ocena → `PUT /problems/:slug/rating` (O1), razprava → `GET/POST /problems/:slug/comments`, `DELETE /comments/:id`, `PUT/DELETE /comments/:id/helpful` (O2). `mockGetComments` ni več v uporabi | P2 ✅, O1 ✅, O2 ✅ | ✅ 8. 10. 2026 |
 | `/problems/[slug]/solve` | ~~`mockStartAttempt`, `CodeEditorMock`~~ → `POST /problems/:slug/start` + Monaco (R1 ✅); ~~`mockRunTests`~~ → `POST /attempts/:id/test` (R4 ✅); split pane: opis (`ProblemOverview`) levo, urejevalnik desno, spodaj Terminal + Test Results; vsaka datoteka je zavihek, izbirnik jezika je samo prikaz; "Submit" = zagon preverjanj. Desno AI klepet (`AiChatPanel`): `src/lib/mock/aiChat.ts` - `mockAskAi` (1,5 s, 4 vnaprej napisani odgovori za payment-retries, ciklično za vse probleme), `AI_TOOLS`, `BENCHMARKS` (povprečje pozivov/žetonov po težavnosti); seja v `src/hooks/useSessionTracker.ts` (samo React stanje: pozivi, žetoni ≈ znaki/4, zagoni testov, dogodki); ocena učinkovitosti je groba primerjava z benchmarkom | R1 ✅, R2 ✅ (Give up), R4 ✅, R5 ✅ (terminal), R6 ✅, S1, S2, S3 (AI seja) | 🟨 |
 | `/contests` | `src/lib/mock/contests.ts`: `mockGetContests` (live/upcoming/past + zgodovina uporabnika, datumi relativni na zdaj); prihajajoča tekmovanja brez težavnosti, oznak in sličice (T1); "View contest" vodi na `/contests/[id]` | T1, T2 | ⬜ |
 | `/contests/[id]` | `src/lib/mock/contests.ts`: `mockGetContest` (seznam + `DETAILS`: incident, ime repozitorija (D27), število preverjanj, nagrada, udeležba); problemi tekmovanj so obstoječi mock problemi, da "Enter contest" odpre delujoč zaslon reševanja | T1, T2 | ⬜ |

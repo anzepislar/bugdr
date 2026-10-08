@@ -174,8 +174,10 @@ export interface ProblemComment {
   /** Raw text; rendered as text, never as HTML. */
   content: string;
   createdAt: string;
-  /** D30: no column yet. */
   helpfulCount: number;
+  /** The viewer marked it as helpful. */
   markedHelpful: boolean;
+  /** The viewer wrote it: can delete it (D58), can't mark it helpful (D30). */
+  own: boolean;
   replies: ProblemComment[];
 }

@@ -1,7 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { MOCK_ME } from "@/lib/mock/dashboard";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { api } from "@/lib/api";
 import { CATEGORIES, type ProblemComment } from "@/lib/types/problem";
 
 // O2: empty or too long content is rejected with 400.
@@ -22,24 +24,20 @@ function timeAgo(iso: string, now: number): string {
 
 const roleName = (slug: ProblemComment["author"]["goalRole"]) => CATEGORIES.find((c) => c.slug === slug)?.name;
 
-function newComment(content: string): ProblemComment {
-  return {
-    id: crypto.randomUUID(),
-    author: { username: MOCK_ME.username, displayName: MOCK_ME.displayName, goalRole: MOCK_ME.goalRole },
-    content,
-    createdAt: new Date().toISOString(),
-    helpfulCount: 0,
-    markedHelpful: false,
-    replies: [],
-  };
-}
+const FAILED = "That didn't work. Try again.";
 
-// ponytail: posts, replies and "helpful" stay in component state; slice O2 (+ D30) saves them.
-export function Discussion({ initial }: { initial: ProblemComment[] }) {
+// O2: every change is saved through the API; the list is all comments of the problem, sorted here.
+export function Discussion({ slug, initial }: { slug: string; initial: ProblemComment[] }) {
+  const router = useRouter();
   const [comments, setComments] = useState(initial);
   const [sort, setSort] = useState<Sort>("helpful");
   const [draft, setDraft] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [error, setError] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<ProblemComment | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -60,29 +58,77 @@ export function Discussion({ initial }: { initial: ProblemComment[] }) {
     setComments(walk);
   }
 
-  function post(e: React.FormEvent) {
+  const send = (content: string, parentId?: string) =>
+    api<{ comment: ProblemComment }>(`/problems/${encodeURIComponent(slug)}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ content, parentId }),
+    }).then((r) => {
+      router.refresh(); // the comment count on the Discussion tab
+      return r.comment;
+    });
+
+  async function post(e: React.FormEvent) {
     e.preventDefault();
     const content = draft.trim();
-    if (!content) return;
-    setComments((list) => [newComment(content), ...list]);
-    setDraft("");
-    setSort("newest");
+    if (!content || posting) return;
+    setPosting(true);
+    setError("");
+    try {
+      const comment = await send(content);
+      setComments((list) => [comment, ...list]);
+      setDraft("");
+      setSort("newest");
+    } catch {
+      setError(FAILED);
+    } finally {
+      setPosting(false);
+    }
   }
 
-  function postReply(parentId: string, content: string) {
-    update(parentId, (c) => ({ ...c, replies: [...c.replies, newComment(content)] }));
+  // Throws on failure, so the reply form keeps its text and shows the error.
+  async function postReply(parentId: string, content: string) {
+    const reply = await send(content, parentId);
+    update(parentId, (c) => ({ ...c, replies: [...c.replies, reply] }));
     setReplyTo(null);
   }
 
-  const toggleHelpful = (id: string) =>
-    update(id, (c) => ({
-      ...c,
-      markedHelpful: !c.markedHelpful,
-      helpfulCount: c.helpfulCount + (c.markedHelpful ? -1 : 1),
-    }));
+  // Shown at once; a failed save flips it back.
+  async function toggleHelpful(c: ProblemComment) {
+    const flip = (x: ProblemComment) => ({
+      ...x,
+      markedHelpful: !x.markedHelpful,
+      helpfulCount: x.helpfulCount + (x.markedHelpful ? -1 : 1),
+    });
+    update(c.id, flip);
+    setError("");
+    try {
+      await api(`/comments/${c.id}/helpful`, { method: c.markedHelpful ? "DELETE" : "PUT" });
+    } catch {
+      update(c.id, flip);
+      setError(FAILED);
+    }
+  }
+
+  async function remove() {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    setDeleteError("");
+    try {
+      await api(`/comments/${deleting.id}`, { method: "DELETE" });
+      const drop = (list: ProblemComment[]): ProblemComment[] =>
+        list.filter((c) => c.id !== deleting.id).map((c) => ({ ...c, replies: drop(c.replies) }));
+      setComments(drop);
+      setDeleting(null);
+      router.refresh();
+    } catch {
+      setDeleteError(FAILED);
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
 
   function renderComment(c: ProblemComment, isReply: boolean) {
-    const own = c.author.username === MOCK_ME.username;
+    const own = c.own;
     const role = roleName(c.author.goalRole);
     return (
       <li key={c.id} className={isReply ? "mt-5" : "border-b border-border py-5"}>
@@ -105,7 +151,7 @@ export function Discussion({ initial }: { initial: ProblemComment[] }) {
             <div className="mt-3 flex gap-4 text-xs">
               <button
                 type="button"
-                onClick={() => toggleHelpful(c.id)}
+                onClick={() => toggleHelpful(c)}
                 disabled={own}
                 aria-pressed={c.markedHelpful}
                 title={own ? "You can't mark your own comment as helpful" : undefined}
@@ -125,6 +171,18 @@ export function Discussion({ initial }: { initial: ProblemComment[] }) {
                   Reply
                 </button>
               )}
+              {own ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleteError("");
+                    setDeleting(c);
+                  }}
+                  className="text-muted hover:text-text hover:underline"
+                >
+                  Delete
+                </button>
+              ) : null}
             </div>
             {c.replies.length > 0 || replyTo === c.id ? (
               <ul>
@@ -184,30 +242,61 @@ export function Discussion({ initial }: { initial: ProblemComment[] }) {
           ) : null}
           <button
             type="submit"
-            disabled={!draft.trim()}
+            disabled={!draft.trim() || posting}
             className="rounded bg-action px-4 py-2.5 text-sm font-medium text-canvas hover:opacity-90 disabled:opacity-50"
           >
-            Post comment
+            {posting ? "Posting…" : "Post comment"}
           </button>
         </div>
       </form>
+
+      {error ? (
+        <p role="alert" className="mt-3 text-sm text-failed">
+          {error}
+        </p>
+      ) : null}
 
       {sorted.length > 0 ? (
         <ul className="mt-4">{sorted.map((c) => renderComment(c, false))}</ul>
       ) : (
         <p className="mt-6 text-sm text-muted">No comments yet. Be the first to share your approach.</p>
       )}
+
+      <ConfirmDialog
+        open={deleting !== null}
+        title="Delete this comment?"
+        message={
+          deleting?.replies.length
+            ? "Your comment and its replies will be removed for everyone. This can't be undone."
+            : "Your comment will be removed for everyone. This can't be undone."
+        }
+        confirmLabel="Delete"
+        busy={deleteBusy}
+        error={deleteError}
+        onConfirm={remove}
+        onCancel={() => setDeleting(null)}
+      />
     </section>
   );
 }
 
-function ReplyForm({ to, onPost, onCancel }: { to: string; onPost: (text: string) => void; onCancel: () => void }) {
+function ReplyForm({ to, onPost, onCancel }: { to: string; onPost: (text: string) => Promise<void>; onCancel: () => void }) {
   const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
   return (
     <form
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        if (text.trim()) onPost(text.trim());
+        if (!text.trim() || busy) return;
+        setBusy(true);
+        setFailed(false);
+        try {
+          await onPost(text.trim());
+        } catch {
+          setFailed(true);
+          setBusy(false);
+        }
       }}
       className="rounded border border-border bg-surface p-4 focus-within:border-action"
     >
@@ -221,16 +310,21 @@ function ReplyForm({ to, onPost, onCancel }: { to: string; onPost: (text: string
         aria-label={`Reply to ${to}`}
         className="w-full resize-y bg-transparent text-sm text-text placeholder:text-muted focus:outline-none"
       />
-      <div className="mt-2 flex justify-end gap-3">
+      <div className="mt-2 flex items-center justify-end gap-3">
+        {failed ? (
+          <span role="alert" className="mr-auto text-xs text-failed">
+            {FAILED}
+          </span>
+        ) : null}
         <button type="button" onClick={onCancel} className="px-3 py-2 text-sm text-muted hover:text-text">
           Cancel
         </button>
         <button
           type="submit"
-          disabled={!text.trim()}
+          disabled={!text.trim() || busy}
           className="rounded bg-action px-4 py-2 text-sm font-medium text-canvas hover:opacity-90 disabled:opacity-50"
         >
-          Post reply
+          {busy ? "Posting…" : "Post reply"}
         </button>
       </div>
     </form>

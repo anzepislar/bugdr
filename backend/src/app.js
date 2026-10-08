@@ -3,6 +3,7 @@ import { pool } from "./db.js";
 import { HttpError } from "./errors.js";
 import { attemptsRouter } from "./modules/attempts/attempts.routes.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
+import { commentsRouter } from "./modules/comments/comments.routes.js";
 import { meRouter } from "./modules/me/me.routes.js";
 import { problemsRouter } from "./modules/problems/problems.routes.js";
 
@@ -16,6 +17,7 @@ api.use("/attempts", attemptsRouter);
 api.use("/auth", authRouter);
 api.use("/me", meRouter);
 api.use("/problems", problemsRouter);
+api.use(commentsRouter);
 
 api.get("/health", async (req, res) => {
   try {

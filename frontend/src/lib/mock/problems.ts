@@ -322,6 +322,7 @@ const comment = (
   createdAt: ago(hoursAgo),
   helpfulCount,
   markedHelpful: false,
+  own: false,
   replies,
 });
 

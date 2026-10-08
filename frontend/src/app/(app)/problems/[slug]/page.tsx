@@ -8,9 +8,14 @@ import { AcceptanceChecks, Description } from "@/components/problems/ProblemOver
 import { RateProblem } from "@/components/problems/RateProblem";
 import { duration } from "@/lib/format";
 import { loginHref, SESSION_COOKIE } from "@/lib/session";
-import { mockGetComments } from "@/lib/mock/problems";
 import { serverFetch } from "@/lib/serverApi";
-import { CATEGORIES, DIFFICULTY_LABEL, type ProblemDetail, type SolveResult } from "@/lib/types/problem";
+import {
+  CATEGORIES,
+  DIFFICULTY_LABEL,
+  type ProblemComment,
+  type ProblemDetail,
+  type SolveResult,
+} from "@/lib/types/problem";
 
 const TABS = {
   overview: "Overview",
@@ -41,8 +46,7 @@ export default async function ProblemPage({
   // On a solved problem the tabs sit further down; keep them in view when switching.
   const anchor = solved ? "#about" : "";
   // Comment content is only sent for solved problems (O2), and only fetched when the tab is open.
-  // Until O2 the comments are mock data; a problem the mock has no comments for shows an empty discussion.
-  const comments = solved && tab === "discussion" ? ((await mockGetComments(slug)) ?? []) : null;
+  const comments = solved && tab === "discussion" ? await getComments(slug) : null;
   const category = CATEGORIES.find((c) => c.slug === problem.categorySlug)?.name;
 
   return (
@@ -110,7 +114,7 @@ export default async function ProblemPage({
             ) : null}
             {tab === "discussion" ? (
               comments ? (
-                <Discussion initial={comments} />
+                <Discussion slug={problem.slug} initial={comments} />
               ) : (
                 <DiscussionEmpty count={problem.commentCount} signedIn={signedIn} />
               )
@@ -236,7 +240,7 @@ function SolvedSummary({ problem, result }: { problem: ProblemDetail; result: So
               Join the discussion
             </Link>
           </div>
-          <RateProblem initial={result.myRating} />
+          <RateProblem slug={problem.slug} initial={result.myRating} />
         </aside>
       </div>
 
@@ -336,4 +340,11 @@ function DiscussionEmpty({ count, signedIn }: { count: number; signedIn: boolean
       <p className="mt-3 text-xs text-muted">{count} engineers have commented.</p>
     </section>
   );
+}
+
+async function getComments(slug: string): Promise<ProblemComment[]> {
+  const res = await serverFetch(`/problems/${encodeURIComponent(slug)}/comments`);
+  if (!res.ok) throw new Error(`GET /problems/${slug}/comments failed: ${res.status}`);
+  const body = (await res.json()) as { comments?: ProblemComment[] };
+  return body.comments ?? []; // { locked: true } cannot happen here: the page only asks when solved
 }
