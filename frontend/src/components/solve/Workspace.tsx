@@ -6,10 +6,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { Icon } from "@/components/Icon";
 import { AcceptanceChecks, Description } from "@/components/problems/ProblemOverview";
+import { AiChatPanel } from "@/components/solve/AiChatPanel";
 import { ChecksPanel } from "@/components/solve/ChecksPanel";
 import { CodeEditorMock } from "@/components/solve/CodeEditorMock";
+import { useSessionTracker } from "@/hooks/useSessionTracker";
 import { mockRunTests, mockStartAttempt } from "@/lib/mock/attempts";
 import type { Attempt, CheckRunResult, CheckStatus } from "@/lib/types/attempt";
+import type { Difficulty } from "@/lib/types/problem";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -46,13 +49,27 @@ const TONE: Record<TerminalLine["tone"], string> = {
 
 const TEST_COMMAND = "npm run test:scenario";
 const MIN_PANEL = 300; // px, both the description panel and the editor
+const MIN_CHAT = 280; // px, the AI chat panel
 
 function firstFile(files: Record<string, string>): string {
   return Object.keys(files).find((p) => p.startsWith("src/")) ?? Object.keys(files)[0];
 }
 
-export function Workspace({ slug, description, checks }: { slug: string; description: string; checks: string[] }) {
+export function Workspace({
+  slug,
+  codebaseContext,
+  incidentReport,
+  checks,
+  difficulty,
+}: {
+  slug: string;
+  codebaseContext: string;
+  incidentReport: string;
+  checks: string[];
+  difficulty: Difficulty;
+}) {
   const router = useRouter();
+  const tracker = useSessionTracker();
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [activePath, setActivePath] = useState("");
@@ -65,10 +82,15 @@ export function Workspace({ slug, description, checks }: { slug: string; descrip
   // Description panel: null width = the 40% default until the user drags.
   const [panelWidth, setPanelWidth] = useState<number | null>(null);
   const [collapsed, setCollapsed] = useState(false);
-  const [dragging, setDragging] = useState(false);
+  // AI chat panel (right): inline from lg, an overlay over the editor below it.
+  const [chatWidth, setChatWidth] = useState(320);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [dragging, setDragging] = useState<"description" | "chat" | null>(null);
   // Entry animation: the description starts full width (like the detail page) and the editor slides in.
   const [opening, setOpening] = useState(true);
   const splitRef = useRef<HTMLDivElement>(null);
+  const descriptionRef = useRef<HTMLElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,6 +98,7 @@ export function Workspace({ slug, description, checks }: { slug: string; descrip
       if (!a) return;
       setAttempt(a);
       setActivePath(firstFile(a.files));
+      setChatOpen(window.matchMedia("(min-width: 1024px)").matches);
     });
   }, [slug]);
 
@@ -103,16 +126,36 @@ export function Workspace({ slug, description, checks }: { slug: string; descrip
   const limit = attempt.timeLimitMinutes * 60;
   const print = (...lines: TerminalLine[]) => setTerminal((t) => [...t, ...lines]);
 
+  // Both handles stop where the editor would get narrower than MIN_PANEL.
   function resize(e: PointerEvent<HTMLDivElement>) {
     const box = splitRef.current?.getBoundingClientRect();
+    const editor = editorRef.current?.getBoundingClientRect().width ?? 0;
     if (!dragging || !box) return;
-    const max = Math.max(MIN_PANEL, box.width - MIN_PANEL);
-    setPanelWidth(Math.min(max, Math.max(MIN_PANEL, e.clientX - box.left)));
+    if (dragging === "description") {
+      const current = descriptionRef.current?.getBoundingClientRect().width ?? 0;
+      const max = Math.max(MIN_PANEL, current + editor - MIN_PANEL);
+      setPanelWidth(Math.min(max, Math.max(MIN_PANEL, e.clientX - box.left)));
+    } else {
+      const max = Math.max(MIN_CHAT, chatWidth + editor - MIN_PANEL);
+      setChatWidth(Math.min(max, Math.max(MIN_CHAT, box.right - e.clientX)));
+    }
+  }
+
+  function startDrag(e: PointerEvent<HTMLDivElement>, panel: "description" | "chat") {
+    e.preventDefault(); // no text selection while dragging
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDragging(panel);
+  }
+
+  function toggleDescription(open: boolean) {
+    setCollapsed(!open);
+    tracker.track(open ? "description_open" : "description_close");
   }
 
   async function submit() {
     if (!attempt || running) return;
     setRunning(true);
+    tracker.track("test_run");
     setBottomTab("results");
     setResults({});
     setStatuses(Object.fromEntries(attempt.checks.map((c) => [c.id, "pending" as const])));
@@ -193,11 +236,14 @@ export function Workspace({ slug, description, checks }: { slug: string; descrip
 
       <div
         ref={splitRef}
-        className="flex min-h-0 flex-1"
-        style={{ "--panel-w": panelWidth === null ? "40%" : `${panelWidth}px` } as React.CSSProperties}
+        className="relative flex min-h-0 flex-1"
+        style={
+          { "--panel-w": panelWidth === null ? "40%" : `${panelWidth}px`, "--chat-w": `${chatWidth}px` } as React.CSSProperties
+        }
       >
         {/* Below md the open panel takes the whole width; the chevron switches to the editor. */}
         <section
+          ref={descriptionRef}
           aria-label="Problem description"
           aria-hidden={collapsed}
           className={`relative shrink-0 overflow-hidden bg-canvas ${
@@ -206,12 +252,12 @@ export function Workspace({ slug, description, checks }: { slug: string; descrip
           }`}
         >
           <div className="h-full overflow-y-auto px-6 py-6 pr-10">
-            <Description text={description} />
+            <Description codebaseContext={codebaseContext} incidentReport={incidentReport} />
             <AcceptanceChecks checks={checks} />
           </div>
           <button
             type="button"
-            onClick={() => setCollapsed(true)}
+            onClick={() => toggleDescription(false)}
             aria-label="Hide description"
             title="Hide description"
             className="absolute right-0 top-1/2 flex h-10 w-6 -translate-y-1/2 items-center justify-center rounded-l border border-r-0 border-border bg-surface text-muted hover:text-action"
@@ -225,24 +271,23 @@ export function Workspace({ slug, description, checks }: { slug: string; descrip
             role="separator"
             aria-orientation="vertical"
             aria-label="Resize description"
-            onPointerDown={(e) => {
-              e.preventDefault(); // no text selection while dragging
-              e.currentTarget.setPointerCapture(e.pointerId);
-              setDragging(true);
-            }}
+            onPointerDown={(e) => startDrag(e, "description")}
             onPointerMove={resize}
-            onPointerUp={() => setDragging(false)}
+            onPointerUp={() => setDragging(null)}
             className={`hidden w-1 shrink-0 cursor-col-resize touch-none hover:bg-action md:block ${
-              dragging ? "bg-action" : "bg-border"
+              dragging === "description" ? "bg-action" : "bg-border"
             }`}
           />
         )}
 
-        <div className={`relative min-w-0 flex-1 flex-col bg-[#1e1e1e] ${collapsed ? "flex" : "hidden md:flex"}`}>
+        <div
+          ref={editorRef}
+          className={`relative min-w-0 flex-1 flex-col bg-[#1e1e1e] ${collapsed ? "flex" : "hidden md:flex"}`}
+        >
           {collapsed ? (
             <button
               type="button"
-              onClick={() => setCollapsed(false)}
+              onClick={() => toggleDescription(true)}
               aria-label="Show description"
               title="Show description"
               className="absolute left-0 top-1/2 z-10 flex h-10 w-6 -translate-y-1/2 items-center justify-center rounded-r border border-l-0 border-border bg-surface text-muted hover:text-action"
@@ -250,6 +295,17 @@ export function Workspace({ slug, description, checks }: { slug: string; descrip
               <Icon name="chevronRight" className="h-4 w-4" />
             </button>
           ) : null}
+          {chatOpen ? null : (
+            <button
+              type="button"
+              onClick={() => setChatOpen(true)}
+              aria-label="Show AI assistant"
+              title="Show AI assistant"
+              className="absolute right-0 top-1/2 z-10 flex h-10 w-6 -translate-y-1/2 items-center justify-center rounded-l border border-r-0 border-border bg-surface text-muted hover:text-action"
+            >
+              <Icon name="chevronLeft" className="h-4 w-4" />
+            </button>
+          )}
 
           <div className="flex h-9 shrink-0 items-stretch bg-[#252526]">
             <div role="tablist" aria-label="Files" className="flex min-w-0 flex-1 overflow-x-auto">
@@ -260,7 +316,10 @@ export function Workspace({ slug, description, checks }: { slug: string; descrip
                   role="tab"
                   aria-selected={p === activePath}
                   title={p}
-                  onClick={() => setActivePath(p)}
+                  onClick={() => {
+                    setActivePath(p);
+                    tracker.track("file_open", { fileName: p });
+                  }}
                   className={`shrink-0 border-t-2 px-4 text-[13px] ${
                     p === activePath
                       ? "border-action bg-[#1e1e1e] text-text"
@@ -340,6 +399,39 @@ export function Workspace({ slug, description, checks }: { slug: string; descrip
             )}
           </section>
         </div>
+
+        {chatOpen ? (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize AI assistant"
+            onPointerDown={(e) => startDrag(e, "chat")}
+            onPointerMove={resize}
+            onPointerUp={() => setDragging(null)}
+            className={`relative hidden w-px shrink-0 cursor-col-resize touch-none after:absolute after:inset-y-0 after:-left-1.5 after:-right-1.5 hover:bg-action lg:block ${
+              dragging === "chat" ? "bg-action" : "bg-border"
+            }`}
+          />
+        ) : null}
+        <aside
+          aria-label="AI assistant"
+          aria-hidden={!chatOpen}
+          inert={!chatOpen}
+          className={`relative shrink-0 overflow-hidden bg-surface max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:z-20 ${
+            dragging ? "" : "transition-all duration-300 ease-out motion-reduce:transition-none"
+          } ${chatOpen ? "w-full max-lg:border-l max-lg:border-border sm:w-[320px] lg:w-[var(--chat-w)]" : "w-0"}`}
+        >
+          <AiChatPanel tracker={tracker} difficulty={difficulty} />
+          <button
+            type="button"
+            onClick={() => setChatOpen(false)}
+            aria-label="Hide AI assistant"
+            title="Hide AI assistant"
+            className="absolute left-0 top-1/2 z-10 flex h-10 w-6 -translate-y-1/2 items-center justify-center rounded-r border border-l-0 border-border bg-surface text-muted hover:text-action"
+          >
+            <Icon name="chevronRight" className="h-4 w-4" />
+          </button>
+        </aside>
       </div>
     </div>
   );

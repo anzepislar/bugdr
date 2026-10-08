@@ -23,7 +23,7 @@ Frontend: 17 zaslonov na mocku - /login, /signup, /forgot-password, /onboarding,
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit
-Naslednja rezina: R1 (začetek reševanja, M2); D48 (admin) pred M6
+Naslednja rezina: R1 (začetek reševanja, M2); D48 (admin) pred M6; M8 (AI seja) čaka D50-D52
 ```
 
 Oznake: ⬜ ni začeto · 🟨 v delu · ✅ narejeno (z datumom) · ⏸ odloženo
@@ -113,6 +113,9 @@ dokler je uporabnik ne potrdi.
 | D42 | ~~Jeziki na onboardingu~~ → **rešeno 7. 10. 2026** (uporabnik, F4): shranijo se že v F4 - `user_profiles.languages TEXT[] NOT NULL DEFAULT '{}'`, samo vrednosti iz fiksnega seznama `LANGUAGES` (podvojeni odstranjeni). `/settings` jih uporabi v U1 (D34) | F4, U1 |
 | D49 | ~~Tabele, ki jih M1 potrebuje iz kasnejših rezin~~ → **rešeno 8. 10. 2026** (uporabnik): **tabele zgodaj, logika kasneje**. M1 ustvari `user_problem_attempts`, `problem_codebase`, `problem_checks` (R1), `problem_ratings` (O1), `problem_comments` (O2) - samo `CREATE TABLE` po `01` + spremembe iz tabele spodaj; endpointi in pravila ostanejo v svojih rezinah. Seed jih napolni, da se stanja rešen / v delu preverijo na pravih podatkih | P1, P2, R1, O1, O2 |
 | D48 | **ODPRTO** - admin ni uporabnik (uporabnik 7. 10. 2026) | Admin **ne bo navaden račun** z `users.is_admin`; poverilnice se nastavijo drugače - uporabnik bo dal e-pošto, geslo in morda še kaj za večjo varnost. Predlog: poverilnice v `backend/.env` (ne v klepetu, ne v repozitoriju): `ADMIN_EMAIL` + `ADMIN_PASSWORD_HASH` (scrypt, ustvari ga ukaz `npm run hash-password`), drugi faktor TOTP (`ADMIN_TOTP_SECRET`, stdlib HMAC), ločen piškotek admin seje s krajšim trajanjem; `requireAdmin` preveri admin sejo namesto `users.is_admin`, proxy enako. Nadomesti Z1 (`create-admin`). Do odločitve F3 `requireAdmin` / proxy uporabljata `users.is_admin` | F3, Z1, A1-A10 |
+| D50 | **ODPRTO** - Add Problem po razdelitvi opisa (8. 10. 2026) | Problem nima več `description`, ampak `codebase_context` + `incident_report` (`02`, migracija 0006). Zaslon Add Problem ima še eno polje "Full description", sistemski poziv A10 pa vrača `full_description`. Predlog: dve polji na koraku Review; poziv vrne `codebase_context` in `incident_report` (pravila iz `02`: brez vzroka, brez pričakovanega vedenja). Ker je poziv "dobesedno iz specifikacije", ga spremeni uporabnik |
+| D51 | **ODPRTO** - podrobnosti ocene učinkovitosti (`03`, 8. 10. 2026) | Odprto: (a) kaj je "iteracija" (par poziv-odgovor ali zagon testov med pozivi?); (b) delež urejanj zahteva razlikovanje AI vs. ročnih sprememb - mogoče samo za vgrajeni klepet (gumb "Apply"), zunanja orodja štejejo kot ročna (`02`); (c) kako uteži preslikati v 0,5-2,0 (linearno glede na benchmark težavnosti?); (d) omejitev pozivov/žetonov na poskus in kdo plača Claude API; (e) ali se izbrano orodje (GPT-4, Gemini) le zabeleži, ker vgrajeni klepet kliče samo Claude |
+| D52 | **ODPRTO** - lestvica `/leaderboard` (`00`, 8. 10. 2026) | "Global ranking by efficiency score": povprečje `efficiency_score` vseh rešitev ali skupne točke (te že vsebujejo učinkovitost)? Najmanjše število rešitev za uvrstitev, časovno okno (vse / mesec), javna za goste? Zaslona še ni |
 
 ### Spremembe sheme glede na `01_database.md`
 
@@ -135,7 +138,8 @@ migracijo (uporabnik 8. 10. 2026: "update all md files"). Ta tabela ostane
 seznam sprememb za tabele, ki še niso zgrajene. Narejeno v `01`: `users`
 (F2), `user_profiles` + `languages` (F4), `problem_categories`, `problems`, `problem_tags`,
 `problem_bookmarks`, `user_problem_attempts` (P1), `problem_codebase` (+ `hidden_files`, `solution_files`,
-`repository_name`), `problem_checks`, `problem_ratings`, `problem_comments`, `user_daily_activity` (P2).
+`repository_name`), `problem_checks`, `problem_ratings`, `problem_comments`, `user_daily_activity` (P2);
+`problems.description` → `codebase_context` + `incident_report` (migracija 0006, 8. 10. 2026).
 
 ---
 
@@ -168,6 +172,7 @@ seznam sprememb za tabele, ki še niso zgrajene. Narejeno v `01`: `users`
 | M4 Profil in dashboard | U1 → U2 → U3 | Profil s statistiko in grafom, personaliziran dashboard |
 | M5 Tekmovanja | T1 → T2 | Seznam tekmovanj, rezultati |
 | M6 Admin | A1 → A2 → A10 → A3 → A4 → A5 → A6-A9 | Upravljanje problemov, tekmovanj, uporabnikov, statistika |
+| M8 AI seja | S1 → S2 → S3 → S4, S5 | Vgrajeni AI klepet, zajem seje, ocena učinkovitosti v točkah, lestvica, AI analitika |
 | M7 Produkcija | Z1 → Z2 | Prvi admin, varna namestitev |
 
 M3-M6 so med seboj neodvisni (razen naštetih odvisnosti). Admin za probleme
@@ -223,18 +228,18 @@ polnijo s seed skripto.
 - API: `GET /problems?category=&difficulty=&tag=&q=&status=&saved=&sort=` → kartice `ProblemListItem` (`02` "Card contains") + za prijavljenega `status` (`solved`/`in_progress`/`null`) in `saved`. Neobvezna seja: gost dobi `status: null`, `saved: false` (iz F3), `status`/`saved` filtra za gosta ne veljata. `sort`: `recommended` (najprej kategorija iz `goal_role`, nato ocena - zdaj `MOCK_ME` v `ProblemBrowser.tsx`), `rating`, `shortest`. Samo `is_published`.
 - API: `PUT /problems/:slug/bookmark`, `DELETE /problems/:slug/bookmark` → 204 (`requireAuth`, idempotentno).
 - D17 (skriti problemi nekončanih tekmovanj): `contest_problems` še ne obstaja, zato filter doda rezina, ki tabelo ustvari (A6/T1).
-- Brez paginacije (konvencija v1): strežnik filtrira in razvrsti, odjemalec ohrani neskončno drsenje z rezanjem seznama (`limit` v `ProblemBrowser.tsx`).
+- Brez paginacije (konvencija v1): ~~strežnik filtrira in razvrsti~~ → narejeno drugače, glej Stanje (strežnik vrne cel seznam, odjemalec filtrira); odjemalec ohrani neskončno drsenje z rezanjem seznama (`limit` v `ProblemBrowser.tsx`).
 - Frontend: `/problems` - `mockGetProblems` → `GET /problems`, filtri v query, zaznamki prek API-ja.
 - Končano, ko: neobjavljen problem ni na seznamu; filtri se kombinirajo; `base_points` se ujema s težavnostjo (CHECK); gost nima `status`; zaznamek dvakrat = ena vrstica.
 - **Stanje:** `migrations/0004_problems.sql` (kategorije s seedom, `problems` s CHECK `(difficulty, base_points)`, `problem_tags` z `UNIQUE (problem_id, tag)`, `problem_bookmarks`, `user_problem_attempts`). `seeds/0001_problems.sql` = 12 mock problemov (isti slugi, sličice `/mock/…`, opis je samo kratek odstavek - P2). `backend/src/modules/problems/problems.routes.js`: `GET /problems` → `{ problems: ProblemListItem[] }` (+ `saved`), `PUT`/`DELETE /problems/:slug/bookmark` → 204 (neznan ali neobjavljen slug → 404 `PROBLEM_NOT_FOUND`). `optionalAuth` v `auth.service.js`: neveljaven, potekel ali bannan piškotek = gost. **Odstopa od načrta:** `GET /problems` nima query filtrov - vrne cel objavljen seznam v vrstnem redu "recommended" (najprej kategorija iz `goal_role`, nato ocena, nato naslov; `abandoned` = `status: null`), filtri, iskanje, `rating`/`shortest` in neskončno drsenje ostanejo na odjemalcu (`ProblemBrowser.tsx`, oznaka `ponytail:`). Filtri v query + `limit/offset`, ko seznam preraste ~1000 problemov. Frontend: `/problems` bere API, zaznamek se preklopi takoj in vrne nazaj ob napaki, števec "Saved problems" iz `saved`; `ProblemListItem.saved` dodan (mock problemi `saved: false`). Odprto: D17 filter (A6/T1); dashboard (U3) zaznamkov še ne bere.
 
 **P2 · Podrobnosti problema** `M` · odvisno od: P1 · ✅ 8. 10. 2026
 - Naredi (migracija, D49 - samo tabele): `problem_codebase` (+ `hidden_files`, `solution_files`, `repository_name` - D10, D11, D27), `problem_checks`, `problem_ratings`, `problem_comments`; `user_daily_activity`. Seed: koda, preverjanja in nekaj poskusov/ocen/komentarjev za mock probleme.
-- API: `GET /problems/:slug` → `ProblemDetail` v `frontend/src/lib/types/problem.ts`: opis, težavnost, kategorija, tagi, povprečna ocena + število, `solveCount`, `commentCount`, `checks` (D26), `repository` (D27: ime, sklad = `language` + `framework` + tagi, poti iz `repository_structure`), status uporabnika, `result` (rešen poskus: `timeTakenSeconds`, `linesAdded/Deleted`, `pointsEarned`, `timeMultiplier`, `myRating`). **Brez** vsebine datotek, `check_command`, `expected_output`, `hidden_files`, `solution_files`.
+- API: `GET /problems/:slug` → `ProblemDetail` v `frontend/src/lib/types/problem.ts`: `codebaseContext` + `incidentReport` (prej `description`, migracija 0006), težavnost, kategorija, tagi, povprečna ocena + število, `solveCount`, `commentCount`, `checks` (D26), `repository` (D27: ime, sklad = `language` + `framework` + tagi, poti iz `repository_structure`), status uporabnika, `result` (rešen poskus: `timeTakenSeconds`, `linesAdded/Deleted`, `pointsEarned`, `timeMultiplier`, `myRating`). **Brez** vsebine datotek, `check_command`, `expected_output`, `hidden_files`, `solution_files`.
 - Ogled prijavljenega uporabnika poveča `problems_opened` za današnji UTC dan (D6, D7) in posodobi `user_stats.current_streak/longest_streak/last_activity_date` (čista funkcija streaka s testom).
 - Frontend: `/problems/[slug]` - `mockGetProblem` → API (rešen problem stran pokaže kot "Problem solved"). Ocena in komentarji ostanejo na mocku do O1/O2.
 - Končano, ko: neobjavljen ali neznan slug → 404; odgovor ne vsebuje `check_command` ali datotek; dva ogleda istega dne = en dan streaka, ogled naslednji dan ga podaljša, preskočen dan ga ponastavi; gost ne zapiše aktivnosti.
-- **Stanje:** `migrations/0005_problem_detail.sql` (`problem_codebase` z `repository_name`, `hidden_files NOT NULL DEFAULT '{}'`, `solution_files`; `repository_structure` = JSON seznam poti; `problem_checks` s CHECK `check_type` in `UNIQUE (problem_id, check_order)`; `problem_ratings`, `problem_comments`, `user_daily_activity`). Seed `seeds/0001_problems.sql` je zdaj zgeneriran iz mocka v celoti: polni opis, koda (`files`), ime repozitorija in preverjanja (vsa z ukazom `npm test`, oznaka `ponytail:`) za vseh 12 problemov; ob ponovnem zagonu osveži opis in `solve_count`. Poskusov, ocen in komentarjev seed nima (potreboval bi uporabnike) - stanje "rešen" je preverjeno s testom in ročnim vnosom. `GET /problems/:slug` → `{ problem: ProblemDetail }` (+ `saved`), `result` za rešen poskus (`checksPassed = checksTotal = število preverjanj`, ker rešen poskus pomeni vsa uspešna; `myRating` iz `problem_ratings`), neznan ali neobjavljen slug → 404 `PROBLEM_NOT_FOUND`. Streak: ena SQL poizvedba (`recordOpen`) z zaklepom vrstice `user_stats` - vzporedni ogledi štejejo dan enkrat. **Odstopa od načrta:** streak je SQL namesto čiste JS funkcije (atomarno, test prek API-ja pokrije vse tri primere). Frontend: `/problems/[slug]` bere API na strežniku prek novega `src/lib/serverApi.ts` (`serverFetch` posreduje piškotek seje); komentarji in ocena ostanejo mock do O1/O2 (rešen problem brez mock komentarjev pokaže prazno razpravo). Zaslon reševanja še bere `mockGetProblem` (R1).
+- **Stanje:** `migrations/0005_problem_detail.sql` (`problem_codebase` z `repository_name`, `hidden_files NOT NULL DEFAULT '{}'`, `solution_files`; `repository_structure` = JSON seznam poti; `problem_checks` s CHECK `check_type` in `UNIQUE (problem_id, check_order)`; `problem_ratings`, `problem_comments`, `user_daily_activity`). Seed `seeds/0001_problems.sql` je zdaj zgeneriran iz mocka v celoti: polni opis, koda (`files`), ime repozitorija in preverjanja (vsa z ukazom `npm test`, oznaka `ponytail:`) za vseh 12 problemov; ob ponovnem zagonu osveži opis in `solve_count`. Poskusov, ocen in komentarjev seed nima (potreboval bi uporabnike) - stanje "rešen" je preverjeno s testom in ročnim vnosom. `GET /problems/:slug` → `{ problem: ProblemDetail }` (+ `saved`), `result` za rešen poskus (`checksPassed = checksTotal = število preverjanj`, ker rešen poskus pomeni vsa uspešna; `myRating` iz `problem_ratings`), neznan ali neobjavljen slug → 404 `PROBLEM_NOT_FOUND`. Streak: ena SQL poizvedba (`recordOpen`) z zaklepom vrstice `user_stats` - vzporedni ogledi štejejo dan enkrat. **Odstopa od načrta:** streak je SQL namesto čiste JS funkcije (atomarno, test prek API-ja pokrije vse tri primere). Frontend: `/problems/[slug]` bere API na strežniku prek novega `src/lib/serverApi.ts` (`serverFetch` posreduje piškotek seje); komentarji in ocena ostanejo mock do O1/O2 (rešen problem brez mock komentarjev pokaže prazno razpravo). Zaslon reševanja še bere `mockGetProblem` (R1). **Popravek 8. 10. 2026 (Seja 13):** `migrations/0006_problem_brief.sql` razdeli `description` v `codebase_context` + `incident_report` (`02`: brez namigov, brez pričakovanega vedenja); API vrne `codebaseContext` in `incidentReport`; seed besedila iz `frontend/src/lib/mock/problemBriefs.ts`; test P2 preveri obe polji.
 
 ### M2 - Reševanje
 
@@ -262,6 +267,7 @@ polnijo s seed skripto.
 - Naredi: `check_results`, `point_transactions`.
 - API: `POST /attempts/:id/test` `{ files }` → rezultat po preverjanju (`passed`, `output` samo pri neuspehu).
 - Če vsa `must_pass` uspejo - **ena transakcija:** `status = 'solved'`, `solved_at`, `time_taken_seconds` (strežnik), `time_bonus_multiplier`, `points_earned`, `final_code`, `lines_added/deleted` (diff proti izvirnim datotekam), vrstice v `point_transactions` (D15), `user_stats` (točke, nivo, `problems_solved`), `user_daily_activity` (`problems_solved`, `points_earned`), `problems.solve_count`.
+- Formula v `03` je zdaj `base × time × efficiency_score`: R4 pred S3 računa z `efficiency = 1`, S3 doda faktor v isto transakcijo.
 - Čiste funkcije s testi: `timeMultiplier(seconds, limitMinutes)` (meje iz `03`: < 25 % → 2x, < 50 % → 1.5x, < 75 % → 1.25x, sicer 1x), `finalPoints` (zaokroženo).
 - Končano, ko: primer iz `03` (30 min, Medium, 8 min → 375; 6 min → 500); dvojni klik Test ne podeli točk dvakrat (zaklep vrstice poskusa); neuspel Test ne spremeni statusa; `SUM(point_transactions) = user_stats.total_points`.
 
@@ -329,14 +335,14 @@ polnijo s seed skripto.
 - Vse `/api/v1/admin/*` za `requireAdmin`. Frontend `/admin` postavitev.
 
 **A2 · Problemi: seznam in osnovni podatki** `M` · odvisno od: A1, P1 · ⬜
-- API: `GET /admin/problems?…` (tudi osnutki), `POST /admin/problems`, `PATCH /admin/problems/:id` (naslov, opis, težavnost, kategorija, tagi, časovna omejitev, vir).
-- Telo shranjevanja z zaslona Create Problem je `AdminProblemDraft` (`frontend/src/lib/types/problem.ts`): `title`, `slug`, `shortDescription` (→ `summary`), `fullDescription` (→ `description`), `difficulty`, `categorySlug`, `timeLimitMinutes`, `tags`, `checks`, `hiddenFiles`, `bugSummary`, `isPublished`. Po D22 postane `PATCH` osnutka, ki ga je ustvarila A10.
+- API: `GET /admin/problems?…` (tudi osnutki), `POST /admin/problems`, `PATCH /admin/problems/:id` (naslov, `codebase_context`, `incident_report`, težavnost, kategorija, tagi, časovna omejitev, vir).
+- Telo shranjevanja z zaslona Create Problem je `AdminProblemDraft` (`frontend/src/lib/types/problem.ts`): `title`, `slug`, `shortDescription` (→ `summary`), `fullDescription` (→ ~~`description`~~ - po migraciji 0006 dve polji, D50), `difficulty`, `categorySlug`, `timeLimitMinutes`, `tags`, `checks`, `hiddenFiles`, `bugSummary`, `isPublished`. Po D22 postane `PATCH` osnutka, ki ga je ustvarila A10.
 - Frontend: `mockSaveProblem` v `src/lib/mock/adminProblems.ts` → API.
 - Končano, ko: slug unikaten (409); `base_points` sledi težavnosti.
 
 **A10 · Nalaganje ZIP + AI analiza** `M` · odvisno od: A2, D20-D22 · ⬜
 - API: `POST /admin/problems/analyze` (ZIP, `requireAdmin`) → razpakira na strežniku (brez poti izven korena, omejitve iz D21), prebere kodne datoteke, pošlje jih Claude API s sistemskim pozivom iz uporabnikove specifikacije zaslona (spodaj), preveri JSON in vrne `ProblemAnalysis` (camelCase; Claude vrača snake_case - preslikava na API meji).
-- Sistemski poziv (dobesedno iz specifikacije, 6. 10. 2026): vrne `bug_summary`, `short_description`, `full_description`, `suggested_difficulty`, `difficulty_reasoning`, `checks[]` (`check_order`, `description`, `check_type`, `check_command`, `must_pass`), `hidden_files`, `tags`; pravila: 3-5 preverjanj, preverjanja morajo pasti na pokvarjeni kodi, skrite datoteke = testi, opis ne sme namigovati na napako, samo JSON.
+- Sistemski poziv (dobesedno iz specifikacije, 6. 10. 2026): vrne `bug_summary`, `short_description`, `full_description` (D50: → `codebase_context` + `incident_report`), `suggested_difficulty`, `difficulty_reasoning`, `checks[]` (`check_order`, `description`, `check_type`, `check_command`, `must_pass`), `hidden_files`, `tags`; pravila: 3-5 preverjanj, preverjanja morajo pasti na pokvarjeni kodi, skrite datoteke = testi, opis ne sme namigovati na napako, samo JSON.
 - Naslov in časovno omejitev vpiše admin (AI ju ne predlaga).
 - Frontend: `mockAnalyzeProblem` → API.
 - Končano, ko: ne-ZIP / prevelik ZIP → 400; ZIP s potjo `../` zavrnjen; neveljaven JSON od Claude → 502 `ANALYSIS_INVALID`; ne-admin → 403; ključ API ni nikoli v odgovoru ali frontendu.
@@ -368,6 +374,34 @@ polnijo s seed skripto.
 - API: `GET /admin/stats?range=today|7d|30d|all` (`04` §4) → `AdminOverview` (`frontend/src/lib/types/adminStats.ts`): skupni uporabniki, aktivni uporabniki + trend, objavljeni problemi, rešitve + trend, aktivna tekmovanja, rast uporabnikov (30 dni, prijave in DAU), rešitve na dan (14 dni), rešitve po težavnosti in vlogi, porazdelitev trenutnih nizov, top 8 problemov, 8 problemov z največjim osipom (začeti / rešeni). Okna po D46.
 - Frontend: `mockGetAdminOverview` v `src/lib/mock/adminStats.ts` → API.
 
+### M8 - AI seja (`02` "AI Session Capture", `03`, `04` "AI Session Analytics")
+
+Čaka D51 (S1-S3) in D52 (S4). Frontend del S1/S2 je na mocku (Seja 12).
+
+**S1 · AI klepet** `M` · odvisno od: R1, D51 · ⬜
+- Naredi: `solve_sessions` (ena na poskus), `prompt_events`.
+- API: `POST /attempts/:id/ai/messages` `{ text, tool }` → strežnik pokliče Claude API (ključ samo v `backend/.env`), zapiše `prompt_events` (žetoni iz `usage` odgovora, ne ocena), posodobi števce v `solve_sessions`, vrne odgovor (pozneje SSE).
+- Frontend: `mockAskAi` (`src/lib/mock/aiChat.ts`) → API; števci v `useSessionTracker` iz odgovora.
+- Končano, ko: tuj ali zaključen poskus → 404/409; ključ ni nikoli v odgovoru; omejitev pozivov na poskus (D51) vrne 429; `total_prompts` = število vrstic `prompt_events`.
+
+**S2 · Zajem dogodkov urejevalnika** `S` · odvisno od: S1 · ⬜
+- Naredi: `editor_events`.
+- API: `POST /attempts/:id/events` `{ events[] }` (paketno; dovoljeni `event_type` iz `01`); `test_run` zapiše R4 na strežniku, ne odjemalec. `time_to_first_prompt`, `time_on_description`, `test_runs_count`, `tests_passed_on_first_run` se izračunajo na strežniku.
+- Frontend: `useSessionTracker.track` → paketno pošiljanje.
+- Končano, ko: neznan `event_type` → 400; dogodki po rešitvi zavrnjeni; dvojno poslan paket ne podvoji dogodkov.
+
+**S3 · Ocena učinkovitosti v točkah** `M` · odvisno od: S2, R4, D51 · ⬜
+- Čista funkcija s testi `efficiencyScore(session, benchmark)` → 0,5-2,0 (uteži iz `03`: pozivi 30 %, žetoni 25 %, iteracije 20 %, delež urejanj 15 %, prvi zagon 10 %); benchmark po težavnosti (do S5 konstante kot v `mock/aiChat.ts`).
+- V transakciji R4: `solve_sessions.efficiency_score`, `points_earned = round(base × time × efficiency)`.
+- Frontend: plošča "Session Efficiency" bere oceno s strežnika; statistike profila iz `03` (povprečni pozivi/žetoni, ocena, najljubše orodje, delež prvega zagona) v U2.
+- Končano, ko: primer iz `03` (Medium, 1,5x, 1,8 → 675); ocena vedno v [0,5; 2,0].
+
+**S4 · Lestvica** `S` · odvisno od: S3, D52 · ⬜
+- API: `GET /leaderboard` (pravilo uvrstitve po D52). Frontend: nov zaslon `/leaderboard` (še ni zgrajen).
+
+**S5 · AI analitika (admin)** `S` · odvisno od: A1, S3 · ⬜
+- API: `GET /admin/analytics` (platforma) in `GET /admin/analytics/problems/:id` (`04`); povprečja po problemu postanejo benchmark za S3. Frontend: nov zaslon `/admin/analytics` (še ni zgrajen).
+
 ### M7 - Produkcija
 
 **Z1 · Prvi admin** `S` · odvisno od: F2 · ⬜
@@ -386,8 +420,8 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | --- | --- | --- | --- |
 | `/dashboard` + stranska vrstica (`(app)/layout.tsx`) | `src/lib/mock/dashboard.ts`: `mockGetDashboard` (datumi relativni na zdaj), `MOCK_ME` (uporabnik, cilj, izkušnje), `MOCK_ACTIVE_CONTEST_COUNT`; sličice v `public/mock/` | U3, T1, U2, F4 | ⬜ |
 | `/problems` | ~~`mockGetProblems`~~ → `GET /problems` (P1), zaznamki → `PUT/DELETE /problems/:slug/bookmark` (D23); filtri/razvrščanje/drsenje ostanejo na odjemalcu. `mockGetProblems` še uporabljata mocka `profile.ts` in `adminContests.ts` | P1 | ✅ 8. 10. 2026 |
-| `/problems/[slug]` | ~~`mockGetProblem`~~ → `GET /problems/:slug` (P2, `serverFetch`). Ostane mock: ocena v `RateProblem` samo v stanju (O1), `mockGetComments` (O2; rešen problem brez mock komentarjev = prazna razprava) | P2 ✅, O1, O2 | 🟨 |
-| `/problems/[slug]/solve` | `src/lib/mock/attempts.ts`: `mockStartAttempt` (timer teče od zdaj, za `in_progress` od 18:42), `mockRunTests` (vnaprej določeni rezultati); koda v `mockCodebase` (`mock/problems.ts`); urejevalnik je `CodeEditorMock` (samo branje); split pane: opis (`ProblemOverview`) levo, urejevalnik desno, spodaj Terminal + Test Results; vsaka datoteka je zavihek, izbirnik jezika je samo prikaz; "Submit" = zagon preverjanj | R1, R2 (Give up), R4, R5 (terminal), R6 | ⬜ |
+| `/problems/[slug]` | ~~`mockGetProblem`~~ → `GET /problems/:slug` (P2, `serverFetch`); besedilo = `codebaseContext` + `incidentReport` (migracija 0006, seed iz `mock/problemBriefs.ts`). Ostane mock: ocena v `RateProblem` samo v stanju (O1), `mockGetComments` (O2; rešen problem brez mock komentarjev = prazna razprava) | P2 ✅, O1, O2 | 🟨 |
+| `/problems/[slug]/solve` | `src/lib/mock/attempts.ts`: `mockStartAttempt` (timer teče od zdaj, za `in_progress` od 18:42), `mockRunTests` (vnaprej določeni rezultati); koda v `mockCodebase` (`mock/problems.ts`); urejevalnik je `CodeEditorMock` (samo branje); split pane: opis (`ProblemOverview`) levo, urejevalnik desno, spodaj Terminal + Test Results; vsaka datoteka je zavihek, izbirnik jezika je samo prikaz; "Submit" = zagon preverjanj. Desno AI klepet (`AiChatPanel`): `src/lib/mock/aiChat.ts` - `mockAskAi` (1,5 s, 4 vnaprej napisani odgovori za payment-retries, ciklično za vse probleme), `AI_TOOLS`, `BENCHMARKS` (povprečje pozivov/žetonov po težavnosti); seja v `src/hooks/useSessionTracker.ts` (samo React stanje: pozivi, žetoni ≈ znaki/4, zagoni testov, dogodki); ocena učinkovitosti je groba primerjava z benchmarkom | R1, R2 (Give up), R4, R5 (terminal), R6, S1, S2, S3 (AI seja) | ⬜ |
 | `/contests` | `src/lib/mock/contests.ts`: `mockGetContests` (live/upcoming/past + zgodovina uporabnika, datumi relativni na zdaj); prihajajoča tekmovanja brez težavnosti, oznak in sličice (T1); "View contest" vodi na `/contests/[id]` | T1, T2 | ⬜ |
 | `/contests/[id]` | `src/lib/mock/contests.ts`: `mockGetContest` (seznam + `DETAILS`: incident, ime repozitorija (D27), število preverjanj, nagrada, udeležba); problemi tekmovanj so obstoječi mock problemi, da "Enter contest" odpre delujoč zaslon reševanja | T1, T2 | ⬜ |
 | `/profile/[username]` | `src/lib/mock/profile.ts`: `mockGetProfile` (samo `max`, drugi → 404; 147 rešenih problemov, ciklično iz mock problemov; aktivnost 53 tednov = vsak tretji aktivni dan iz `mockActivity`; zgodovina tekmovanj iz `mockGetContests`); neskončno drsenje rešenih na odjemalcu | U1, U2, T2 | ⬜ |
@@ -414,7 +448,7 @@ Rešene z odločitvami 6. 10. 2026:
 Odprto:
 
 - **Točkovanje tekmovanj:** `03` "TBD" - za v1 velja D18 (enake točke kot redni problemi).
-- **`repository_structure`** je izpeljiv iz ključev `files` - verjetno odveč (odloči v R1).
+- **`repository_structure`** je izpeljiv iz ključev `files` - verjetno odveč (odloči v R1). Zdaj (P2): JSON seznam poti, ki ga pokaže stran podrobnosti; seed ga zapiše iz ključev `files`.
 - **Nagrada poslana:** `04` "Admin marks reward as sent", stolpca ni (A7).
 
 ---
@@ -442,11 +476,13 @@ Odprto:
 | `/dashboard` | U3, T1 |
 | `/problems` | P1 |
 | `/problems/[slug]` | P2, O1, O2 |
-| `/problems/[slug]/solve` | R1-R6 |
+| `/problems/[slug]/solve` | R1-R6, S1-S3 |
+| `/leaderboard` (ni zgrajen) | S4 |
 | `/profile/[username]` | U1, U2, T2 |
 | `/settings` | U1 (D34-D36) |
 | `/contests`, `/contests/[id]` | T1, T2 |
 | `/admin` | A9 |
 | `/admin/problems/new` | A10, A2, A4, A5 |
 | `/admin/contests`, `/admin/contests/new`, `/admin/contests/[id]/edit` | A6 (A7 za rezultate) |
+| `/admin/analytics` (ni zgrajen) | S5 |
 | `/admin/*` | A1-A9 |

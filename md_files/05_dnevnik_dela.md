@@ -986,9 +986,13 @@ spreminjala.
   `ai_engineer` zaprta.
 - `CLAUDE.md`: odprto vprašanje "schema changes to 01" odstranjeno, stanje.
 
-## 8. 10. 2026 — Seja 11: Priprava na M1 (problemi)
+## 8. 10. 2026 — Seja 11: M1 - priprava, rezini P1 (seznam problemov) in P2 (podrobnosti problema)
 
-Uporabnik: "prepare for the M1 phase". Koda se ni spreminjala.
+Uporabnik: "prepare for the M1 phase", nato "you can start" (P1) in "move on to P2".
+Priprava sama ni spreminjala kode.
+
+Navodilo uporabnika: vprašanja (AskUserQuestion) pisati zanj - najprej
+situacija v navadnem jeziku, možnosti kot vidni učinki, brez naštevanja tabel.
 
 - Preverjeno okolje: baza v Dockerju teče, `npm test` 20/20 zelen,
   migracije 0001-0003 uveljavljene.
@@ -1032,3 +1036,101 @@ Uporabnik: "prepare for the M1 phase". Koda se ni spreminjala.
   komentarji in ocena ostanejo mock do O1/O2. lint, typecheck, build
   zeleni; stran preverjena prek dev strežnika (gost, 404, rešen problem,
   streak). Vizualni pregled v brskalniku ni bil narejen.
+
+## 8. 10. 2026 — Seja 12: AI seja - dokumentacija in AI klepet v urejevalniku
+
+Koncept Bugdr se je razširil: inženirji rešujejo hrošče z AI, Bugdr meri,
+kako učinkovito (pozivi, žetoni, iteracije, delež urejanj, prvi zagon).
+
+### Dokumentacija
+
+- `CLAUDE.md` in `00_bugdr_razvoj.md`: nov razdelek "What is Bugdr?" in
+  slogan; v `00` nova stran `/leaderboard`. Formula točk v `CLAUDE.md`
+  dobi `× efficiency_score`.
+- `01_database.md`: tabele `solve_sessions`, `prompt_events`,
+  `editor_events` (razdelek "AI Session Tracking").
+- `02_problems.md`: razdelek "AI Session Capture".
+- `03_scoring.md`: "Final Points Formula" = osnova × čas × učinkovitost
+  (0,5-2,0), uteži metrik, razponi, primer, nove statistike profila.
+- `04_admin.md`: stran `/admin/analytics` (AI Session Analytics).
+
+### Zaslon `/problems/[slug]/solve` - tri plošče
+
+- Desno nova plošča AI klepeta (`components/solve/AiChatPanel.tsx`):
+  izbirnik orodja (Claude/GPT-4/Gemini/Other), vrstica statistike seje
+  (Prompts/Tokens/Runs), zložljiva "Session Efficiency" (primerjava z
+  benchmarkom težavnosti), sporočila s kodo, indikator tipkanja, polje
+  1-4 vrstice (Enter pošlje, Shift+Enter nova vrstica), ocena žetonov.
+- Plošča: privzeto 320 px, najmanj 280 px, vlečenje levega roba (od
+  `lg`), zložljiva (puščica na levem robu; zaprta = puščica na desnem
+  robu urejevalnika). Pod `lg` je prekrivna plošča nad urejevalnikom in
+  privzeto zaprta.
+- `hooks/useSessionTracker.ts`: dogodki seje v React stanju (poziv,
+  odgovor, zagon testov, odpiranje datotek, opis odprt/zaprt); iz njih
+  izpeljani števci. Mock odgovori v `lib/mock/aiChat.ts`.
+- `Workspace` dobi `difficulty` (iz strani) za benchmark.
+
+Preverjeno: lint, typecheck, build zeleni; Playwright proti dev strežniku
+(nov uporabnik + onboarding prek API-ja): 320-2560 px brez vodoravnega
+drsenja, pošiljanje poziva, indikator tipkanja, odgovor, števci in
+Submit (Runs), brez napak v konzoli.
+
+## 8. 10. 2026 — Seja 13: opis problema = kontekst kode + poročilo o incidentu
+
+Opis problema ne sme več namigovati na hrošč: uporabnik vidi samo, kaj sistem
+dela, in simptome iz produkcije. Brez "Expected behavior".
+
+### Dokumentacija
+
+- `02_problems.md`: razdelek "Description" zamenjan s "Codebase Context",
+  "Incident Report" in "No Expected Behavior section"; datoteke `files`
+  brez komentarjev, ki kažejo na hrošč.
+- `01_database.md`: `problems.description` → `codebase_context` +
+  `incident_report`. `00`: vrstica Problem detail. `CLAUDE.md`: novo
+  poslovno pravilo.
+
+### Backend
+
+- `migrations/0006_problem_brief.sql`: novi stolpci (obstoječe besedilo
+  gre v `codebase_context`, poročilo prazno), `description` odstranjen.
+- `GET /problems/:slug` vrne `codebaseContext` in `incidentReport`
+  namesto `description`. Testa P1/P2 posodobljena.
+- Seed: besedila za vseh 12 problemov iz `frontend/src/lib/mock/problemBriefs.ts`
+  (realni logi, opozorila, podporne prijave).
+
+### Frontend
+
+- `Description` (`ProblemOverview.tsx`) prikaže "Your assignment" (proza)
+  in "What the team is seeing" (terminalski blok `#0d1117`, oznaka
+  "incident log"); razčlenjevalnik markdowna odstranjen. Velja za
+  `/problems/[slug]` in levo ploščo `/problems/[slug]/solve`.
+- Mock: `ProblemDetail.description` → `codebaseContext` + `incidentReport`;
+  README.md v kodi = kontekst; generična koda brez komentarja "the bug
+  lives somewhere in here".
+
+Preverjeno: backend testi 32/32 zeleni, `npm run migrate` + `npm run seed`;
+frontend lint, typecheck, build; Playwright (podrobnosti in reševanje,
+320-2560 px): brez vodoravnega drsenja, brez "Expected behavior", brez
+napak v konzoli.
+
+
+### Načrt rezin (`06_backend_slices.md`)
+
+- P2, R4, A2, A10 posodobljeni za razdeljen opis in novo formulo točk.
+- Nov mejnik M8 - AI seja: S1 AI klepet, S2 zajem dogodkov, S3 ocena
+  učinkovitosti v točkah, S4 lestvica, S5 AI analitika (admin).
+- Odprte odločitve D50 (Add Problem po razdelitvi opisa), D51 (podrobnosti
+  ocene učinkovitosti), D52 (pravilo lestvice).
+
+### Usklajevanje dokumentov
+
+- `00`: Current Status (migracije 0001-0006, AI klepet na mocku, M8), stack
+  (Claude API), arhitektura, faze, strani (urejevalnik + AI klepet,
+  `/admin/analytics`).
+- `01`: AI tabele v pregledu; označene kot načrtovane (S1, S2).
+- `02`: "What a Problem Is", vir GitHub, primer preverjanj, stran
+  podrobnosti in zaslon reševanja (tri plošče).
+- `03`: pregled + nove statistike v tabeli profila. `04`: obrazec problema
+  in smernice kakovosti (kontekst + incident, brez pričakovanega vedenja).
+- `CLAUDE.md`: stack (AI), poti (`/leaderboard`, `/admin/analytics` -
+  načrtovani), zaslon reševanja, izjema `text-lg` za naslova opisa.

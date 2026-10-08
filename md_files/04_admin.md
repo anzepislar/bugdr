@@ -21,7 +21,7 @@ Route: `/admin` — fully protected, redirects non-admins.
 
 **Create new problem:**
 - Title
-- Description (markdown editor)
+- Codebase context (what the system does) and incident report (logs, alerts, tickets) — `02_problems.md`
 - Difficulty selector
 - Category selector
 - Tags input
@@ -141,6 +141,27 @@ Not in the schema yet - needs `contests.archived_at TIMESTAMP` (null = not archi
 
 ---
 
+## AI Session Analytics (/admin/analytics)
+
+Additional admin page for AI usage insights:
+
+**Platform-wide metrics:**
+- Average prompts per problem by difficulty
+- Average tokens per solve
+- Most used AI tools (Claude vs GPT vs Gemini vs other)
+- Efficiency score distribution across all users
+- First-run pass rate across all problems
+
+**Per-problem insights:**
+- Average prompts needed to solve this problem
+- Average tokens used
+- Most common AI tools used
+- Efficiency benchmark (used for scoring calibration)
+
+These benchmarks are used to calibrate the efficiency score — a "good" prompt count for a Hard problem is different from an Easy problem.
+
+---
+
 ## Contest Rewards
 
 ### Current rewards (pre-subscription):
@@ -164,8 +185,9 @@ Not in the schema yet - needs `contests.archived_at TIMESTAMP` (null = not archi
 
 Before publishing a problem, admin should verify:
 
-- [ ] Description explains the codebase context clearly — reads like a real job scenario
-- [ ] Description does NOT hint at what is broken
+- [ ] Codebase context explains what the system does clearly — reads like a real job scenario
+- [ ] Incident report shows only symptoms (logs, alerts, user complaints) — never the cause
+- [ ] No "expected behavior" anywhere, and no comments in `files` hinting at the bug location
 - [ ] All checks are working correctly (test locally before publishing)
 - [ ] At least 3 checks that actually validate the fix
 - [ ] Time limit is fair for the difficulty level

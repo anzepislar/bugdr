@@ -129,8 +129,10 @@ export interface ProblemListItem {
 
 /** Result of GET /problems/:slug (slice P2). Never contains file contents or check commands. */
 export interface ProblemDetail extends ProblemListItem {
-  /** problems.description: paragraphs, "## " headings and ``` blocks (the text after ``` is the block title). */
-  description: string;
+  /** problems.codebase_context: what the system does, no bug hints; paragraphs split by a blank line. */
+  codebaseContext: string;
+  /** problems.incident_report: logs, alerts, support tickets — symptoms only, shown verbatim. */
+  incidentReport: string;
   solveCount: number;
   commentCount: number;
   /** problem_checks.description in check_order (D26). */

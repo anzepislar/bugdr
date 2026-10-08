@@ -2,7 +2,7 @@
 
 ## Overview
 
-Every problem you solve earns you points.
+Every problem you solve earns you points — more for solving fast and for using AI efficiently.
 Points determine your level.
 Your level is your reputation on the platform.
 
@@ -42,11 +42,43 @@ User solves in 6 minutes (20% of limit) → 2x multiplier → 500 points.
 ## Final Points Formula
 
 ```
-final_points = base_points × time_multiplier
+final_points = base_points × time_multiplier × efficiency_score
 ```
 
 Rounded to nearest integer.
 Stored in `point_transactions` with reason `'problem_solved'`.
+
+### Efficiency Score (0.5 to 2.0 multiplier)
+
+Calculated from the solve session:
+
+| Metric | Weight | How scored |
+|--------|--------|-----------|
+| Prompt count | 30% | Fewer prompts = higher score. Benchmark per difficulty. |
+| Token usage | 25% | Less tokens = higher score. Surgical prompts score best. |
+| Iterations | 20% | Fewer back-and-forth = higher score |
+| Edit ratio | 15% | Modified AI output scores higher than blind accept |
+| First run pass | 10% | Tests pass on first run = bonus |
+
+**Efficiency score ranges:**
+- 2.0 — exceptional: solved in 1-3 precise prompts, tests passed first run
+- 1.5 — great: efficient prompting, minimal iterations
+- 1.0 — average: reasonable prompt count and token usage
+- 0.75 — below average: many prompts, high token usage
+- 0.5 — poor: excessive prompting, many iterations, blind AI acceptance
+
+**Example:**
+Medium problem, base 250 pts.
+User solves in 20 min (under 50% limit) → 1.5x time multiplier.
+User used 4 prompts, 1,200 tokens, passed tests on first run → 1.8 efficiency score.
+Final: 250 × 1.5 × 1.8 = 675 points.
+
+### Profile Stats — new metrics shown:
+- Average prompt count per problem
+- Average tokens used per problem
+- Efficiency rating (Intern / Efficient / Expert / Elite)
+- Favorite AI tool
+- First-run pass rate %
 
 ---
 
@@ -83,6 +115,8 @@ Streaks work like GitHub commit graphs.
 - Streak continues as long as you open at least one problem per day
 - Streak resets if a full calendar day passes with no activity
 - Longest streak is tracked separately from current streak
+- "Opening" = a signed-in user loads the problem detail page (`GET /problems/:slug`); a day is a UTC calendar day
+  (D6, D7). Built in slice P2: `user_daily_activity.problems_opened` + `user_stats.current_streak/longest_streak`
 
 **Why opening counts (not just solving):**
 Solving a Hard or "Get a job" problem can take multiple days.
@@ -166,3 +200,7 @@ Ranks are calculated and written to `contest_entries.rank` when the contest ends
 | Problems by difficulty | How many Easy / Medium / Hard / Get a job solved |
 | Problems by category | How many per role category |
 | Average solve time | Average time taken across all solves |
+| Average prompts / tokens | Per solved problem (from `solve_sessions`) |
+| Efficiency rating | Intern / Efficient / Expert / Elite (from average `efficiency_score`) |
+| Favorite AI tool | Most used `prompt_events.ai_tool` |
+| First-run pass rate | Share of solves with `tests_passed_on_first_run` |

@@ -2,11 +2,21 @@
 
 ## What is Bugdr?
 
-A platform where engineers fix real production bugs to prove their skills.
-Unlike LeetCode — these problems can't be solved by AI copy-paste.
+Bugdr is a platform where engineers solve real production bugs using AI — and we measure how well they do it.
 
+The question is no longer "can you code?" — it's "can you use AI effectively to solve real engineering problems?"
+
+Engineers solve problems using any AI tool they want (Claude, GPT, Gemini, Copilot — anything). Bugdr captures the full session and scores them on:
+- How fast they solved it
+- How many prompts they needed
+- How many tokens they used
+- How many iterations it took
+- How much they understood the AI output (edit ratio)
+
+This defines the next generation of engineering skill.
+
+**Slogan:** Debug real code. With real AI. Prove you're the best at it.
 **Domain:** bugdr.app
-**Slogan:** Debug real code. Get real results.
 
 ---
 
@@ -20,6 +30,7 @@ Unlike LeetCode — these problems can't be solved by AI copy-paste.
 | Code editor | Monaco Editor (@monaco-editor/react) |
 | Problem execution | Docker containers |
 | Auth | JWT |
+| AI | Claude API — built-in AI chat + problem analysis, server-side only |
 
 ---
 
@@ -80,13 +91,15 @@ and scale with a CSS height. Raster files: for sharp retina display keep the ren
 | `/dashboard` | Main feed + contests |
 | `/problems` | Browse all problems |
 | `/problems/[slug]` | Problem detail |
-| `/problems/[slug]/solve` | Fullscreen split pane: description + editor + terminal/test results |
+| `/problems/[slug]/solve` | Fullscreen, 3 panels: codebase context + incident report · editor + terminal/test results · AI chat |
 | `/profile/[username]` | User profile |
 | `/settings` | Settings (profile, practice preferences, account) |
+| `/leaderboard` | Global ranking by efficiency score (planned, not built — D52) |
 | `/contests` | Contest list |
 | `/contests/[id]` | Contest detail |
 | `/admin` | Admin overview (stats + charts) |
 | `/admin/problems/new` | Add problem (3 steps: Analysis, Review, Publish) |
+| `/admin/analytics` | AI session analytics (planned, not built) |
 | `/admin/contests` | Contest management (tabs by status) |
 | `/admin/contests/new` | Create contest (4-step wizard) |
 | `/admin/contests/[id]/edit` | Edit a draft or scheduled contest |
@@ -110,6 +123,7 @@ and scale with a CSS height. Raster files: for sharp retina display keep the ren
 - Streak continues if user opens at least one problem per day
 - Points are never updated directly — always insert a new `point_transactions` row
 - Frontend never reads the database directly — always through API
+- Problem descriptions never hint at the bug — users see codebase context (what the system does) and incident report (symptoms, logs, user complaints) only. Never expected behavior, never the cause, never the file location.
 - Public without login: `/dashboard`, `/problems`, `/problems/[slug]` (+ auth pages). Account-only parts are blurred with "Log in to unlock" (`Locked`, `src/components/app/Session.tsx`). The editor (`/problems/[slug]/solve`), `/settings`, `/onboarding`, `/contests/*`, `/profile/*` and `/admin/*` redirect to `/login?next=…` (`src/proxy.ts`, which checks the session with the backend; `/admin/*` is admin-only → `/dashboard`)
 
 ---
@@ -131,7 +145,7 @@ and scale with a CSS height. Raster files: for sharp retina display keep the ren
 ## Points Formula
 
 ```
-final_points = base_points × time_multiplier
+final_points = base_points × time_multiplier × efficiency_score   (efficiency 0.5–2.0, md_files/03_scoring.md)
 
 Base points: Easy 100 / Medium 250 / Hard 500 / Get a job 1000
 
@@ -149,13 +163,13 @@ Time multiplier:
 Updated at the end of every session. Read this first in a new session.
 
 ```
-Last session: 8. 10. 2026 — Seja 11 (M1 done: P1 problem list + bookmarks, P2 problem detail + streak on view; migrations 0004-0005, dev seed of 12 full problems, server-side serverFetch for the detail page). Before: Seja 10 (docs synced with what is built)
+Last session: 8. 10. 2026 — Seja 13 (problem text = codebase context + incident report, no expected behavior; migration 0006, seed rewritten). Before: Seja 12 (AI session docs + AI chat panel on the solve page, mock)
 Phase: Backend slices (06_backend_slices.md); frontend on mock data until each slice swaps it
-Frontend: 17 screens on mock data — /admin (overview), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit, /onboarding, /login, /signup, /forgot-password, /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new (Add Problem, 3 steps), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx), /problems, /problems/[slug] (Overview + Discussion; + solved state), /problems/[slug]/solve (fullscreen split pane, editor = read-only Monaco stand-in)
+Frontend: 17 screens on mock data — /admin (overview), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit, /onboarding, /login, /signup, /forgot-password, /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new (Add Problem, 3 steps), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx), /problems, /problems/[slug] (Overview + Discussion; + solved state), /problems/[slug]/solve (fullscreen, 3 panels: description, read-only Monaco stand-in, AI chat on mock)
 Backend: M0 (F0-F4) and M1 (P1-P2) done (backend/, `docker compose up -d` in backend/, npm run migrate/test) — plan in md_files/06_backend_slices.md
-Database: PostgreSQL 17 in Docker; migrations 0001 (level_thresholds), 0002 (users, user_stats), 0003 (user_profiles), 0004 (problems), 0005 (problem detail) applied; `npm run seed` = 12 dev problems with code and checks
-Next step: slice R1 (start solving, M2). Admin login is not a user account (D48) — user will provide credentials via backend/.env, decide before M6
-Open questions: D20 validation rule · D21-D22 · D24 feed filters vs. D19 · D25 notifications · D28 Give up · D30 comment helpful/replies · D32 contest history checks · D34 profile fields schema · D35 empty settings tabs · D36 starting difficulty · D37 GitHub sign-in · D45 Add Problem title/time limit/dry-run · D46 stats windows · D48 admin is not a user account (all in 06)
+Database: PostgreSQL 17 in Docker; migrations 0001 (level_thresholds), 0002 (users, user_stats), 0003 (user_profiles), 0004 (problems), 0005 (problem detail), 0006 (problem brief) applied; `npm run seed` = 12 dev problems with code and checks
+Next step: slice R1 (start solving, M2); AI session = milestone M8 (S1-S5) in 06, waits for D51/D52. Admin login is not a user account (D48) — user will provide credentials via backend/.env, decide before M6
+Open questions: D20 validation rule · D21-D22 · D24 feed filters vs. D19 · D25 notifications · D28 Give up · D30 comment helpful/replies · D32 contest history checks · D34 profile fields schema · D35 empty settings tabs · D36 starting difficulty · D37 GitHub sign-in · D45 Add Problem title/time limit/dry-run · D46 stats windows · D48 admin is not a user account · D50 Add Problem fields after the description split · D51 efficiency score details · D52 leaderboard rule (all in 06)
 ```
 
 ### Session tracking
@@ -217,7 +231,7 @@ Learned from fixes on `/problems` and `/problems/[slug]`. Apply to every new scr
 
 **Content**
 - Never hide information the user needs to make a decision (e.g. acceptance checks) behind a toggle on first load. Long lists go in two columns (`sm:grid-cols-2`) rather than a collapsed list.
-- Section headings: `font-semibold`, at least `text-lg` (description sections use `text-xl`), `mt-8` above each section.
+- Section headings: `font-semibold`, at least `text-lg` (description sections use `text-xl`; exception: the problem text headings "Your assignment" / "What the team is seeing" use `text-lg`), `mt-8` above each section.
 - Locked / gated states are a banner, not plain text: full-width card, lock icon on the left, `bg-surface border border-border`, one sentence that says how to unlock.
 
 **Card grids and lists**

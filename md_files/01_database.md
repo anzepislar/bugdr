@@ -21,6 +21,9 @@ users
   └── user_daily_activity  (streak tracking)
   └── user_problem_attempts
         └── check_results
+        └── solve_sessions     (AI session, one per attempt)
+              └── prompt_events
+              └── editor_events
 
 problems
   └── problem_categories
@@ -131,8 +134,9 @@ CREATE TABLE problems (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title               VARCHAR(255) NOT NULL,
   slug                VARCHAR(255) UNIQUE NOT NULL,
-  short_description   VARCHAR(300) NOT NULL,  -- shown on problem card (1-2 lines)
-  description         TEXT NOT NULL,          -- full context shown on problem detail page
+  short_description   VARCHAR(300) NOT NULL,  -- shown on problem card: symptom only e.g. "Payment retries disappear"
+  codebase_context    TEXT NOT NULL,          -- what the system does, no bug hints, reads like onboarding
+  incident_report     TEXT NOT NULL,          -- error logs, user complaints, symptoms — never the cause
   thumbnail_url       VARCHAR(500),           -- card thumbnail image
   difficulty          VARCHAR(20) NOT NULL CHECK (difficulty IN ('easy', 'medium', 'hard', 'get_a_job')),
   category_id         UUID REFERENCES problem_categories(id),
@@ -151,7 +155,8 @@ CREATE TABLE problems (
 );
 ```
 
-Built in P1 (`migrations/0004_problems.sql`). No `summary` (cards use `short_description`, D16) and no
+Built in P1 (`migrations/0004_problems.sql`); `description` split into `codebase_context` + `incident_report` in
+`migrations/0006_problem_brief.sql`. No `summary` (cards use `short_description`, D16) and no
 `is_contest_problem` (derived from `contest_problems`, D17). `category_id` may be NULL on a draft; only problems
 with a category are listed.
 
@@ -269,6 +274,66 @@ CREATE TABLE check_results (
   passed       BOOLEAN NOT NULL,
   output       TEXT,
   executed_at  TIMESTAMP DEFAULT NOW()
+);
+```
+
+---
+
+## AI Session Tracking
+
+Planned, not built yet — slices S1 and S2 (milestone M8 in `06_backend_slices.md`).
+
+### solve_sessions
+One session per solve attempt. Tracks the full AI interaction.
+
+```sql
+CREATE TABLE solve_sessions (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  attempt_id            UUID REFERENCES user_problem_attempts(id) ON DELETE CASCADE UNIQUE,
+  total_prompts         INTEGER DEFAULT 0,
+  total_tokens_used     INTEGER DEFAULT 0,
+  total_ai_iterations   INTEGER DEFAULT 0,
+  manual_edits_count    INTEGER DEFAULT 0,
+  ai_accepted_count     INTEGER DEFAULT 0,
+  time_to_first_prompt  INTEGER,  -- seconds from start to first prompt
+  time_on_description   INTEGER,  -- seconds spent reading before first action
+  test_runs_count       INTEGER DEFAULT 0,
+  tests_passed_on_first_run BOOLEAN DEFAULT FALSE,
+  efficiency_score      DECIMAL(5,2) DEFAULT 0,  -- calculated on solve
+  created_at            TIMESTAMP DEFAULT NOW(),
+  updated_at            TIMESTAMP DEFAULT NOW()
+);
+```
+
+### prompt_events
+Every prompt sent to AI during a solve session.
+
+```sql
+CREATE TABLE prompt_events (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id      UUID REFERENCES solve_sessions(id) ON DELETE CASCADE,
+  prompt_index    INTEGER NOT NULL,        -- 1st, 2nd, 3rd prompt etc
+  prompt_text     TEXT NOT NULL,
+  prompt_tokens   INTEGER NOT NULL,
+  response_tokens INTEGER NOT NULL,
+  total_tokens    INTEGER NOT NULL,
+  ai_tool         VARCHAR(50),             -- 'claude', 'gpt-4', 'gemini', 'copilot', 'other'
+  response_used   BOOLEAN DEFAULT TRUE,    -- did user accept or ignore the response
+  sent_at         TIMESTAMP DEFAULT NOW()
+);
+```
+
+### editor_events
+Key actions during a solve session for behavioral analysis.
+
+```sql
+CREATE TABLE editor_events (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id  UUID REFERENCES solve_sessions(id) ON DELETE CASCADE,
+  event_type  VARCHAR(30) NOT NULL,  -- 'file_open', 'file_edit', 'test_run', 'ai_prompt', 'ai_accept', 'ai_reject', 'description_open', 'description_close'
+  file_name   VARCHAR(255),
+  metadata    JSONB,                 -- flexible extra data per event type
+  occurred_at TIMESTAMP DEFAULT NOW()
 );
 ```
 

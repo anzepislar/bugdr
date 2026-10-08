@@ -16,9 +16,9 @@ const list = async (cookie) => (await (await call("GET", "/problems", cookie)).j
 
 async function addProblem(slug, { category = "backend", difficulty = "easy", points = 100, published = true, rating = 4 } = {}) {
   const { rows } = await pool.query(
-    `INSERT INTO problems (slug, title, short_description, description, difficulty, category_id, base_points,
+    `INSERT INTO problems (slug, title, short_description, codebase_context, incident_report, difficulty, category_id, base_points,
        time_limit_minutes, is_published, average_rating)
-     SELECT $1, $1, 'short', 'long', $2, id, $3, 20, $4, $5 FROM problem_categories WHERE slug = $6 RETURNING id`,
+     SELECT $1, $1, 'short', 'context', 'incident', $2, id, $3, 20, $4, $5 FROM problem_categories WHERE slug = $6 RETURNING id`,
     [slug, difficulty, points, published, rating, category],
   );
   return rows[0].id;

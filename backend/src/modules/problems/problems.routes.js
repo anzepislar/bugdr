@@ -45,7 +45,7 @@ problemsRouter.get("/", optionalAuth, async (req, res) => {
 problemsRouter.get("/:slug", optionalAuth, async (req, res) => {
   const userId = req.user?.id ?? null;
   const { rows } = await pool.query(
-    `SELECT p.id, p.slug, p.title, p.short_description, p.description, p.difficulty, c.slug AS category_slug,
+    `SELECT p.id, p.slug, p.title, p.short_description, p.codebase_context, p.incident_report, p.difficulty, c.slug AS category_slug,
        coalesce((SELECT array_agg(t.tag ORDER BY t.tag) FROM problem_tags t WHERE t.problem_id = p.id), '{}') AS tags,
        p.time_limit_minutes, p.average_rating::float AS average_rating, p.rating_count, p.thumbnail_url, p.solve_count,
        (SELECT count(*)::int FROM problem_comments pc WHERE pc.problem_id = p.id) AS comment_count,
@@ -82,7 +82,8 @@ problemsRouter.get("/:slug", optionalAuth, async (req, res) => {
       thumbnailUrl: r.thumbnail_url,
       status: r.status,
       saved: r.saved,
-      description: r.description,
+      codebaseContext: r.codebase_context,
+      incidentReport: r.incident_report,
       solveCount: r.solve_count,
       commentCount: r.comment_count,
       checks: r.checks,

@@ -1,4 +1,5 @@
 // Mock of GET /problems and GET /problems/:slug. Replaced by slices P1 and P2 (see md_files/06_backend_slices.md, "Register mockov").
+import { BRIEFS } from "@/lib/mock/problemBriefs";
 import type { ProblemComment, ProblemDetail, ProblemListItem, SolveResult } from "@/lib/types/problem";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -181,7 +182,7 @@ export async function mockGetProblems(): Promise<ProblemListItem[]> {
 
 type DetailFields = Omit<ProblemDetail, keyof ProblemListItem | "result">;
 
-// problem_codebase.files of the mock problems. README.md is added from the problem description.
+// problem_codebase.files of the mock problems. README.md is added from the codebase context.
 const CODEBASES: Record<string, Record<string, string>> = {
   "payment-retries-disappear": {
     "src/workers/payment.ts": `import { queue } from "../services/queue";
@@ -277,7 +278,7 @@ describe("payment retries", () => {
 
 function genericFiles(p: ProblemListItem): Record<string, string> {
   return {
-    "src/index.ts": `// ${p.title}\n// ${p.shortDescription}\n\nexport function main() {\n  // TODO: the bug lives somewhere in here.\n}\n`,
+    "src/index.ts": `// ${p.title}\n// ${p.shortDescription}\n\nexport function main() {\n  return null;\n}\n`,
     "tests/index.test.ts": `import { expect, it } from "vitest";\nimport { main } from "../src/index";\n\nit("runs", () => {\n  expect(main).toBeDefined();\n});\n`,
     "package.json": `{\n  "name": "${p.slug}",\n  "private": true\n}\n`,
   };
@@ -285,25 +286,7 @@ function genericFiles(p: ProblemListItem): Record<string, string> {
 
 const DETAILS: Record<string, DetailFields> = {
   "payment-retries-disappear": {
-    description: `## Your assignment
-
-You have joined the payments team at Northstar, an online marketplace.
-A background worker processes checkout events and schedules retries when the payment provider is temporarily unavailable.
-
-## What the team is seeing
-
-Support reports that a small number of orders remain in "payment pending".
-The original payment attempt is logged, but the expected follow-up never appears. The incident began during a burst of provider timeouts.
-
-\`\`\`worker.log
-[WARN] gateway timeout order=ord_842 attempt=1
-[INFO] retry scheduled delay=30000ms
-\`\`\`
-
-## Expected behavior
-
-Transient payment failures should be retried without charging twice.
-Successful payments should complete their order exactly once.`,
+    ...BRIEFS["payment-retries-disappear"],
     solveCount: 842,
     commentCount: 37,
     checks: [
@@ -383,7 +366,7 @@ export async function mockGetComments(slug: string): Promise<ProblemComment[] | 
 // Every other mock problem gets a generic detail built from its card.
 function genericDetail(p: ProblemListItem): DetailFields {
   return {
-    description: `## Your assignment\n\n${p.shortDescription}\n\n## Expected behavior\n\nFind the root cause and fix it without breaking existing behavior.`,
+    ...BRIEFS[p.slug],
     solveCount: p.ratingCount * 6,
     commentCount: COMMENTS[p.slug] ? countComments(COMMENTS[p.slug]) : Math.round(p.ratingCount / 4),
     checks: ["Reproduce the reported bug", "Fix the root cause", "Existing tests still pass"],
@@ -414,10 +397,10 @@ export async function mockGetProblem(slug: string): Promise<ProblemDetail | null
   return { ...p, ...detail, result };
 }
 
-/** problem_codebase.files of a mock problem; README.md is the problem description (the incident brief). */
+/** problem_codebase.files of a mock problem; README.md is the codebase context (never the incident or a hint). */
 export function mockCodebase(slug: string): Record<string, string> | null {
   const p = PROBLEMS.find((x) => x.slug === slug);
   if (!p) return null;
   const detail = DETAILS[slug] ?? genericDetail(p);
-  return { ...(CODEBASES[slug] ?? genericFiles(p)), "README.md": detail.description };
+  return { ...(CODEBASES[slug] ?? genericFiles(p)), "README.md": detail.codebaseContext };
 }

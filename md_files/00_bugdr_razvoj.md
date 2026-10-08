@@ -2,15 +2,20 @@
 
 ## What is Bugdr?
 
-Bugdr is a platform where engineers fix real production bugs.
+Bugdr is a platform where engineers solve real production bugs using AI — and we measure how well they do it.
 
-Unlike LeetCode which tests algorithmic trivia that AI can solve in seconds, Bugdr tests what actually matters — can you debug a real codebase at 3am when production is down?
+The question is no longer "can you code?" — it's "can you use AI effectively to solve real engineering problems?"
 
-**Slogan:**
-```
-Debug real code. Get real results.
-```
+Engineers solve problems using any AI tool they want (Claude, GPT, Gemini, Copilot — anything). Bugdr captures the full session and scores them on:
+- How fast they solved it
+- How many prompts they needed
+- How many tokens they used
+- How many iterations it took
+- How much they understood the AI output (edit ratio)
 
+This defines the next generation of engineering skill.
+
+**Slogan:** Debug real code. With real AI. Prove you're the best at it.
 **Domain:** bugdr.app
 
 ---
@@ -25,6 +30,7 @@ Debug real code. Get real results.
 | Code editor | Monaco Editor (@monaco-editor/react) |
 | Problem execution | Docker containers |
 | Auth | JWT |
+| AI | Claude API — built-in AI chat + problem analysis, server-side only |
 
 ---
 
@@ -69,9 +75,13 @@ bugdr/
 
 ```
 Phase: Backend slices (06_backend_slices.md) - frontend screens swap their mocks slice by slice
-Frontend: 17 screens built from Figma; login, signup, logout and onboarding use the real API
-Backend: Milestone M0 done (F0-F4: skeleton, levels, auth, route protection, onboarding)
-Database: PostgreSQL 17 in Docker; tables level_thresholds, users, user_stats, user_profiles
+Frontend: 17 screens built from Figma; login, signup, logout, onboarding, /problems and /problems/[slug] use the real API;
+  the solve page has an AI chat panel on mock data
+Backend: Milestones M0 (F0-F4: skeleton, levels, auth, route protection, onboarding) and M1 (P1-P2: problem list,
+  bookmarks, problem detail, streak on view) done; next M2 (solving); AI session = M8 (S1-S5)
+Database: PostgreSQL 17 in Docker; migrations 0001-0006 (levels, users, profiles, problems, problem detail,
+  problem brief = codebase context + incident report);
+  `npm run seed` = 12 dev problems with code and checks
 Detailed status: CLAUDE.md "Current Status" and 06_backend_slices.md "Stanje"
 ```
 
@@ -119,7 +129,7 @@ Phase 3 — Full backend
   Connect everything, implement business logic
 
 Phase 4 — Problem execution engine
-  Docker containers, Monaco editor, test runner
+  Docker containers, Monaco editor, test runner, AI chat + session capture
 
 Phase 5 — Admin dashboard
   Contest management, problem management
@@ -154,12 +164,14 @@ Browser (Next.js)
   → API calls only, never direct DB access
   → Monaco Editor for code editing
   → Terminal UI component
+  → AI chat panel (prompts go through the backend)
 
 Backend (Node.js/Express)
   → JWT authentication
   → Business logic
   → PostgreSQL queries
   → Docker container management
+  → Claude API (built-in AI chat, problem analysis) — key server-side only
 
 Docker (Problem Execution)
   → Isolated container per problem attempt
@@ -182,13 +194,14 @@ PostgreSQL
 | Onboarding | `/onboarding` | 4 steps after signup: role, experience, goal, languages |
 | Dashboard | `/dashboard` | Personalized feed + contests |
 | Problems | `/problems` | Browse all problems |
-| Problem detail | `/problems/[slug]` | Description + start |
-| Problem editor | `/problems/[slug]/solve` | Monaco + terminal + checks |
+| Problem detail | `/problems/[slug]` | Codebase context + incident report + start |
+| Problem editor | `/problems/[slug]/solve` | Monaco + terminal + checks + AI chat |
 | Profile | `/profile/[username]` | Stats + solved problems |
 | Settings | `/settings` | Profile details, engineering path, public profile |
 | Contests | `/contests` | Daily/weekly/monthly |
 | Contest detail | `/contests/[id]` | Incident, rules, entry + your participation |
-| Admin | `/admin` | Problem + contest management |
+| Leaderboard | `/leaderboard` | Global ranking by efficiency score |
+| Admin | `/admin` | Problem + contest management, AI session analytics (`/admin/analytics`) |
 | Landing | Separate repo | Friend 2 builds this |
 
 ---

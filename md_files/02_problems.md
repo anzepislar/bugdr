@@ -5,9 +5,10 @@
 A problem on Bugdr is a real production bug inside a real codebase.
 
 The user is given:
-- A description of what the codebase does (not what is broken)
+- A codebase context (what the system does) and an incident report (symptoms from production) — never the cause
 - The actual buggy code to work with
 - A terminal to run the app
+- A built-in AI chat (or any AI tool they like) — the session is captured, see "AI Session Capture"
 - A list of checks that must pass to solve the problem
 
 The user figures out what is wrong, fixes it, and clicks Test.
@@ -35,7 +36,7 @@ Problems come from two sources:
 - Filter: `label:bug` + `label:fixed` on popular repos
 - Extract: broken state of the code before the fix
 - Sanitize: remove sensitive data, anonymize company names
-- Add: proper description, checks, expected output
+- Add: codebase context, incident report, checks, expected output (of the checks, never shown to the user)
 
 ### 2. Claude Generation
 - Feed real GitHub bugs as examples
@@ -49,14 +50,50 @@ Problems come from two sources:
 
 Every problem has these parts:
 
-### Description
-What the codebase does — written as if the user just joined a company.
+### Codebase Context
+What the system does — written as if the user just joined the company.
+Never mentions what is broken, never hints toward the solution.
+Reads like an onboarding document.
 
 **Good example:**
-> "This is the authentication service for a SaaS platform. It handles user registration, login, and JWT token refresh. The service has been running in production for 6 months. This morning, users started reporting they get logged out every time they refresh the page."
+"You have joined the payments team at Northstar, an online marketplace.
+This service handles checkout job scheduling using a Redis queue.
+Background workers process checkout events and schedule payment retries
+when the payment provider is temporarily unavailable."
 
 **Bad example:**
-> "There is a bug in the JWT refresh function on line 42."
+"There is a bug in the retry logic that causes duplicate charges."
+"The JWT refresh token has a race condition."
+
+### Incident Report
+What a real engineer would see when something breaks in production.
+This is what the user reads to understand what needs fixing.
+Never explains the cause — only shows symptoms.
+
+Contains one or more of:
+- User complaints: what users are reporting
+- Error logs: actual terminal output, stack traces, error messages from the running app
+- Monitoring alerts: what the system is showing
+- Support tickets: what customers are saying
+
+**Good example:**
+```
+[WARN] gateway timeout order=ord_842 attempt=1
+[INFO] retry scheduled delay=30000ms
+[WARN] gateway timeout order=ord_842 attempt=2
+[INFO] retry scheduled delay=30000ms
+Support report: "Failed orders never complete.
+Customers are being charged but orders stay in pending state indefinitely."
+```
+
+**Bad example:**
+"The retry delay is hardcoded and never changes between attempts."
+"Expected behavior: transient failures should be retried with exponential backoff."
+
+### No "Expected Behavior" section
+Never tell the user what the correct behavior should be.
+They must figure it out from the codebase, the logs, and their engineering judgment.
+This is what makes the problem genuinely hard to one-shot with AI.
 
 ### Codebase
 The actual files with the bug. Stored as JSONB in `problem_codebase.files`.
@@ -66,7 +103,7 @@ Loaded into Monaco Editor when user starts the problem.
 
 | Type | Column | Sent to browser? | Description |
 |------|--------|-----------------|-------------|
-| Editable files | `files` | ✅ Yes | The buggy code the user sees and edits |
+| Editable files | `files` | ✅ Yes | The buggy code the user sees and edits — no comments hinting at the bug location |
 | Hidden files | `hidden_files` | ❌ Never | Test files written into container AFTER user files — user cannot edit or see these |
 | Solution files | `solution_files` | ❌ Never | The correct fix — used to validate checks before publishing |
 
@@ -82,7 +119,7 @@ Before a problem can be published, admin must verify:
 A list of automated tests that must all pass to solve the problem.
 Run in order inside a Docker container.
 
-**Example checks for the auth bug above:**
+**Example checks for a JWT refresh bug:**
 1. `npm run test` — all unit tests pass
 2. `curl /auth/refresh` returns 200
 3. `curl /auth/refresh` with expired token returns 401
@@ -139,8 +176,9 @@ Problems are shown as cards on the Problems page.
 - Difficulty badge (color coded)
 - Category badge
 - Rating (stars, always visible)
-- Solve count
+- Solve count (on the detail page; the current card design does not show it)
 - Time limit
+- Tags, the user's status (Solved / In progress) and a bookmark ("Saved problems", D23)
 
 **Card colors by difficulty:**
 - Easy: #22c55e (green)
@@ -154,11 +192,15 @@ Problems are shown as cards on the Problems page.
 
 When user opens a problem:
 
-- Full description (codebase context)
+- "Your assignment" (codebase context) and "What the team is seeing" (incident report in a terminal-style block)
 - Difficulty + category + tags
-- Average rating (always visible)
+- Average rating (always visible) and solve count
+- Acceptance checks: only their descriptions, in order (D26) - never commands or expected output
+- Repository panel: name, stack (language + framework + tags) and file paths, never file contents (D27)
 - Comments (locked until solved — shows count but not content)
 - **Start button** → starts timer, loads editor
+- A solved problem shows its result first (time, checks, lines changed, points, time bonus) and the problem below it
+- Opening the page while signed in counts toward the streak (`03_scoring.md`)
 
 ---
 
@@ -168,9 +210,10 @@ When user clicks Start:
 
 - Fullscreen page (own layout, no app sidebar); opens with the editor sliding in from the right
 - Top bar: logo + title, timer, **Give up** (marks attempt as abandoned), **Submit** (runs checks)
-- Left: problem description (resizable, collapsible to 0)
-- Right: Monaco Editor with the buggy codebase, one tab per file + language selector
+- Left: codebase context + incident report + acceptance checks (resizable, collapsible to 0)
+- Center: Monaco Editor with the buggy codebase, one tab per file + language selector
 - Bottom of the editor: Terminal and Test Results tabs
+- Right: AI chat panel (320px, min 280px, resizable, collapsible): AI tool selector, live session stats (prompts, tokens, test runs), "Session Efficiency" vs. the difficulty benchmark — see "AI Session Capture"
 
 ### Check Panel States
 
@@ -194,6 +237,30 @@ Each check shows:
 - Clicking Test runs all checks — partial results shown in real time
 - If all checks pass → solved, timer stops, points calculated
 - Can only solve each problem once (enforced in DB)
+
+---
+
+## AI Session Capture
+
+Every action in the editor is tracked during a solve session.
+
+**What is captured:**
+- Every prompt sent to AI: text, token count, AI tool used, timestamp
+- Whether the user accepted or modified the AI response
+- Every file edit: manual vs AI-generated
+- Every test run: timestamp, which checks passed/failed
+- Time spent reading the description before first action
+- Time to first prompt
+- Total test runs before solving
+
+**AI tools supported:**
+Users can use any AI tool. The editor has a built-in AI chat panel (connected to Claude API). If they use an external tool and paste the result, that counts as a manual edit. If they use the built-in panel, every prompt is automatically captured.
+
+**Why this matters:**
+- Fewer prompts + fewer tokens + fewer iterations = higher efficiency
+- Reading the description before prompting = better understanding
+- Passing tests on first run = clean solution
+- Accepting AI output without editing = either very good prompting or blindly copy-pasting (context matters)
 
 ---
 

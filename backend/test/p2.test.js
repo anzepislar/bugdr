@@ -24,9 +24,9 @@ before(async () => {
   await pool.query("TRUNCATE users, problems CASCADE");
   const insert = (slug, published) =>
     pool.query(
-      `INSERT INTO problems (slug, title, short_description, description, difficulty, category_id, base_points,
+      `INSERT INTO problems (slug, title, short_description, codebase_context, incident_report, difficulty, category_id, base_points,
          time_limit_minutes, is_published, solve_count)
-       SELECT $1, 'Leaky worker', 'short', '## Your assignment', 'medium', id, 250, 40, $2, 7
+       SELECT $1, 'Leaky worker', 'short', 'You have joined', '[WARN] timeout', 'medium', id, 250, 40, $2, 7
        FROM problem_categories WHERE slug = 'backend' RETURNING id`,
       [slug, published],
     );
@@ -73,6 +73,8 @@ test("the detail has checks in order and the repository, but no code, commands o
   assert.doesNotMatch(body, /SECRET_/);
   const { problem } = JSON.parse(body);
   assert.deepEqual(problem.checks, ["First check", "Second check"]);
+  assert.equal(problem.codebaseContext, "You have joined");
+  assert.equal(problem.incidentReport, "[WARN] timeout");
   assert.deepEqual(problem.repository, {
     name: "acme / worker",
     stack: ["TypeScript", "Node 20", "Node.js", "Redis"],

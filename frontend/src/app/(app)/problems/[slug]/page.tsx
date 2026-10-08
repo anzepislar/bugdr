@@ -102,7 +102,7 @@ export default async function ProblemPage({
           <div className={`min-w-0 flex-1 ${tab === "discussion" ? "lg:self-stretch" : ""}`}>
             {tab === "overview" ? (
               <>
-                <Description text={problem.description} />
+                <Description codebaseContext={problem.codebaseContext} incidentReport={problem.incidentReport} />
                 {/* A solved problem lists its checks in the validation results above. */}
                 {solved ? null : <AcceptanceChecks checks={problem.checks} />}
                 {!solved ? <DiscussionLocked className="mt-10" signedIn={signedIn} /> : null}
