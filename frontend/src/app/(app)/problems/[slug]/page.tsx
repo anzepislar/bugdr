@@ -8,7 +8,8 @@ import { AcceptanceChecks, Description } from "@/components/problems/ProblemOver
 import { RateProblem } from "@/components/problems/RateProblem";
 import { duration } from "@/lib/format";
 import { loginHref, SESSION_COOKIE } from "@/lib/session";
-import { mockGetComments, mockGetProblem } from "@/lib/mock/problems";
+import { mockGetComments } from "@/lib/mock/problems";
+import { serverFetch } from "@/lib/serverApi";
 import { CATEGORIES, DIFFICULTY_LABEL, type ProblemDetail, type SolveResult } from "@/lib/types/problem";
 
 const TABS = {
@@ -27,11 +28,12 @@ export default async function ProblemPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const [{ slug }, { tab: rawTab }] = await Promise.all([params, searchParams]);
-  const [found, cookieStore] = await Promise.all([mockGetProblem(slug), cookies()]);
-  if (!found) notFound();
-  // Guests see the public problem: no attempt, so no solved state (P2 sends status null without a session).
+  const [res, cookieStore] = await Promise.all([serverFetch(`/problems/${encodeURIComponent(slug)}`), cookies()]);
+  if (res.status === 404) notFound();
+  if (!res.ok) throw new Error(`GET /problems/${slug} failed: ${res.status}`);
+  // Guests get status null and no result from the API.
+  const { problem } = (await res.json()) as { problem: ProblemDetail };
   const signedIn = cookieStore.has(SESSION_COOKIE);
-  const problem: ProblemDetail = signedIn ? found : { ...found, status: null };
 
   const tab: Tab = rawTab && rawTab in TABS ? (rawTab as Tab) : "overview";
   const result = problem.status === "solved" ? problem.result : null;
@@ -39,7 +41,8 @@ export default async function ProblemPage({
   // On a solved problem the tabs sit further down; keep them in view when switching.
   const anchor = solved ? "#about" : "";
   // Comment content is only sent for solved problems (O2), and only fetched when the tab is open.
-  const comments = solved && tab === "discussion" ? await mockGetComments(slug) : null;
+  // Until O2 the comments are mock data; a problem the mock has no comments for shows an empty discussion.
+  const comments = solved && tab === "discussion" ? ((await mockGetComments(slug)) ?? []) : null;
   const category = CATEGORIES.find((c) => c.slug === problem.categorySlug)?.name;
 
   return (

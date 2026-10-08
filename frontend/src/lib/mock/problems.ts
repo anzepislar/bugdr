@@ -16,6 +16,7 @@ const PROBLEMS: ProblemListItem[] = [
     ratingCount: 126,
     thumbnailUrl: "/mock/thumb-pipeline.svg",
     status: null,
+    saved: false,
   },
   {
     slug: "query-slower-every-day",
@@ -29,6 +30,7 @@ const PROBLEMS: ProblemListItem[] = [
     ratingCount: 84,
     thumbnailUrl: "/mock/thumb-query.svg",
     status: "in_progress",
+    saved: false,
   },
   {
     slug: "session-refuses-to-expire",
@@ -42,6 +44,7 @@ const PROBLEMS: ProblemListItem[] = [
     ratingCount: 92,
     thumbnailUrl: "/mock/thumb-session.svg",
     status: null,
+    saved: false,
   },
   {
     slug: "stale-search-results",
@@ -55,6 +58,7 @@ const PROBLEMS: ProblemListItem[] = [
     ratingCount: 37,
     thumbnailUrl: "/mock/thumb-pipeline.svg",
     status: null,
+    saved: false,
   },
   {
     slug: "chart-frozen-in-time",
@@ -68,6 +72,7 @@ const PROBLEMS: ProblemListItem[] = [
     ratingCount: 152,
     thumbnailUrl: "/mock/thumb-query.svg",
     status: null,
+    saved: false,
   },
   {
     slug: "inventory-under-pressure",
@@ -81,6 +86,7 @@ const PROBLEMS: ProblemListItem[] = [
     ratingCount: 48,
     thumbnailUrl: "/mock/thumb-session.svg",
     status: null,
+    saved: false,
   },
   {
     slug: "fixed-the-memory-leak",
@@ -94,6 +100,7 @@ const PROBLEMS: ProblemListItem[] = [
     ratingCount: 211,
     thumbnailUrl: null,
     status: "solved",
+    saved: false,
   },
   {
     slug: "webhook-signature-mismatch",
@@ -107,6 +114,7 @@ const PROBLEMS: ProblemListItem[] = [
     ratingCount: 140,
     thumbnailUrl: null,
     status: null,
+    saved: false,
   },
   {
     slug: "cart-total-flickers",
@@ -120,6 +128,7 @@ const PROBLEMS: ProblemListItem[] = [
     ratingCount: 77,
     thumbnailUrl: null,
     status: null,
+    saved: false,
   },
   {
     slug: "deadlock-in-transfers",
@@ -133,6 +142,7 @@ const PROBLEMS: ProblemListItem[] = [
     ratingCount: 41,
     thumbnailUrl: null,
     status: null,
+    saved: false,
   },
   {
     slug: "prompt-cache-misses",
@@ -146,6 +156,7 @@ const PROBLEMS: ProblemListItem[] = [
     ratingCount: 19,
     thumbnailUrl: null,
     status: null,
+    saved: false,
   },
   {
     slug: "form-submits-twice",
@@ -159,6 +170,7 @@ const PROBLEMS: ProblemListItem[] = [
     ratingCount: 98,
     thumbnailUrl: null,
     status: null,
+    saved: false,
   },
 ];
 

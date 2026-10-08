@@ -7,8 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLoginHref, useSignedIn } from "@/components/app/Session";
 import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
-import { MOCK_ME } from "@/lib/mock/dashboard";
-import { mockGetProblems } from "@/lib/mock/problems";
+import { api } from "@/lib/api";
 import {
   CATEGORIES,
   DIFFICULTIES,
@@ -37,7 +36,7 @@ interface Filters {
 const selectClass =
   "rounded border border-border bg-surface px-3 py-2.5 text-sm text-text focus:border-action focus:outline-none";
 
-function matches(p: ProblemListItem, f: Filters, saved: Set<string>): boolean {
+function matches(p: ProblemListItem, f: Filters): boolean {
   const q = f.q.trim().toLowerCase();
   return (
     (!q || [p.title, p.shortDescription, ...p.tags].some((s) => s.toLowerCase().includes(q))) &&
@@ -46,12 +45,13 @@ function matches(p: ProblemListItem, f: Filters, saved: Set<string>): boolean {
     (!f.tag || p.tags.includes(f.tag)) &&
     (f.status === "any" ||
       (f.status === "unsolved" ? p.status !== "solved" : p.status === f.status)) &&
-    (!f.savedOnly || saved.has(p.slug))
+    (!f.savedOnly || p.saved)
   );
 }
 
 export function ProblemBrowser({ initialQuery }: { initialQuery: string }) {
   const [problems, setProblems] = useState<ProblemListItem[] | null>(null);
+  const [failed, setFailed] = useState(false);
   const [filters, setFilters] = useState<Filters>({
     q: initialQuery,
     category: "all",
@@ -68,15 +68,15 @@ export function ProblemBrowser({ initialQuery }: { initialQuery: string }) {
   const listRef = useRef<HTMLUListElement>(null);
   const endRef = useRef<HTMLParagraphElement>(null);
   const loaded = problems !== null;
-  // ponytail: bookmarks are UI-only and not shared with the dashboard, there is no table for them yet (see 06, D23).
-  const [saved, setSaved] = useState<Set<string>>(new Set());
   const signedIn = useSignedIn();
   const router = useRouter();
   const loginHref = useLoginHref();
 
   useEffect(() => {
-    // Guests have no attempts (P1 returns status null without a session).
-    mockGetProblems().then((list) => setProblems(signedIn ? list : list.map((p) => ({ ...p, status: null }))));
+    // Guests get status null and saved false from the API.
+    api<{ problems: ProblemListItem[] }>("/problems")
+      .then((res) => setProblems(res.problems))
+      .catch(() => setFailed(true));
   }, [signedIn]);
 
   const patch = (p: Partial<Filters>) => {
@@ -84,13 +84,15 @@ export function ProblemBrowser({ initialQuery }: { initialQuery: string }) {
     setLimit(null);
   };
 
-  function toggleSaved(slug: string) {
+  function setSaved(slug: string, saved: boolean) {
+    setProblems((list) => list && list.map((p) => (p.slug === slug ? { ...p, saved } : p)));
+  }
+
+  // Optimistic: the icon flips at once and flips back if the request fails.
+  function toggleSaved(p: ProblemListItem) {
     if (!signedIn) return router.push(loginHref);
-    setSaved((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(slug)) next.add(slug);
-      return next;
-    });
+    setSaved(p.slug, !p.saved);
+    api(`/problems/${p.slug}/bookmark`, { method: p.saved ? "DELETE" : "PUT" }).catch(() => setSaved(p.slug, p.saved));
   }
 
   // ponytail: row height comes from the tallest card loaded at measure time; taller cards later only shift the next load slightly.
@@ -113,13 +115,9 @@ export function ProblemBrowser({ initialQuery }: { initialQuery: string }) {
     return () => window.removeEventListener("resize", fit);
   }, [loaded]);
 
-  // ponytail: filtered and sliced client-side on the mock; P1 moves this into GET /problems query params (limit + offset).
-  const shown = (problems ?? []).filter((p) => matches(p, filters, saved));
-  if (filters.sort === "recommended") {
-    // D19-style: the user's goal role first, then best rated.
-    const own = (p: ProblemListItem) => (p.categorySlug === MOCK_ME.goalRole ? 0 : 1);
-    shown.sort((a, b) => own(a) - own(b) || b.averageRating - a.averageRating);
-  }
+  // ponytail: GET /problems returns the whole list, filtered and sliced here; query params + limit/offset when it outgrows ~1000.
+  // "recommended" keeps the API order (the user's goal role first, then best rated).
+  const shown = (problems ?? []).filter((p) => matches(p, filters));
   if (filters.sort === "rating") shown.sort((a, b) => b.averageRating - a.averageRating);
   if (filters.sort === "shortest") shown.sort((a, b) => a.timeLimitMinutes - b.timeLimitMinutes);
 
@@ -139,8 +137,12 @@ export function ProblemBrowser({ initialQuery }: { initialQuery: string }) {
   }, [hasMore, visible, batch.more]);
 
   if (!problems) {
-    return <p className="mt-8 text-sm text-muted">Loading problems…</p>;
+    return (
+      <p className="mt-8 text-sm text-muted">{failed ? "Problems could not be loaded. Refresh to try again." : "Loading problems…"}</p>
+    );
   }
+
+  const savedCount = problems.filter((p) => p.saved).length;
 
   const tags = [...new Set(problems.flatMap((p) => p.tags))].sort();
 
@@ -218,7 +220,7 @@ export function ProblemBrowser({ initialQuery }: { initialQuery: string }) {
             filters.savedOnly ? "border-action text-action" : "border-border bg-surface text-text hover:border-action"
           }`}
         >
-          Saved problems{saved.size > 0 ? ` (${saved.size})` : ""}
+          Saved problems{savedCount > 0 ? ` (${savedCount})` : ""}
         </button>
       </div>
 
@@ -241,7 +243,7 @@ export function ProblemBrowser({ initialQuery }: { initialQuery: string }) {
       {items.length > 0 ? (
         <ul ref={listRef} className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:gap-6 2xl:grid-cols-4">
           {items.map((p) => (
-            <ProblemCard key={p.slug} problem={p} saved={saved.has(p.slug)} onToggleSaved={() => toggleSaved(p.slug)} />
+            <ProblemCard key={p.slug} problem={p} onToggleSaved={() => toggleSaved(p)} />
           ))}
         </ul>
       ) : (
@@ -259,13 +261,12 @@ export function ProblemBrowser({ initialQuery }: { initialQuery: string }) {
 
 function ProblemCard({
   problem: p,
-  saved,
   onToggleSaved,
 }: {
   problem: ProblemListItem;
-  saved: boolean;
   onToggleSaved: () => void;
 }) {
+  const saved = p.saved;
   return (
     <li className="flex min-w-0 flex-col rounded border border-border bg-surface p-4">
       <div className="aspect-[15/7] overflow-hidden rounded bg-canvas">

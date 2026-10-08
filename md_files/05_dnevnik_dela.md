@@ -837,7 +837,7 @@ Predlagani Description:
 
 `Adds /admin: date range pills, five stat cards (total and active users, published problems, solves, active contests) with trends, recharts charts for user growth (signups / DAU), solves per day, solves by difficulty, by role and user streaks, and the Top Problems and Needs Attention tables. Reduces /admin/problems/new from six steps to three: Analysis (ZIP upload and a duplicate check, production test and AI analysis pipeline with per-step states, error card and retry), Review (internal AI note, descriptions, tags, difficulty, role and acceptance checks) and Publish (summary, save as draft or publish, success state). Admin pages get their own sidebar (Overview, Add problem, Contests, Back to app), and Add Problem moves into the (app) group so it has one; the URL is unchanged. Opens /dashboard, /problems and /problems/[slug] to guests: a mock session cookie (set by login and signup, cleared by log out) drives a guest sidebar and top bar, a blurred "Log in to unlock" progress panel, problems without personal status, bookmarks that ask to log in and a "Log in to start" button; a Next 16 proxy redirects the editor, settings, onboarding and admin to /login?next=, and login returns to that page. Adds recharts. Runs on mock data until slices A9, A10, A2, A5, F2 and F3 exist; the missing title, time limit and dry run are open (D45), as are the stats windows (D46).`
 
-## 7. 10. 2026 — Seja 9: Začetek backenda - rezine F0 (ogrodje), F1 (nivoji), F2 (registracija in prijava) F3 (zaščita poti) in F4 (onboarding)
+## 7. 10. 2026 — Seja 9: Začetek backenda - rezine F0 (ogrodje), F1 (nivoji), F2 (registracija in prijava), F3 (zaščita poti) in F4 (onboarding)
 
 Prva backend rezina iz `06_backend_slices.md`. Frontend ostane na mocku.
 
@@ -967,3 +967,68 @@ Predlagani Summary:
 Predlagani Description:
 
 `Starts the backend (slice F0 from 06_backend_slices.md). backend/ is an Express 5 app with pg as the only other dependency: config from env with local defaults, a pg pool, a shared error format ({ error: { code, message, details? } }) with a 404 and JSON parse handler, and GET /api/v1/health that checks the database. A small migration runner applies migrations/*.sql in name order, each in its own transaction, tracked in schema_migrations; npm run seed runs seeds/*.sql in one transaction. Tests use node:test against a bugdr_test database. backend/docker-compose.yml runs PostgreSQL 17 locally and creates the test database. The frontend proxies /api/* to the backend through next.config.ts rewrites (same origin for the session cookie) and gets a thin api() helper with an ApiError type. Slice F1 adds the first migration, level_thresholds with the seven levels, and levelFor(points, levels), which returns the current and next level in the frontend's LevelInfo shape. Slice F2 adds users and user_stats, scrypt password hashes and a JWT in the httpOnly bugdr_session cookie (30 days with Remember me, otherwise a browser-session cookie), with POST /auth/signup, /auth/login, /auth/logout and GET /auth/me. The signup page now asks for a username (unique in any case) and an 8-character password; login, signup and both log out buttons call the API instead of the mock. Adds jsonwebtoken. Slice F3 adds requireAdmin, blocks banned users on every request and at login (403 BANNED), and refreshes last_active_at at most once a minute. The Next proxy now checks the session with the backend: an invalid or banned session goes to /login and loses its cookie, /admin is admin-only, and /contests and /profile now require login (D47). Slice F4 adds user_profiles (with languages) and PUT /me/onboarding; "Exploring my path" is stored as a NULL goal role. Until onboarding is done, login and account pages lead to /onboarding. Log out is now a full page load, so no prefetched account page survives it.`
+
+## 8. 10. 2026 — Seja 10: Posodobitev dokumentacije po M0
+
+Uporabnik: "are all md files up to date? If not update them". Koda se ni
+spreminjala.
+
+- `00_bugdr_razvoj.md`: Local Setup (Docker compose v `backend/`,
+  `.env.example`, `npm test`, proxy `/api`), Current Status (M0 narejen),
+  faze (Faza 1 narejena, Faza 2 trenutna), tabela dokumentov + `05`, `06`.
+- `01_database.md`: zgrajene tabele zapisane točno po migracijah -
+  `users` (`username` unikaten prek `lower(username)`, scrypt),
+  `user_profiles` (`goal_role` = slug kategorije `ai-engineer` … ali NULL
+  = raziskujem, + `languages`); pravilo: zgrajene tabele v `01` se ujemajo
+  z migracijo, načrtovane spremembe ostanejo v `06`.
+- `04_admin.md`: dostop z `is_admin` velja od F3, napovedana sprememba D48.
+- `06_backend_slices.md`: pravilo usklajevanja z `01`, nedoslednost
+  `ai_engineer` zaprta.
+- `CLAUDE.md`: odprto vprašanje "schema changes to 01" odstranjeno, stanje.
+
+## 8. 10. 2026 — Seja 11: Priprava na M1 (problemi)
+
+Uporabnik: "prepare for the M1 phase". Koda se ni spreminjala.
+
+- Preverjeno okolje: baza v Dockerju teče, `npm test` 20/20 zelen,
+  migracije 0001-0003 uveljavljene.
+- Odločitve (uporabnik, po priporočilu): **D49** tabele, ki jih P1/P2
+  potrebujeta iz R1/O1/O2 (`user_problem_attempts`, `problem_codebase`,
+  `problem_checks`, `problem_ratings`, `problem_comments`), se ustvarijo že
+  v M1, logika ostane v svojih rezinah; **D23** `problem_bookmarks` +
+  `PUT/DELETE /problems/:slug/bookmark` v P1; **D26** in **D27** sprejeta;
+  **D16** `problems.summary` odpade (kartica = `short_description`).
+- `06_backend_slices.md`: P1 in P2 prepisana (migracije, seed iz mock
+  problemov, query parametri `status`/`saved`/`sort`, neobvezna seja za
+  goste, streak), P2 postane `M`; D17 filter počaka na `contest_problems`
+  (A6/T1); R1/O1/O2 ne ustvarjajo več tabel; tabela sprememb sheme
+  posodobljena.
+
+### Rezina P1 - seznam problemov
+
+- `migrations/0004_problems.sql`: `problem_categories` (5 kategorij),
+  `problems` (CHECK težavnost ↔ `base_points`, brez `summary` in
+  `is_contest_problem`), `problem_tags`, `problem_bookmarks` (D23),
+  `user_problem_attempts` (D49). `seeds/0001_problems.sql`: 12 mock problemov.
+- `GET /problems` (neobvezna seja - `optionalAuth`), `PUT`/`DELETE
+  /problems/:slug/bookmark`. Test `backend/test/p1.test.js` (26/26 zelenih).
+- Odstopanje: API vrne cel seznam (razvrščen "recommended"), filtri in
+  drsenje ostanejo na odjemalcu - brez paginacije v v1.
+- `/problems` bere API, zaznamki prek API-ja. lint, typecheck, build zeleni;
+  API preverjen prek Next proxyja (gost, prijavljen, zaznamek). Vizualni
+  pregled strani v brskalniku ni bil narejen (orodje za brskalnik ni na voljo).
+
+### Rezina P2 - podrobnosti problema (M1 končan)
+
+- `migrations/0005_problem_detail.sql`: `problem_codebase` (+ `repository_name`,
+  `hidden_files`, `solution_files`), `problem_checks`, `problem_ratings`,
+  `problem_comments`, `user_daily_activity` (D49 - samo tabele).
+- Seed zgeneriran iz mocka: polni opis, koda, repozitorij in preverjanja
+  za vseh 12 problemov.
+- `GET /problems/:slug` (brez kode, ukazov, skritih datotek; `result` za
+  rešen poskus). Ogled prijavljenega zapiše aktivnost dneva (UTC) in streak
+  v eni poizvedbi. Test `backend/test/p2.test.js` (32/32 zelenih).
+- `/problems/[slug]` bere API na strežniku (`src/lib/serverApi.ts`);
+  komentarji in ocena ostanejo mock do O1/O2. lint, typecheck, build
+  zeleni; stran preverjena prek dev strežnika (gost, 404, rešen problem,
+  streak). Vizualni pregled v brskalniku ni bil narejen.

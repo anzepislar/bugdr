@@ -3,6 +3,7 @@ import { pool } from "./db.js";
 import { HttpError } from "./errors.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { meRouter } from "./modules/me/me.routes.js";
+import { problemsRouter } from "./modules/problems/problems.routes.js";
 
 export const app = express();
 app.use(express.json());
@@ -11,6 +12,7 @@ export const api = express.Router();
 app.use("/api/v1", api);
 api.use("/auth", authRouter);
 api.use("/me", meRouter);
+api.use("/problems", problemsRouter);
 
 api.get("/health", async (req, res) => {
   try {

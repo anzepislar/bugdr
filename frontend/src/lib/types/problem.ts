@@ -110,7 +110,7 @@ export function toSlug(title: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-/** One card of GET /problems (slice P1). `status` is null when the user never started it. */
+/** One card of GET /problems (slice P1). `status` is null when the user never started it (or gave up). */
 export interface ProblemListItem {
   slug: string;
   title: string;
@@ -123,6 +123,8 @@ export interface ProblemListItem {
   ratingCount: number;
   thumbnailUrl: string | null;
   status: "solved" | "in_progress" | null;
+  /** Bookmarked by the signed-in user (D23); false for guests. */
+  saved: boolean;
 }
 
 /** Result of GET /problems/:slug (slice P2). Never contains file contents or check commands. */

@@ -90,6 +90,16 @@ export async function requireAuth(req, res, next) {
   next();
 }
 
+/** For public endpoints: req.user when the session is valid, otherwise the request continues as a guest. */
+export async function optionalAuth(req, res, next) {
+  try {
+    await requireAuth(req, res, () => {});
+  } catch {
+    req.user = undefined;
+  }
+  next();
+}
+
 /** requireAuth + is_admin, else 403. */
 export const requireAdmin = [
   requireAuth,

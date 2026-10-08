@@ -149,13 +149,13 @@ Time multiplier:
 Updated at the end of every session. Read this first in a new session.
 
 ```
-Last session: 7. 10. 2026 — Seja 9 (backend started: F0 skeleton — Express 5, pg, migration runner, health, Next /api proxy; F1 level_thresholds + levelFor; F2 signup/login/logout with httpOnly JWT cookie; F3 requireAdmin, bans, proxy checks session with backend; F4 onboarding saved via PUT /me/onboarding)
+Last session: 8. 10. 2026 — Seja 11 (M1 done: P1 problem list + bookmarks, P2 problem detail + streak on view; migrations 0004-0005, dev seed of 12 full problems, server-side serverFetch for the detail page). Before: Seja 10 (docs synced with what is built)
 Phase: Backend slices (06_backend_slices.md); frontend on mock data until each slice swaps it
 Frontend: 17 screens on mock data — /admin (overview), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit, /onboarding, /login, /signup, /forgot-password, /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new (Add Problem, 3 steps), /dashboard (+ shared sidebar/top bar in app/(app)/layout.tsx), /problems, /problems/[slug] (Overview + Discussion; + solved state), /problems/[slug]/solve (fullscreen split pane, editor = read-only Monaco stand-in)
-Backend: F0-F4 done (milestone M0 complete) (backend/, `docker compose up -d` in backend/, npm run migrate/test) — plan in md_files/06_backend_slices.md
-Database: PostgreSQL 17 in Docker; migrations 0001 (level_thresholds), 0002 (users, user_stats), 0003 (user_profiles) applied
-Next step: slice P1 (problem list). Admin login is not a user account (D48) — user will provide credentials via backend/.env, decide before M6
-Open questions: add schema changes to 01_database.md? · D20 validation rule · D21-D22 · D23 bookmarks · D24 feed filters vs. D19 · D25 notifications · D26 check descriptions on detail · D27 repository name · D28 Give up · D30 comment helpful/replies · D32 contest history checks · D34 profile fields schema · D35 empty settings tabs · D36 starting difficulty · D37 GitHub sign-in · D45 Add Problem title/time limit/dry-run · D46 stats windows · D48 admin is not a user account (all in 06)
+Backend: M0 (F0-F4) and M1 (P1-P2) done (backend/, `docker compose up -d` in backend/, npm run migrate/test) — plan in md_files/06_backend_slices.md
+Database: PostgreSQL 17 in Docker; migrations 0001 (level_thresholds), 0002 (users, user_stats), 0003 (user_profiles), 0004 (problems), 0005 (problem detail) applied; `npm run seed` = 12 dev problems with code and checks
+Next step: slice R1 (start solving, M2). Admin login is not a user account (D48) — user will provide credentials via backend/.env, decide before M6
+Open questions: D20 validation rule · D21-D22 · D24 feed filters vs. D19 · D25 notifications · D28 Give up · D30 comment helpful/replies · D32 contest history checks · D34 profile fields schema · D35 empty settings tabs · D36 starting difficulty · D37 GitHub sign-in · D45 Add Problem title/time limit/dry-run · D46 stats windows · D48 admin is not a user account (all in 06)
 ```
 
 ### Session tracking

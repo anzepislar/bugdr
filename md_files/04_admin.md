@@ -5,7 +5,7 @@
 Admin is Bugdr's internal team — not users, not companies.
 Admin manages problems, contests, and platform settings.
 
-Access: `is_admin = TRUE` in `users` table.
+Access: `is_admin = TRUE` in `users` table (enforced since slice F3). Planned change: the admin will not be a user account - credentials set separately (D48 in `06_backend_slices.md`, open).
 Route: `/admin` — fully protected, redirects non-admins.
 
 ---

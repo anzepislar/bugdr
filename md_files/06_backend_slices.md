@@ -17,13 +17,13 @@ povezala na API.
 ## Stanje
 
 ```
-Zadnja posodobitev: 7. 10. 2026
-Backend: F0 ✅ (ogrodje), F1 ✅ (nivoji), F2 ✅ (registracija in prijava), F3 ✅ (zaščita poti), F4 ✅ (onboarding)
+Zadnja posodobitev: 8. 10. 2026
+Backend: M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema)
 Frontend: 17 zaslonov na mocku - /login, /signup, /forgot-password, /onboarding, /dashboard,
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit
-Naslednja rezina: P1 (seznam problemov); D48 (admin) pred M6
+Naslednja rezina: R1 (začetek reševanja, M2); D48 (admin) pred M6
 ```
 
 Oznake: ⬜ ni začeto · 🟨 v delu · ✅ narejeno (z datumom) · ⏸ odloženo
@@ -79,18 +79,18 @@ dokler je uporabnik ne potrdi.
 | D13 | Terminal | v1 **ukaz-po-ukaz** (`POST` z ukazom → izhod; SSE za dolgotrajne, npr. `npm run dev`). Pravi PTY šele, ko ga UI zahteva | R5 |
 | D14 | Neshranjene spremembe med reševanjem | **`localStorage`** v brskalniku (po poskusu); strežnik dobi datoteke ob vsakem Test | R1, R4 |
 | D15 | Zapis točk | **Dve vrstici** v `point_transactions`: `problem_solved` = osnova, `time_bonus` = razlika (samo če > 0) | R4 |
-| D16 | Kartica problema | Nova stolpca `problems.thumbnail_url VARCHAR(500)` in `problems.summary VARCHAR(200)` | P1, A2 |
+| D16 | Kartica problema | Nov stolpec `problems.thumbnail_url VARCHAR(500)`. ~~`summary VARCHAR(200)`~~ odpade (uporabnik 8. 10. 2026): kartica uporablja `short_description VARCHAR(300)` (D45, `ProblemListItem.shortDescription`) | P1, A2 |
 | D17 | Tekmovalni problemi na `/problems` | **Skriti, dokler tekmovanje ne konča**, nato javni. `problems.is_contest_problem` se ne uporablja - izpelje se iz `contest_problems` | P1, T1 |
 | D18 | Rezultat tekmovanja | `contest_entries.score` = vsota točk rešenih tekmovalnih problemov **znotraj časa tekmovanja**; vez = krajši skupni čas. `contest_entries.attempt_id` se ne uporablja | T2 |
 | D19 | Personaliziran feed | Nerešeni objavljeni problemi kategorije iz `goal_role`, težavnost glede na `experience_level`, nato najbolje ocenjeni | U3 |
 | D20 | **ODPRTO** - pravilo validacije ob objavi | Zaslon Create Problem (po navodilu uporabnika) zahteva, da **vsa** preverjanja padejo na pokvarjeni kodi, sicer objava ni mogoča. To je v napetosti z D11 (preverjanja morajo tudi **uspeti** na rešitvi, ki je wizard ne zbira) in izloči legitimna negativna preverjanja (npr. "potekel žeton → 401" uspe že na pokvarjeni kodi). Predlog: objava = vsaj eno preverjanje pade na pokvarjeni kodi + vsa uspejo na rešitvi; preverjanje, ki uspe na pokvarjeni kodi, je opozorilo, ne blokada. Zahteva korak za nalaganje rešitve (drugi ZIP) | A10, A4, A5 |
 | D21 | **ODPRTO** - Claude analiza | Klic samo v backendu (ključ `ANTHROPIC_API_KEY` nikoli v frontendu), model iz konfiguracije, omejitev velikosti ZIP-a in števila/velikosti datotek, izpusti `node_modules`, `.git`, binarne datoteke; strogo preverjanje JSON odgovora (oblika `ProblemAnalysis`), ob neveljavnem odgovoru 502 `ANALYSIS_INVALID` | A10 |
 | D22 | **ODPRTO** - kje živi razpakiran ZIP med analizo in shranjevanjem | Predlog: analiza takoj ustvari osnutek problema (`is_published = false`) in shrani datoteke v `problem_codebase`; odgovor vrne `problemId`, "Save as Draft"/"Publish" sta nato `PATCH` istega osnutka. Brez začasnih map na disku | A10, A2 |
-| D23 | **ODPRTO** - zaznamki (bookmark) na kartici problema | Dizajn dashboarda in `/problems` (gumb "Saved problems") ima ikono zaznamka, shema nima tabele. Predlog: `problem_bookmarks (user_id, problem_id, created_at, PK(user_id, problem_id))` + `PUT/DELETE /problems/:slug/bookmark`. Do odločitve je zaznamek samo stanje v brskalniku | U3, P1 |
+| D23 | ~~Zaznamki (bookmark) na kartici problema~~ → **rešeno 8. 10. 2026** (uporabnik): tabela `problem_bookmarks (user_id, problem_id, created_at, PK(user_id, problem_id))` + `PUT/DELETE /problems/:slug/bookmark` v P1; kartica dobi `saved` | U3, P1 |
 | D24 | **ODPRTO** - feed na dashboardu: filtri in rešeni problemi | Dizajn ima filtre (kategorija, težavnost, "Hide solved", razvrščanje). D19 pravi, da feed ne vsebuje rešenih. Predlog: `GET /dashboard/feed?category=&difficulty=&hideSolved=&sort=`, privzeto po D19 (`hideSolved=true`); ko je "Hide solved" izklopljen, so rešeni problemi v feedu z oznako `solved` | U3 |
 | D25 | **ODPRTO** - ikona obvestil v zgornji vrstici | Dizajn ima zvonec, shema in dokumenti nimajo obvestil. Predlog: v v1 ikona brez funkcije ali skrita; obvestila kasneje kot svoja rezina | - |
-| D26 | **ODPRTO** - opisi preverjanj na strani podrobnosti | Dizajn `/problems/[slug]` ima "Acceptance checks" (opisi) in "N checks total", P2 pravi "brez preverjanj". Predlog: `GET /problems/:slug` vrne `checks: string[]` = samo `problem_checks.description` po `check_order` (nikoli `check_command`/`expected_output`) | P2 |
-| D27 | **ODPRTO** - ime repozitorija in sklad na strani podrobnosti | Dizajn kaže "northstar / checkout-worker" in "TypeScript · Node 20 · Redis", shema nima imena. Predlog: `problem_codebase.repository_name VARCHAR(100)`, sklad = `language` + `framework` + tagi; zavihek Repository pokaže poti iz `repository_structure` (brez vsebine) | P2, A2 |
+| D26 | ~~Opisi preverjanj na strani podrobnosti~~ → **rešeno 8. 10. 2026** (uporabnik): `GET /problems/:slug` vrne `checks: string[]` = samo `problem_checks.description` po `check_order` (nikoli `check_command`/`expected_output`) | P2 |
+| D27 | ~~Ime repozitorija in sklad na strani podrobnosti~~ → **rešeno 8. 10. 2026** (uporabnik): `problem_codebase.repository_name VARCHAR(100)`, sklad = `language` + `framework` + tagi; zavihek Repository pokaže poti iz `repository_structure` (brez vsebine) | P2, A2 |
 | D28 | **ODPRTO** - "Give up" na zaslonu reševanja | `02` zahteva gumb Give up, dizajn ga nima. Zdaj: besedilni gumb "Give up" v zgornji vrstici (tudi na telefonu) s potrditvijo → R2 | R2 |
 | D29 | ~~Iskanje in razširitve v levi vrstici zaslona reševanja~~ → **rešeno 7. 10. 2026**: prenova zaslona reševanja (split pane) odstrani levo vrstico in drevo datotek; datoteke so zavihki nad urejevalnikom | R1 |
 | D30 | **ODPRTO** - "helpful" in odgovori na komentarje | Dizajn razprave ima "N helpful", "Reply" in razvrščanje "Most helpful"; `problem_comments` nima ničesar od tega. Predlog: `problem_comments.parent_id UUID NULL REFERENCES problem_comments(id)` (odgovori samo ena raven), tabela `comment_helpful (comment_id, user_id, created_at, PK(comment_id, user_id))` + `problem_comments.helpful_count` (posodobljen v isti transakciji), `PUT/DELETE /comments/:id/helpful`, lastnega komentarja ni mogoče označiti, `GET /problems/:slug/comments?sort=helpful\|newest` | O2 |
@@ -111,6 +111,7 @@ dokler je uporabnik ne potrdi.
 | D46 | **ODPRTO** - časovna okna statistike | `/admin` računa "Active users" in "Solves" za Today / 7 / 30 dni / ves čas s trendom glede na prejšnje enako obdobje. Predlog: aktivnost iz `user_daily_activity`, rešitve iz `user_problem_attempts.solved_at`, "Today" po UTC. Grafi so fiksna okna (30 / 14 dni), ne sledijo izbiri | A9 |
 | D47 | ~~Gostje na `/contests`, `/contests/[id]` in `/profile/[username]`~~ → **rešeno 7. 10. 2026** (uporabnik, F3): **zahtevana prijava** - vse tri poti so v `src/proxy.ts`, gost gre na `/login?next=…`. Profili zato niso deljivi zunaj aplikacije | F3, T1, U1 |
 | D42 | ~~Jeziki na onboardingu~~ → **rešeno 7. 10. 2026** (uporabnik, F4): shranijo se že v F4 - `user_profiles.languages TEXT[] NOT NULL DEFAULT '{}'`, samo vrednosti iz fiksnega seznama `LANGUAGES` (podvojeni odstranjeni). `/settings` jih uporabi v U1 (D34) | F4, U1 |
+| D49 | ~~Tabele, ki jih M1 potrebuje iz kasnejših rezin~~ → **rešeno 8. 10. 2026** (uporabnik): **tabele zgodaj, logika kasneje**. M1 ustvari `user_problem_attempts`, `problem_codebase`, `problem_checks` (R1), `problem_ratings` (O1), `problem_comments` (O2) - samo `CREATE TABLE` po `01` + spremembe iz tabele spodaj; endpointi in pravila ostanejo v svojih rezinah. Seed jih napolni, da se stanja rešen / v delu preverijo na pravih podatkih | P1, P2, R1, O1, O2 |
 | D48 | **ODPRTO** - admin ni uporabnik (uporabnik 7. 10. 2026) | Admin **ne bo navaden račun** z `users.is_admin`; poverilnice se nastavijo drugače - uporabnik bo dal e-pošto, geslo in morda še kaj za večjo varnost. Predlog: poverilnice v `backend/.env` (ne v klepetu, ne v repozitoriju): `ADMIN_EMAIL` + `ADMIN_PASSWORD_HASH` (scrypt, ustvari ga ukaz `npm run hash-password`), drugi faktor TOTP (`ADMIN_TOTP_SECRET`, stdlib HMAC), ločen piškotek admin seje s krajšim trajanjem; `requireAdmin` preveri admin sejo namesto `users.is_admin`, proxy enako. Nadomesti Z1 (`create-admin`). Do odločitve F3 `requireAdmin` / proxy uporabljata `users.is_admin` | F3, Z1, A1-A10 |
 
 ### Spremembe sheme glede na `01_database.md`
@@ -119,13 +120,9 @@ Posledica odločitev - narejene v migraciji rezine, ki tabelo ustvari:
 
 | Tabela | Sprememba | Odločitev | Rezina |
 | --- | --- | --- | --- |
-| `problems` | + `thumbnail_url VARCHAR(500)`, + `summary VARCHAR(200)` | D16 | P1 |
-| `problems` | − `is_contest_problem` (izpeljano iz `contest_problems`) | D17 | P1 |
-| `problem_codebase` | + `hidden_files JSONB NOT NULL DEFAULT '{}'` | D10 | R1 |
-| `problem_codebase` | + `solution_files JSONB` | D11 | R1 |
 | `contest_entries` | − `attempt_id` | D18 | T2 |
 | `contests` / `contest_entries` | + oznaka "nagrada poslana" (`04`) - točna oblika ob rezini | - | A7 |
-| `problem_comments` | + `parent_id`, + `helpful_count`; nova tabela `comment_helpful` (predlog, čaka odločitev) | D30 | O2 |
+| `problem_comments` | + `parent_id`, + `helpful_count`; nova tabela `comment_helpful` (predlog, čaka odločitev; tabelo ustvari P2 po D49, ti stolpci pridejo v O2) | D30 | O2 |
 | `problems` | + `bug_summary TEXT` (interna opomba AI analize, samo admin, nikoli k uporabniku) - zahteva zaslona Create Problem | - | A2 |
 | `contests` | `starts_at`/`ends_at` dovolita NULL (osnutek); stanje se ne shrani | D43 | A6 |
 | `contests` | + `archived_at TIMESTAMP` (NULL = ni arhivirano; arhiviranje končanih tekmovanj, `04`) | - | A6 |
@@ -133,8 +130,12 @@ Posledica odločitev - narejene v migraciji rezine, ki tabelo ustvari:
 | `user_profiles` | + `languages TEXT[] NOT NULL DEFAULT '{}'` (narejeno v F4); `goal_role` NULL = raziskujem | D42, D41 | F4 |
 | `user_profiles` | + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, (`languages` že v F4), `is_public BOOLEAN DEFAULT TRUE` (predlog, čaka odločitev) | D34 | U1 |
 
-`01_database.md` se ob tem **ne spreminja samodejno** - posodobi se le, če
-uporabnik to zahteva. Do takrat velja: `01` + ta tabela.
+Ko rezina tabelo ustvari, se `01_database.md` posodobi, da se ujema z
+migracijo (uporabnik 8. 10. 2026: "update all md files"). Ta tabela ostane
+seznam sprememb za tabele, ki še niso zgrajene. Narejeno v `01`: `users`
+(F2), `user_profiles` + `languages` (F4), `problem_categories`, `problems`, `problem_tags`,
+`problem_bookmarks`, `user_problem_attempts` (P1), `problem_codebase` (+ `hidden_files`, `solution_files`,
+`repository_name`), `problem_checks`, `problem_ratings`, `problem_comments`, `user_daily_activity` (P2).
 
 ---
 
@@ -212,26 +213,33 @@ polnijo s seed skripto.
 - API: `PUT /me/onboarding` `{ goalRole, experienceLevel, platformGoal }` (dovoljene vrednosti iz `01`), `/auth/me` vrne `onboardingCompleted`.
 - Frontend: `/onboarding`; po prijavi preusmeritev na onboarding, dokler ni zaključen.
 - Končano, ko: neveljavna vrednost → 400; ponovna oddaja posodobi (ne podvoji).
-- **Stanje:** `migrations/0003_user_profiles.sql` (+ `languages`, D42). `goal_role` hrani slug kategorije (`ai-engineer`, …) kot `problem_categories.slug` in frontend - `01` v komentarju piše `ai_engineer` (glej Nedoslednosti). `backend/src/modules/me/me.routes.js`: `PUT /me/onboarding` `{ goalRole (slug ali null, D41), experienceLevel, platformGoal, languages }` → 204, upsert po `user_id`. `auth.service.js`: `findUser` (users + `onboarding_completed`) in `toUser`; `/auth/me` in odgovor prijave vrneta `onboardingCompleted`. Dovoljene vrednosti so podvojene v backendu (komentar kaže na frontend tipe). Frontend: `/onboarding` shrani prek API-ja; prijava gre na `/onboarding`, dokler ni zaključen (tudi z `?next=`); proxy zaščitene strani (razen `/onboarding`) preusmeri na `/onboarding`. Javni `/dashboard` tega ne vsiljuje. Odjava je zdaj polno nalaganje `/login` (izbriše predpomnilnik usmerjevalnika s prednaloženimi stranmi računa - prej 404 v konzoli).
+- **Stanje:** `migrations/0003_user_profiles.sql` (+ `languages`, D42). `goal_role` hrani slug kategorije (`ai-engineer`, …) kot `problem_categories.slug` in frontend (`01` popravljen 8. 10. 2026). `backend/src/modules/me/me.routes.js`: `PUT /me/onboarding` `{ goalRole (slug ali null, D41), experienceLevel, platformGoal, languages }` → 204, upsert po `user_id`. `auth.service.js`: `findUser` (users + `onboarding_completed`) in `toUser`; `/auth/me` in odgovor prijave vrneta `onboardingCompleted`. Dovoljene vrednosti so podvojene v backendu (komentar kaže na frontend tipe). Frontend: `/onboarding` shrani prek API-ja; prijava gre na `/onboarding`, dokler ni zaključen (tudi z `?next=`); proxy zaščitene strani (razen `/onboarding`) preusmeri na `/onboarding`. Javni `/dashboard` tega ne vsiljuje. Odjava je zdaj polno nalaganje `/login` (izbriše predpomnilnik usmerjevalnika s prednaloženimi stranmi računa - prej 404 v konzoli).
 
 ### M1 - Problemi
 
-**P1 · Seznam problemov** `M` · odvisno od: F3 · ⬜
-- Naredi: `problem_categories` (seed 5 kategorij v migraciji), `problems` (+ `thumbnail_url`, `summary`, brez `is_contest_problem`), `problem_tags`. Seed skripta z nekaj razvojnimi problemi.
-- API: `GET /problems?category=&difficulty=&tag=&q=&sort=` → kartice (`02` "Card contains": naslov, kratek opis, težavnost, kategorija, ocena, število rešitev, časovna omejitev) + za prijavljenega `status` (`solved`/`in_progress`/`null`). Samo `is_published` in ne problemi tekmovanja, ki še ni končano (D17).
-- Frontend: `/problems`. Oblika kartice je `ProblemListItem` v `frontend/src/lib/types/problem.ts`. Zaslon ima še filter `status` (`any`/`unsolved`/`in_progress`/`solved`, privzeto `unsolved`), neskončno drsenje (prvo nalaganje zapolni zaslon, nato po en zaslon) in "Saved problems" (po D23) → dodati `&status=&saved=&limit=&offset=` (zdaj filtrira mock na odjemalcu).
-- Končano, ko: neobjavljen problem ni na seznamu; filtri se kombinirajo; `base_points` se ujema s težavnostjo (CHECK ali seed pravilo).
+**P1 · Seznam problemov** `M` · odvisno od: F3 · ✅ 8. 10. 2026
+- Naredi (migracija): `problem_categories` (seed 5 kategorij v migraciji), `problems` (+ `thumbnail_url`, brez `summary` in `is_contest_problem` - D16, D17; `created_by` NULL dovoljen, admin ni uporabnik - D48), `problem_tags`, `problem_bookmarks` (D23), `user_problem_attempts` (D49 - samo tabela, za `status`).
+- Seed (`seeds/`, ponovljiv z `ON CONFLICT DO NOTHING`): mock problemi iz `frontend/src/lib/mock/problems.ts` (isti slugi, sličice ostanejo v `public/mock/`).
+- API: `GET /problems?category=&difficulty=&tag=&q=&status=&saved=&sort=` → kartice `ProblemListItem` (`02` "Card contains") + za prijavljenega `status` (`solved`/`in_progress`/`null`) in `saved`. Neobvezna seja: gost dobi `status: null`, `saved: false` (iz F3), `status`/`saved` filtra za gosta ne veljata. `sort`: `recommended` (najprej kategorija iz `goal_role`, nato ocena - zdaj `MOCK_ME` v `ProblemBrowser.tsx`), `rating`, `shortest`. Samo `is_published`.
+- API: `PUT /problems/:slug/bookmark`, `DELETE /problems/:slug/bookmark` → 204 (`requireAuth`, idempotentno).
+- D17 (skriti problemi nekončanih tekmovanj): `contest_problems` še ne obstaja, zato filter doda rezina, ki tabelo ustvari (A6/T1).
+- Brez paginacije (konvencija v1): strežnik filtrira in razvrsti, odjemalec ohrani neskončno drsenje z rezanjem seznama (`limit` v `ProblemBrowser.tsx`).
+- Frontend: `/problems` - `mockGetProblems` → `GET /problems`, filtri v query, zaznamki prek API-ja.
+- Končano, ko: neobjavljen problem ni na seznamu; filtri se kombinirajo; `base_points` se ujema s težavnostjo (CHECK); gost nima `status`; zaznamek dvakrat = ena vrstica.
+- **Stanje:** `migrations/0004_problems.sql` (kategorije s seedom, `problems` s CHECK `(difficulty, base_points)`, `problem_tags` z `UNIQUE (problem_id, tag)`, `problem_bookmarks`, `user_problem_attempts`). `seeds/0001_problems.sql` = 12 mock problemov (isti slugi, sličice `/mock/…`, opis je samo kratek odstavek - P2). `backend/src/modules/problems/problems.routes.js`: `GET /problems` → `{ problems: ProblemListItem[] }` (+ `saved`), `PUT`/`DELETE /problems/:slug/bookmark` → 204 (neznan ali neobjavljen slug → 404 `PROBLEM_NOT_FOUND`). `optionalAuth` v `auth.service.js`: neveljaven, potekel ali bannan piškotek = gost. **Odstopa od načrta:** `GET /problems` nima query filtrov - vrne cel objavljen seznam v vrstnem redu "recommended" (najprej kategorija iz `goal_role`, nato ocena, nato naslov; `abandoned` = `status: null`), filtri, iskanje, `rating`/`shortest` in neskončno drsenje ostanejo na odjemalcu (`ProblemBrowser.tsx`, oznaka `ponytail:`). Filtri v query + `limit/offset`, ko seznam preraste ~1000 problemov. Frontend: `/problems` bere API, zaznamek se preklopi takoj in vrne nazaj ob napaki, števec "Saved problems" iz `saved`; `ProblemListItem.saved` dodan (mock problemi `saved: false`). Odprto: D17 filter (A6/T1); dashboard (U3) zaznamkov še ne bere.
 
-**P2 · Podrobnosti problema** `S` · odvisno od: P1 · ⬜
-- API: `GET /problems/:slug` → opis, težavnost, kategorija, tagi, povprečna ocena + število, **število** komentarjev, status uporabnika. **Brez** kode in preverjanj (pridejo ob `start`).
-- Naredi: `user_daily_activity`. Ogled prijavljenega uporabnika poveča `problems_opened` za današnji UTC dan (D6, D7) in posodobi `user_stats.current_streak/longest_streak/last_activity_date`.
-- Frontend: `/problems/[slug]`. Oblika odgovora je `ProblemDetail` v `frontend/src/lib/types/problem.ts` (+ `solveCount`, `commentCount`, `checks` po D26, `repository` po D27, `result` = rešen poskus uporabnika: `timeTakenSeconds`, `linesAdded/Deleted`, `pointsEarned`, `timeMultiplier`, `myRating`; rešen problem stran pokaže kot "Problem solved").
-- Končano, ko: neobjavljen ali neznan slug → 404; odgovor ne vsebuje `check_command` ali datotek; dva ogleda istega dne = en dan streaka, ogled naslednji dan ga podaljša.
+**P2 · Podrobnosti problema** `M` · odvisno od: P1 · ✅ 8. 10. 2026
+- Naredi (migracija, D49 - samo tabele): `problem_codebase` (+ `hidden_files`, `solution_files`, `repository_name` - D10, D11, D27), `problem_checks`, `problem_ratings`, `problem_comments`; `user_daily_activity`. Seed: koda, preverjanja in nekaj poskusov/ocen/komentarjev za mock probleme.
+- API: `GET /problems/:slug` → `ProblemDetail` v `frontend/src/lib/types/problem.ts`: opis, težavnost, kategorija, tagi, povprečna ocena + število, `solveCount`, `commentCount`, `checks` (D26), `repository` (D27: ime, sklad = `language` + `framework` + tagi, poti iz `repository_structure`), status uporabnika, `result` (rešen poskus: `timeTakenSeconds`, `linesAdded/Deleted`, `pointsEarned`, `timeMultiplier`, `myRating`). **Brez** vsebine datotek, `check_command`, `expected_output`, `hidden_files`, `solution_files`.
+- Ogled prijavljenega uporabnika poveča `problems_opened` za današnji UTC dan (D6, D7) in posodobi `user_stats.current_streak/longest_streak/last_activity_date` (čista funkcija streaka s testom).
+- Frontend: `/problems/[slug]` - `mockGetProblem` → API (rešen problem stran pokaže kot "Problem solved"). Ocena in komentarji ostanejo na mocku do O1/O2.
+- Končano, ko: neobjavljen ali neznan slug → 404; odgovor ne vsebuje `check_command` ali datotek; dva ogleda istega dne = en dan streaka, ogled naslednji dan ga podaljša, preskočen dan ga ponastavi; gost ne zapiše aktivnosti.
+- **Stanje:** `migrations/0005_problem_detail.sql` (`problem_codebase` z `repository_name`, `hidden_files NOT NULL DEFAULT '{}'`, `solution_files`; `repository_structure` = JSON seznam poti; `problem_checks` s CHECK `check_type` in `UNIQUE (problem_id, check_order)`; `problem_ratings`, `problem_comments`, `user_daily_activity`). Seed `seeds/0001_problems.sql` je zdaj zgeneriran iz mocka v celoti: polni opis, koda (`files`), ime repozitorija in preverjanja (vsa z ukazom `npm test`, oznaka `ponytail:`) za vseh 12 problemov; ob ponovnem zagonu osveži opis in `solve_count`. Poskusov, ocen in komentarjev seed nima (potreboval bi uporabnike) - stanje "rešen" je preverjeno s testom in ročnim vnosom. `GET /problems/:slug` → `{ problem: ProblemDetail }` (+ `saved`), `result` za rešen poskus (`checksPassed = checksTotal = število preverjanj`, ker rešen poskus pomeni vsa uspešna; `myRating` iz `problem_ratings`), neznan ali neobjavljen slug → 404 `PROBLEM_NOT_FOUND`. Streak: ena SQL poizvedba (`recordOpen`) z zaklepom vrstice `user_stats` - vzporedni ogledi štejejo dan enkrat. **Odstopa od načrta:** streak je SQL namesto čiste JS funkcije (atomarno, test prek API-ja pokrije vse tri primere). Frontend: `/problems/[slug]` bere API na strežniku prek novega `src/lib/serverApi.ts` (`serverFetch` posreduje piškotek seje); komentarji in ocena ostanejo mock do O1/O2 (rešen problem brez mock komentarjev pokaže prazno razpravo). Zaslon reševanja še bere `mockGetProblem` (R1).
 
 ### M2 - Reševanje
 
 **R1 · Začetek reševanja** `M` · odvisno od: P2 · ⬜
-- Naredi: `problem_codebase` (+ `hidden_files`, `solution_files` - D10, D11), `problem_checks`, `user_problem_attempts`.
+- Naredi: tabele `problem_codebase`, `problem_checks`, `user_problem_attempts` že obstajajo (P1, P2 - D49); R1 doda samo logiko.
 - API: `POST /problems/:slug/start` → ustvari poskus (ali vrne obstoječega `in_progress`, timer teče naprej od `started_at`), vrne datoteke, drevo, `startedAt`, `timeLimitMinutes`, opise preverjanj (samo `description` + `check_order`).
 - `abandoned` poskus: ista vrstica nazaj v `in_progress`, nov `started_at` (D8).
 - Frontend shranjuje neshranjene spremembe v `localStorage` po poskusu (D14).
@@ -270,12 +278,12 @@ polnijo s seed skripto.
 ### M3 - Skupnost
 
 **O1 · Ocene** `S` · odvisno od: R4 · ⬜
-- Naredi: `problem_ratings`.
+- Tabela `problem_ratings` že obstaja (P2 - D49).
 - API: `PUT /problems/:slug/rating` `{ rating: 1-5 }` - samo po rešitvi (403 `NOT_SOLVED`); posodobi `problems.average_rating` in `rating_count` v isti transakciji.
 - Končano, ko: nerešen → 403; ponovna ocena posodobi, ne podvoji; povprečje pravilno.
 
 **O2 · Komentarji** `S` · odvisno od: R4 · ⬜
-- Naredi: `problem_comments`.
+- Tabela `problem_comments` že obstaja (P2 - D49); O2 doda stolpce iz D30.
 - API: `GET /problems/:slug/comments` (nerešen: samo `{ count, locked: true }`), `POST /problems/:slug/comments` (samo po rešitvi).
 - Vsebina se hrani surova, izpis je varen (React escapa).
 - Frontend: zavihek Discussion na `/problems/[slug]` (rešen problem) - `Discussion.tsx`. Oblika komentarja je `ProblemComment` v `frontend/src/lib/types/problem.ts` (avtor z `goalRole`, `helpfulCount`, `markedHelpful`, `replies` po D30). Najdaljša vsebina 2000 znakov (predlog).
@@ -377,8 +385,8 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | Zaslon | Mock (datoteka / konstanta) | Zamenja rezina | Stanje |
 | --- | --- | --- | --- |
 | `/dashboard` + stranska vrstica (`(app)/layout.tsx`) | `src/lib/mock/dashboard.ts`: `mockGetDashboard` (datumi relativni na zdaj), `MOCK_ME` (uporabnik, cilj, izkušnje), `MOCK_ACTIVE_CONTEST_COUNT`; sličice v `public/mock/` | U3, T1, U2, F4 | ⬜ |
-| `/problems` | `src/lib/mock/problems.ts`: `mockGetProblems` (vsi problemi, filtri/razvrščanje/straničenje na odjemalcu v `ProblemBrowser.tsx`); zaznamki samo v brskalniku (D23) | P1 | ⬜ |
-| `/problems/[slug]` | `src/lib/mock/problems.ts`: `mockGetProblem` (+ `RESULTS` za rešen problem; ocena v `RateProblem` samo v stanju), `mockGetComments` (komentarji samo za rešen problem; objave, odgovori in helpful samo v stanju `Discussion.tsx`) (polni opis samo za `payment-retries-disappear`) | P2 (O1, O2 za oceno in komentarje) | ⬜ |
+| `/problems` | ~~`mockGetProblems`~~ → `GET /problems` (P1), zaznamki → `PUT/DELETE /problems/:slug/bookmark` (D23); filtri/razvrščanje/drsenje ostanejo na odjemalcu. `mockGetProblems` še uporabljata mocka `profile.ts` in `adminContests.ts` | P1 | ✅ 8. 10. 2026 |
+| `/problems/[slug]` | ~~`mockGetProblem`~~ → `GET /problems/:slug` (P2, `serverFetch`). Ostane mock: ocena v `RateProblem` samo v stanju (O1), `mockGetComments` (O2; rešen problem brez mock komentarjev = prazna razprava) | P2 ✅, O1, O2 | 🟨 |
 | `/problems/[slug]/solve` | `src/lib/mock/attempts.ts`: `mockStartAttempt` (timer teče od zdaj, za `in_progress` od 18:42), `mockRunTests` (vnaprej določeni rezultati); koda v `mockCodebase` (`mock/problems.ts`); urejevalnik je `CodeEditorMock` (samo branje); split pane: opis (`ProblemOverview`) levo, urejevalnik desno, spodaj Terminal + Test Results; vsaka datoteka je zavihek, izbirnik jezika je samo prikaz; "Submit" = zagon preverjanj | R1, R2 (Give up), R4, R5 (terminal), R6 | ⬜ |
 | `/contests` | `src/lib/mock/contests.ts`: `mockGetContests` (live/upcoming/past + zgodovina uporabnika, datumi relativni na zdaj); prihajajoča tekmovanja brez težavnosti, oznak in sličice (T1); "View contest" vodi na `/contests/[id]` | T1, T2 | ⬜ |
 | `/contests/[id]` | `src/lib/mock/contests.ts`: `mockGetContest` (seznam + `DETAILS`: incident, ime repozitorija (D27), število preverjanj, nagrada, udeležba); problemi tekmovanj so obstoječi mock problemi, da "Enter contest" odpre delujoč zaslon reševanja | T1, T2 | ⬜ |
@@ -410,7 +418,7 @@ Odprto:
 - **Nagrada poslana:** `04` "Admin marks reward as sent", stolpca ni (A7).
 
 ---
-- `01_database.md` `user_profiles.goal_role` komentar piše `'ai_engineer'`, `problem_categories.slug` in frontend pa `ai-engineer`. F4 hrani `ai-engineer` (enako kot slug kategorije, potrebno za D19).
+- ~~`01_database.md` `user_profiles.goal_role` komentar je pisal `'ai_engineer'`~~ → popravljeno 8. 10. 2026 na `ai-engineer` (slug kategorije, F4).
 
 ## Odloženo
 

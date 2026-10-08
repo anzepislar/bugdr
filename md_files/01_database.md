@@ -7,6 +7,7 @@
 - All IDs are UUID
 - All timestamps default to NOW()
 - Migrations are plain `.sql` files in `/migrations/`
+- Tables that already exist are written here exactly as their migration created them. Planned changes to tables not built yet are listed in `06_backend_slices.md` ("Spremembe sheme")
 - Never update points directly — always insert a transaction (see point_transactions)
 
 ---
@@ -42,32 +43,39 @@ level_thresholds            (seeded, adjustable)
 ## Users & Auth
 
 ### users
-The main user table. Passwords are always hashed — never store plain text.
+The main user table. Passwords are always hashed (scrypt) — never store plain text.
+Created in `migrations/0002_users.sql`. Emails are stored lowercased; usernames keep their case
+but are unique without it (they go into `/profile/[username]`).
 
 ```sql
 CREATE TABLE users (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email           VARCHAR(255) UNIQUE NOT NULL,
   password_hash   VARCHAR(255) NOT NULL,
-  username        VARCHAR(50) UNIQUE NOT NULL,
+  username        VARCHAR(50) NOT NULL,
   avatar_url      VARCHAR(500),
   is_admin        BOOLEAN DEFAULT FALSE,
   is_banned       BOOLEAN DEFAULT FALSE,
   created_at      TIMESTAMP DEFAULT NOW(),
-  last_active_at  TIMESTAMP DEFAULT NOW()
+  last_active_at  TIMESTAMP DEFAULT NOW()   -- refreshed at most once a minute
 );
+CREATE UNIQUE INDEX users_username_lower_key ON users (lower(username));
 ```
 
+`is_admin` is how admin access works today; admins are planned to stop being user accounts (D48 in `06_backend_slices.md`).
+
 ### user_profiles
-Stores onboarding answers. One row per user.
+Stores onboarding answers. One row per user, created by the first `PUT /me/onboarding`.
+Created in `migrations/0003_user_profiles.sql`.
 
 ```sql
 CREATE TABLE user_profiles (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id               UUID REFERENCES users(id) ON DELETE CASCADE UNIQUE,
-  goal_role             VARCHAR(50),   -- 'ai_engineer', 'backend', 'frontend', 'fullstack', 'database'
+  goal_role             VARCHAR(50),   -- problem_categories.slug: 'ai-engineer', 'backend', 'frontend', 'fullstack', 'database'; NULL = "Exploring my path"
   experience_level      VARCHAR(20),   -- 'student', 'junior', 'mid', 'senior'
   platform_goal         VARCHAR(20),   -- 'get_hired', 'improve_skills', 'both'
+  languages             TEXT[] NOT NULL DEFAULT '{}',  -- from onboarding step 4 (fixed list)
   onboarding_completed  BOOLEAN DEFAULT FALSE,
   created_at            TIMESTAMP DEFAULT NOW()
 );
@@ -133,15 +141,19 @@ CREATE TABLE problems (
   source              VARCHAR(20),       -- 'github', 'claude_generated'
   source_url          VARCHAR(500),      -- original GitHub issue URL if applicable
   is_published        BOOLEAN DEFAULT FALSE,
-  is_contest_problem  BOOLEAN DEFAULT FALSE,
   average_rating      DECIMAL(3,2) DEFAULT 0,
   rating_count        INTEGER DEFAULT 0,
   solve_count         INTEGER DEFAULT 0,
   created_by          UUID REFERENCES users(id),
   created_at          TIMESTAMP DEFAULT NOW(),
-  updated_at          TIMESTAMP DEFAULT NOW()
+  updated_at          TIMESTAMP DEFAULT NOW(),
+  CHECK ((difficulty, base_points) IN (('easy', 100), ('medium', 250), ('hard', 500), ('get_a_job', 1000)))
 );
 ```
+
+Built in P1 (`migrations/0004_problems.sql`). No `summary` (cards use `short_description`, D16) and no
+`is_contest_problem` (derived from `contest_problems`, D17). `category_id` may be NULL on a draft; only problems
+with a category are listed.
 
 ### problem_tags
 Tags for filtering and search.
@@ -150,7 +162,20 @@ Tags for filtering and search.
 CREATE TABLE problem_tags (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   problem_id  UUID REFERENCES problems(id) ON DELETE CASCADE,
-  tag         VARCHAR(50) NOT NULL
+  tag         VARCHAR(50) NOT NULL,
+  UNIQUE (problem_id, tag)
+);
+```
+
+### problem_bookmarks
+"Saved problems" (D23, built in P1).
+
+```sql
+CREATE TABLE problem_bookmarks (
+  user_id     UUID REFERENCES users(id) ON DELETE CASCADE,
+  problem_id  UUID REFERENCES problems(id) ON DELETE CASCADE,
+  created_at  TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY (user_id, problem_id)
 );
 ```
 
@@ -161,13 +186,14 @@ The actual buggy codebase for each problem. Stored as JSONB.
 CREATE TABLE problem_codebase (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   problem_id            UUID REFERENCES problems(id) ON DELETE CASCADE UNIQUE,
-  repository_structure  JSONB NOT NULL,  -- file tree for display
+  repository_name       VARCHAR(100),    -- shown on the detail page: 'northstar / checkout-worker' (D27)
+  repository_structure  JSONB NOT NULL,  -- JSON array of file paths shown on the detail page (never contents)
   files                 JSONB NOT NULL,  -- { "filename": "content", ... }
   language              VARCHAR(50) NOT NULL,
   framework             VARCHAR(50),     -- 'nextjs', 'express', 'django', etc
   setup_commands        TEXT,            -- commands to set up before running
   run_command           TEXT,            -- command to start the app
-  hidden_files          JSONB,           -- test files never sent to browser, written into container AFTER user files
+  hidden_files          JSONB NOT NULL DEFAULT '{}', -- test files never sent to browser, written into container AFTER user files
   solution_files        JSONB,           -- correct fix — checks must FAIL on buggy code and PASS on this before publishing
   created_at            TIMESTAMP DEFAULT NOW()
 );
@@ -192,13 +218,17 @@ CREATE TABLE problem_checks (
   problem_id       UUID REFERENCES problems(id) ON DELETE CASCADE,
   check_order      INTEGER NOT NULL,       -- run in this order
   description      VARCHAR(255) NOT NULL,  -- shown to user: "API returns 200"
-  check_type       VARCHAR(20) NOT NULL,   -- 'test', 'lint', 'build', 'custom'
+  check_type       VARCHAR(20) NOT NULL CHECK (check_type IN ('test', 'lint', 'build', 'custom')),
   check_command    TEXT NOT NULL,          -- command to run in Docker
   expected_output  TEXT,                   -- optional: match stdout
   must_pass        BOOLEAN DEFAULT TRUE,
-  created_at       TIMESTAMP DEFAULT NOW()
+  created_at       TIMESTAMP DEFAULT NOW(),
+  UNIQUE (problem_id, check_order)
 );
 ```
+
+`problem_codebase`, `problem_checks`, `problem_ratings`, `problem_comments` and `user_daily_activity` are built in P2
+(`migrations/0005_problem_detail.sql`, D49); their logic comes in R1, O1, O2.
 
 ---
 
@@ -225,6 +255,8 @@ CREATE TABLE user_problem_attempts (
   UNIQUE(user_id, problem_id)      -- enforced at DB level: solve once only
 );
 ```
+
+Table built in P1 (D49) for the card status; start/solve logic comes in R1-R4.
 
 ### check_results
 Results for each check run during a solve attempt.

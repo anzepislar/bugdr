@@ -36,16 +36,18 @@ cd frontend
 npm install
 npm run dev
 
-# Backend
+# Backend + database (Docker must be running)
 cd backend
 npm install
-npm run dev
-
-# Database
-docker-compose up -d
-npm run migrate
-npm run seed
+cp .env.example .env     # optional locally; JWT_SECRET is required in production
+docker compose up -d     # PostgreSQL 17 (+ test database bugdr_test)
+npm run migrate          # applies new files from /migrations
+npm run seed             # dev data from /seeds
+npm run dev              # API on http://localhost:4000/api/v1
+npm test                 # node:test against bugdr_test
 ```
+
+The frontend proxies `/api/*` to the backend (`next.config.ts`, `BACKEND_URL`, default `http://localhost:4000`).
 
 ---
 
@@ -66,10 +68,11 @@ bugdr/
 ## Current Status
 
 ```
-Phase: Planning + Design
-Frontend: In progress (Figma designs mostly done)
-Backend: Not started
-Database: Schema designed, not created yet
+Phase: Backend slices (06_backend_slices.md) - frontend screens swap their mocks slice by slice
+Frontend: 17 screens built from Figma; login, signup, logout and onboarding use the real API
+Backend: Milestone M0 done (F0-F4: skeleton, levels, auth, route protection, onboarding)
+Database: PostgreSQL 17 in Docker; tables level_thresholds, users, user_stats, user_profiles
+Detailed status: CLAUDE.md "Current Status" and 06_backend_slices.md "Stanje"
 ```
 
 ---
@@ -106,11 +109,11 @@ Database: Schema designed, not created yet
 ## Development Phases
 
 ```
-Phase 1 — Frontend (current)
+Phase 1 — Frontend (done for the current designs)
   Build all screens from Figma designs with mock data
 
-Phase 2 — Backend dev slices (alongside frontend)
-  Create backend stubs for each feature as frontend builds
+Phase 2 — Backend dev slices (current)
+  One vertical slice at a time (06_backend_slices.md): migration + endpoint + test + swap the screen's mock
 
 Phase 3 — Full backend
   Connect everything, implement business logic
@@ -229,4 +232,6 @@ PostgreSQL
 | `02_problems.md` | Problem structure, execution, checks |
 | `03_scoring.md` | Points, levels, streaks |
 | `04_admin.md` | Admin dashboard, contests |
+| `05_dnevnik_dela.md` | Session log (Slovenian) |
+| `06_backend_slices.md` | Backend plan as slices, decisions, mock register (Slovenian) |
 | `CLAUDE.md` | Quick reference for Claude Code |
