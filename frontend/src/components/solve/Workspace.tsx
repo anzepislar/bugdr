@@ -1,16 +1,18 @@
 "use client";
 
+import Editor from "@monaco-editor/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Icon } from "@/components/Icon";
 import { AcceptanceChecks, Description } from "@/components/problems/ProblemOverview";
 import { AiChatPanel } from "@/components/solve/AiChatPanel";
 import { ChecksPanel } from "@/components/solve/ChecksPanel";
-import { CodeEditorMock } from "@/components/solve/CodeEditorMock";
 import { useSessionTracker } from "@/hooks/useSessionTracker";
-import { mockRunTests, mockStartAttempt } from "@/lib/mock/attempts";
+import { api, ApiError } from "@/lib/api";
+import { mockRunTests } from "@/lib/mock/attempts";
 import type { Attempt, CheckRunResult, CheckStatus } from "@/lib/types/attempt";
 import type { Difficulty } from "@/lib/types/problem";
 
@@ -21,7 +23,7 @@ const clock = (seconds: number) =>
     ? `${Math.floor(seconds / 3600)}:${pad(Math.floor((seconds % 3600) / 60))}:${pad(seconds % 60)}`
     : `${pad(Math.floor(seconds / 60))}:${pad(seconds % 60)}`;
 
-// ponytail: the selector only shows the language; Monaco (slice R1) sets it from the file.
+// ponytail: the selector only shows the language; Monaco detects it from the file extension.
 const LANGUAGES = ["TypeScript", "JavaScript", "Python", "Go", "JSON", "Markdown"];
 const LANGUAGE_BY_EXT: Record<string, string> = {
   ts: "TypeScript",
@@ -48,11 +50,25 @@ const TONE: Record<TerminalLine["tone"], string> = {
 };
 
 const TEST_COMMAND = "npm run test:scenario";
-const MIN_PANEL = 300; // px, both the description panel and the editor
-const MIN_CHAT = 280; // px, the AI chat panel
+// px. All three panels are always side by side; 80 + 120 + 80 still fits a 320px screen.
+const MIN_DESCRIPTION = 80;
+const MIN_EDITOR = 120;
+const MIN_CHAT = 80;
 
-function firstFile(files: Record<string, string>): string {
-  return Object.keys(files).find((p) => p.startsWith("src/")) ?? Object.keys(files)[0];
+// D14: unsaved edits live in the browser, per attempt. started_at is part of the key, so a restart after
+// giving up (D8, same attempt id) begins from the original code.
+const draftKey = (a: Attempt) => `bugdr:draft:${a.id}:${a.startedAt}`;
+
+function readDraft(a: Attempt): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(draftKey(a)) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+function firstFile(paths: string[]): string {
+  return paths.find((p) => p.startsWith("src/")) ?? paths[0];
 }
 
 export function Workspace({
@@ -71,6 +87,10 @@ export function Workspace({
   const router = useRouter();
   const tracker = useSessionTracker();
   const [attempt, setAttempt] = useState<Attempt | null>(null);
+  const [startError, setStartError] = useState("");
+  const [giveUpState, setGiveUpState] = useState<{ busy: boolean; error: string } | null>(null);
+  // The original files with the user's edits on top (D14). R4 sends these on Test.
+  const [files, setFiles] = useState<Record<string, string>>({});
   const [now, setNow] = useState(() => Date.now());
   const [activePath, setActivePath] = useState("");
   const [statuses, setStatuses] = useState<Record<string, CheckStatus>>({});
@@ -79,33 +99,83 @@ export function Workspace({
   const [bottomTab, setBottomTab] = useState<BottomTab>("terminal");
   const [terminal, setTerminal] = useState<TerminalLine[]>([]);
   const [command, setCommand] = useState("");
-  // Description panel: null width = the 40% default until the user drags.
+  // Side panel widths: null = a third of the screen each (the editor gets the last third) until the user drags.
   const [panelWidth, setPanelWidth] = useState<number | null>(null);
   const [collapsed, setCollapsed] = useState(false);
-  // AI chat panel (right): inline from lg, an overlay over the editor below it.
-  const [chatWidth, setChatWidth] = useState(320);
-  const [chatOpen, setChatOpen] = useState(false);
+  // AI chat panel (right), open on load.
+  const [chatWidth, setChatWidth] = useState<number | null>(null);
+  const [chatOpen, setChatOpen] = useState(true);
   const [dragging, setDragging] = useState<"description" | "chat" | null>(null);
   // Entry animation: the description starts full width (like the detail page) and the editor slides in.
   const [opening, setOpening] = useState(true);
   const splitRef = useRef<HTMLDivElement>(null);
   const descriptionRef = useRef<HTMLElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const chatRef = useRef<HTMLElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    mockStartAttempt(slug).then((a) => {
-      if (!a) return;
-      setAttempt(a);
-      setActivePath(firstFile(a.files));
-      setChatOpen(window.matchMedia("(min-width: 1024px)").matches);
-    });
-  }, [slug]);
+    api<{ attempt: Attempt }>(`/problems/${encodeURIComponent(slug)}/start`, { method: "POST" })
+      .then(({ attempt: a }) => {
+        setAttempt(a);
+        // JSONB does not keep key order, so tabs are sorted by path.
+        setFiles(Object.fromEntries(Object.entries({ ...a.files, ...readDraft(a) }).sort(([x], [y]) => x.localeCompare(y))));
+        setActivePath(firstFile(Object.keys(a.files).sort()));
+      })
+      .catch((e) => {
+        // A solved problem never reopens (R1): its detail page shows the result.
+        if (e instanceof ApiError && e.code === "ALREADY_SOLVED") router.replace(`/problems/${slug}`);
+        else setStartError(e instanceof ApiError ? e.message : "Could not start the problem. Try again.");
+      });
+  }, [slug, router]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // A handle takes space from the editor first; once the editor is at MIN_EDITOR it pushes the panel on the
+  // other side down to its minimum. Dragging back gives the space to the editor. Dragging a side panel to
+  // half its minimum closes it (like VS Code); its chevron tab opens it again.
+  // Window listeners (capture phase) follow the mouse anywhere, also over Monaco, until it is released.
+  useEffect(() => {
+    if (!dragging) return;
+    const width = (el: HTMLElement | null) => el?.getBoundingClientRect().width ?? 0;
+    const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), Math.max(min, max));
+    const move = (e: globalThis.MouseEvent) => {
+      e.preventDefault();
+      const box = splitRef.current?.getBoundingClientRect();
+      if (!box) return;
+      const desc = width(descriptionRef.current);
+      const chat = width(chatRef.current);
+      const total = desc + width(editorRef.current) + chat; // space shared by the three panels
+      if (dragging === "description" && e.clientX - box.left < MIN_DESCRIPTION / 2) {
+        setDragging(null);
+        setCollapsed(true);
+        tracker.track("description_close");
+      } else if (dragging === "chat" && box.right - e.clientX < MIN_CHAT / 2) {
+        setDragging(null);
+        setChatOpen(false);
+      } else if (dragging === "description") {
+        const minChat = chatOpen ? MIN_CHAT : 0;
+        const d = clamp(e.clientX - box.left, MIN_DESCRIPTION, total - MIN_EDITOR - minChat);
+        setPanelWidth(d);
+        if (chatOpen) setChatWidth(Math.max(MIN_CHAT, Math.min(chat, total - d - MIN_EDITOR)));
+      } else {
+        const minDesc = collapsed ? 0 : MIN_DESCRIPTION;
+        const c = clamp(box.right - e.clientX, MIN_CHAT, total - MIN_EDITOR - minDesc);
+        setChatWidth(c);
+        if (!collapsed) setPanelWidth(Math.max(MIN_DESCRIPTION, Math.min(desc, total - c - MIN_EDITOR)));
+      }
+    };
+    const stop = () => setDragging(null);
+    window.addEventListener("mousemove", move, true);
+    window.addEventListener("mouseup", stop, true);
+    return () => {
+      window.removeEventListener("mousemove", move, true);
+      window.removeEventListener("mouseup", stop, true);
+    };
+  }, [dragging, chatOpen, collapsed, tracker]);
 
   useEffect(() => {
     if (!attempt) return;
@@ -119,31 +189,31 @@ export function Workspace({
   }, [terminal]);
 
   if (!attempt) {
-    return <p className="p-8 text-sm text-muted">Preparing your workspace…</p>;
+    return <p className="p-8 text-sm text-muted">{startError || "Preparing your workspace…"}</p>;
   }
 
-  const elapsed = Math.max(0, Math.floor((now - Date.parse(attempt.startedAt)) / 1000));
-  const limit = attempt.timeLimitMinutes * 60;
-  const print = (...lines: TerminalLine[]) => setTerminal((t) => [...t, ...lines]);
-
-  // Both handles stop where the editor would get narrower than MIN_PANEL.
-  function resize(e: PointerEvent<HTMLDivElement>) {
-    const box = splitRef.current?.getBoundingClientRect();
-    const editor = editorRef.current?.getBoundingClientRect().width ?? 0;
-    if (!dragging || !box) return;
-    if (dragging === "description") {
-      const current = descriptionRef.current?.getBoundingClientRect().width ?? 0;
-      const max = Math.max(MIN_PANEL, current + editor - MIN_PANEL);
-      setPanelWidth(Math.min(max, Math.max(MIN_PANEL, e.clientX - box.left)));
-    } else {
-      const max = Math.max(MIN_CHAT, chatWidth + editor - MIN_PANEL);
-      setChatWidth(Math.min(max, Math.max(MIN_CHAT, box.right - e.clientX)));
+  function edit(path: string, code = "") {
+    if (!attempt) return;
+    const next = { ...files, [path]: code };
+    setFiles(next);
+    // Only changed files are stored, so the draft stays small.
+    const changed = Object.fromEntries(Object.entries(next).filter(([p, c]) => c !== attempt.files[p]));
+    try {
+      localStorage.setItem(draftKey(attempt), JSON.stringify(changed));
+    } catch {
+      // Storage full or blocked: edits stay in memory for this tab.
     }
   }
 
-  function startDrag(e: PointerEvent<HTMLDivElement>, panel: "description" | "chat") {
-    e.preventDefault(); // no text selection while dragging
-    e.currentTarget.setPointerCapture(e.pointerId);
+  // All tries count (D56): earlier tries + the current one.
+  const elapsed = attempt.previousSeconds + Math.max(0, Math.floor((now - Date.parse(attempt.startedAt)) / 1000));
+  const limit = attempt.timeLimitMinutes * 60;
+  const print = (...lines: TerminalLine[]) => setTerminal((t) => [...t, ...lines]);
+
+  // Mouse events, not pointer events: Safari's pointer events cancelled or broke the drag.
+  function startDrag(e: MouseEvent<HTMLDivElement>, panel: "description" | "chat") {
+    if (e.button !== 0) return;
+    e.preventDefault(); // no text selection or native drag-and-drop while dragging
     setDragging(panel);
   }
 
@@ -195,15 +265,27 @@ export function Workspace({
     print({ text: `$ ${cmd}`, tone: "command" }, { text: "The terminal connects to your workspace container soon.", tone: "plain" });
   }
 
-  function giveUp() {
-    // ponytail: mock of POST /attempts/:id/give-up (slice R2).
-    if (window.confirm("Give up this problem? You can start it again later, but the timer restarts.")) {
-      router.push(`/problems/${slug}`);
+  // R2: the attempt becomes abandoned; starting again opens the next try with the original code (D8, R2b).
+  async function giveUp() {
+    if (!attempt) return;
+    setGiveUpState({ busy: true, error: "" });
+    try {
+      await api(`/attempts/${attempt.id}/give-up`, { method: "POST" });
+    } catch (e) {
+      return setGiveUpState({ busy: false, error: e instanceof ApiError ? e.message : "Could not give up. Try again." });
     }
+    try {
+      localStorage.removeItem(draftKey(attempt));
+    } catch {
+      // Blocked storage: the draft key includes started_at, so a restart ignores it anyway.
+    }
+    router.push(`/problems/${slug}`);
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-canvas">
+    <div
+      className={`flex h-screen w-screen flex-col overflow-hidden bg-canvas ${dragging ? "cursor-col-resize select-none" : ""}`}
+    >
       <header className="grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border bg-surface px-3 sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/dashboard" className="shrink-0">
@@ -214,13 +296,17 @@ export function Workspace({
         </div>
         <p
           aria-label="Time elapsed"
-          title={`Time limit ${clock(limit)}`}
+          title={`${attempt.tryNumber > 1 ? `Try ${attempt.tryNumber} · ` : ""}Time limit ${clock(limit)}`}
           className={`text-sm font-semibold tabular-nums ${elapsed >= limit * 0.8 ? "text-failed" : "text-text"}`}
         >
           {clock(elapsed)}
         </p>
         <div className="flex items-center justify-end gap-2 sm:gap-3">
-          <button type="button" onClick={giveUp} className="px-2 py-1.5 text-sm text-muted hover:text-text">
+          <button
+            type="button"
+            onClick={() => setGiveUpState({ busy: false, error: "" })}
+            className="px-2 py-1.5 text-sm text-muted hover:text-text"
+          >
             Give up
           </button>
           <button
@@ -238,17 +324,20 @@ export function Workspace({
         ref={splitRef}
         className="relative flex min-h-0 flex-1"
         style={
-          { "--panel-w": panelWidth === null ? "40%" : `${panelWidth}px`, "--chat-w": `${chatWidth}px` } as React.CSSProperties
+          {
+            "--panel-w": panelWidth === null ? "33.333%" : `${panelWidth}px`,
+            "--chat-w": chatWidth === null ? "33.333%" : `${chatWidth}px`,
+          } as React.CSSProperties
         }
       >
-        {/* Below md the open panel takes the whole width; the chevron switches to the editor. */}
         <section
           ref={descriptionRef}
           aria-label="Problem description"
           aria-hidden={collapsed}
-          className={`relative shrink-0 overflow-hidden bg-canvas ${
+          // The description and the chat shrink (down to their minimums) before the editor goes below MIN_EDITOR.
+          className={`relative shrink overflow-hidden bg-canvas ${
             dragging ? "" : "transition-all duration-500 ease-out motion-reduce:transition-none"
-          } ${collapsed ? "w-0" : opening ? "w-full" : "w-full md:w-[var(--panel-w)] md:min-w-[300px]"
+          } ${collapsed ? "w-0" : opening ? "w-full" : "w-[var(--panel-w)] min-w-[80px]"
           }`}
         >
           <div className="h-full overflow-y-auto px-6 py-6 pr-10">
@@ -271,10 +360,8 @@ export function Workspace({
             role="separator"
             aria-orientation="vertical"
             aria-label="Resize description"
-            onPointerDown={(e) => startDrag(e, "description")}
-            onPointerMove={resize}
-            onPointerUp={() => setDragging(null)}
-            className={`hidden w-1 shrink-0 cursor-col-resize touch-none hover:bg-action md:block ${
+            onMouseDown={(e) => startDrag(e, "description")}
+            className={`relative z-20 w-1 shrink-0 cursor-col-resize touch-none after:absolute after:inset-y-0 after:-left-1.5 after:-right-1.5 hover:bg-action ${
               dragging === "description" ? "bg-action" : "bg-border"
             }`}
           />
@@ -282,7 +369,7 @@ export function Workspace({
 
         <div
           ref={editorRef}
-          className={`relative min-w-0 flex-1 flex-col bg-[#1e1e1e] ${collapsed ? "flex" : "hidden md:flex"}`}
+          className="relative flex min-w-[120px] flex-1 flex-col bg-[#1e1e1e]"
         >
           {collapsed ? (
             <button
@@ -309,7 +396,7 @@ export function Workspace({
 
           <div className="flex h-9 shrink-0 items-stretch bg-[#252526]">
             <div role="tablist" aria-label="Files" className="flex min-w-0 flex-1 overflow-x-auto">
-              {Object.keys(attempt.files).map((p) => (
+              {Object.keys(files).map((p) => (
                 <button
                   key={p}
                   type="button"
@@ -343,7 +430,23 @@ export function Workspace({
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col">
-            <CodeEditorMock path={activePath} code={attempt.files[activePath] ?? ""} />
+            {/* ponytail: @monaco-editor/react loads Monaco from cdn.jsdelivr.net; bundle it if the CDN becomes a problem. */}
+            <Editor
+              // One model per attempt and file: same paths in another problem or a restarted attempt start fresh.
+              path={`${attempt.id}/${Date.parse(attempt.startedAt)}/${activePath}`}
+              defaultValue={files[activePath] ?? ""}
+              onChange={(code) => edit(activePath, code)}
+              theme="vs-dark"
+              loading={<p className="p-4 text-sm text-muted">Loading editor…</p>}
+              options={{
+                fontSize: 13,
+                lineHeight: 25,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                padding: { top: 12 },
+              }}
+            />
           </div>
 
           {/* ponytail: drag handle is visual only; resizing the bottom panel comes later. */}
@@ -405,21 +508,20 @@ export function Workspace({
             role="separator"
             aria-orientation="vertical"
             aria-label="Resize AI assistant"
-            onPointerDown={(e) => startDrag(e, "chat")}
-            onPointerMove={resize}
-            onPointerUp={() => setDragging(null)}
-            className={`relative hidden w-px shrink-0 cursor-col-resize touch-none after:absolute after:inset-y-0 after:-left-1.5 after:-right-1.5 hover:bg-action lg:block ${
+            onMouseDown={(e) => startDrag(e, "chat")}
+            className={`relative z-20 w-1 shrink-0 cursor-col-resize touch-none after:absolute after:inset-y-0 after:-left-1.5 after:-right-1.5 hover:bg-action ${
               dragging === "chat" ? "bg-action" : "bg-border"
             }`}
           />
         ) : null}
         <aside
+          ref={chatRef}
           aria-label="AI assistant"
           aria-hidden={!chatOpen}
           inert={!chatOpen}
-          className={`relative shrink-0 overflow-hidden bg-surface max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:z-20 ${
+          className={`relative shrink overflow-hidden bg-surface ${
             dragging ? "" : "transition-all duration-300 ease-out motion-reduce:transition-none"
-          } ${chatOpen ? "w-full max-lg:border-l max-lg:border-border sm:w-[320px] lg:w-[var(--chat-w)]" : "w-0"}`}
+          } ${chatOpen ? "w-[var(--chat-w)] min-w-[80px]" : "w-0"}`}
         >
           <AiChatPanel tracker={tracker} difficulty={difficulty} />
           <button
@@ -433,6 +535,17 @@ export function Workspace({
           </button>
         </aside>
       </div>
+
+      <ConfirmDialog
+        open={giveUpState !== null}
+        title="Give up this problem?"
+        message="You can start it again later. Your time keeps counting from where it stopped, and your changes are discarded."
+        confirmLabel="Give up"
+        busy={giveUpState?.busy}
+        error={giveUpState?.error}
+        onConfirm={() => void giveUp()}
+        onCancel={() => setGiveUpState(null)}
+      />
     </div>
   );
 }

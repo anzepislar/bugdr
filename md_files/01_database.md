@@ -20,6 +20,7 @@ users
   └── user_stats           (points, level, streak)
   └── user_daily_activity  (streak tracking)
   └── user_problem_attempts
+        └── attempt_tries      (one row per try: give up + restart = next try)
         └── check_results
         └── solve_sessions     (AI session, one per attempt)
               └── prompt_events
@@ -249,9 +250,9 @@ CREATE TABLE user_problem_attempts (
   problem_id              UUID REFERENCES problems(id) ON DELETE CASCADE,
   status                  VARCHAR(20) DEFAULT 'in_progress'
                           CHECK (status IN ('in_progress', 'solved', 'abandoned')),
-  started_at              TIMESTAMP DEFAULT NOW(),
+  started_at              TIMESTAMP DEFAULT NOW(),  -- start of the current try (attempt_tries)
   solved_at               TIMESTAMP,
-  time_taken_seconds      INTEGER,
+  time_taken_seconds      INTEGER,  -- sum of all tries (D56)
   points_earned           INTEGER DEFAULT 0,
   time_bonus_multiplier   DECIMAL(3,2) DEFAULT 1.0,
   lines_added             INTEGER DEFAULT 0,
@@ -262,6 +263,28 @@ CREATE TABLE user_problem_attempts (
 ```
 
 Table built in P1 (D49) for the card status; start/solve logic comes in R1-R4.
+
+### attempt_tries
+Every try at a problem (R2b, D56). Giving up closes the open try; starting again opens the next one.
+Points use the sum of all tries, so a restart never resets the clock.
+
+```sql
+CREATE TABLE attempt_tries (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  attempt_id        UUID NOT NULL REFERENCES user_problem_attempts(id) ON DELETE CASCADE,
+  try_number        INTEGER NOT NULL CHECK (try_number >= 1),
+  started_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+  ended_at          TIMESTAMP,
+  outcome           VARCHAR(20) NOT NULL DEFAULT 'in_progress'
+                    CHECK (outcome IN ('in_progress', 'abandoned', 'solved')),
+  duration_seconds  INTEGER CHECK (duration_seconds >= 0),  -- set by the server when the try ends
+  UNIQUE (attempt_id, try_number),
+  CHECK ((outcome = 'in_progress') = (ended_at IS NULL))
+);
+CREATE UNIQUE INDEX attempt_tries_one_open ON attempt_tries (attempt_id) WHERE ended_at IS NULL;
+```
+
+Migration 0007; attempts that existed before it became try 1 (an abandoned one with an unknown duration).
 
 ### check_results
 Results for each check run during a solve attempt.

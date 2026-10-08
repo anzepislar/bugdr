@@ -30,7 +30,7 @@ export async function migrate(dir = path.join(root, "migrations")) {
 }
 
 /** Dev data: runs every seeds/*.sql in one transaction. Seeds must be re-runnable (ON CONFLICT DO NOTHING). */
-async function seed() {
+export async function seed() {
   const dir = path.join(root, "seeds");
   const files = (await readdir(dir)).filter((f) => f.endsWith(".sql")).sort();
   const client = await pool.connect();

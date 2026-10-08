@@ -1134,3 +1134,142 @@ napak v konzoli.
   in smernice kakovosti (kontekst + incident, brez pričakovanega vedenja).
 - `CLAUDE.md`: stack (AI), poti (`/leaderboard`, `/admin/analytics` -
   načrtovani), zaslon reševanja, izjema `text-lg` za naslova opisa.
+
+## 8. 10. 2026 — Seja 14: M2 priprava + rezina R1 (začetek reševanja)
+
+### Priprava M2
+
+- Seja 13 commitana (`a87b02b`).
+- Nove odločitve (uporabnik): D53 - izvedljiv je najprej samo
+  `payment-retries-disappear`, ostalih 11 seed problemov je samo za prikaz;
+  D54 - izvajalnik samo Node/TypeScript; D55 - R1 doda Monaco.
+
+### Backend (R1)
+
+- `POST /api/v1/problems/:slug/start` (`requireAuth`) v
+  `problems.routes.js`: en `INSERT … ON CONFLICT DO UPDATE` - nov poskus,
+  obstoječ `in_progress` nespremenjen (timer teče naprej), `abandoned` →
+  `in_progress` z novim `started_at` (D8), `solved` → 409 `ALREADY_SOLVED`.
+  Vrne `Attempt`: vidne datoteke, ime repozitorija, `startedAt`,
+  `timeLimitMinutes`, preverjanja (`id`, `checkOrder`, `description`).
+  Nikoli `hidden_files`, `solution_files`, ukazov.
+- `backend/test/r1.test.js`: gost 401, neznan/neobjavljen 404, brez
+  skrivnosti, ponoven start = isti čas, odstop → nov čas v isti vrstici,
+  rešen → 409.
+
+### Frontend (R1)
+
+- `/problems/[slug]/solve`: opis iz `GET /problems/:slug` (`serverFetch`)
+  namesto `mockGetProblem`; `Workspace` kliče `POST …/start` (409 → stran
+  podrobnosti).
+- `@monaco-editor/react` namesto `CodeEditorMock` (tema `vs-dark`, en model
+  na poskus in datoteko). Monaco se naloži s CDN jsdelivr (oznaka
+  `ponytail:`).
+- Osnutki v `localStorage` (D14): ključ `bugdr:draft:<id>:<startedAt>`,
+  shranjene samo spremenjene datoteke; ponoven start po odstopu začne z
+  izvirno kodo. Zavihki datotek razvrščeni po poti (JSONB ne ohrani vrstnega
+  reda).
+- `mockStartAttempt` odstranjen; `mockRunTests` ostane do R4.
+
+Preverjeno: backend testi 37/37; frontend lint, typecheck, build;
+Playwright (Chrome): urejanje + ponovno nalaganje ohrani osnutek in čas,
+rešen problem preusmeri na podrobnosti, 320-2560 px brez vodoravnega
+drsenja, brez napak v konzoli.
+
+### Popravek: tri plošče na zaslonu reševanja
+
+- Pod 1024 px je AI plošča prekrila urejevalnik (brez ročaja), odprtje AI
+  plošče ali širjenje opisa je urejevalnik stisnilo na 0 px. Zdaj so od
+  768 px vse tri plošče v vrsti z ročaji; opis (min 200 px) in AI plošča
+  (min 240 px) se skrčita, preden gre urejevalnik pod 300 px. Prekrivanje
+  AI plošče samo še na telefonu.
+- Ročaj AI plošče je bil pod `aside` (polovica ciljne površine mrtva) -
+  `z-10`. Števci v AI plošči ostanejo v eni vrstici.
+- `CodeEditorMock.tsx` izbrisan (uporabnik).
+
+Preverjeno: Playwright 800/900/1024/1280 px - vse tri plošče vidne,
+urejevalnik ≥ 300 px, oba ročaja delujeta, brez vodoravnega drsenja.
+- Ročaja zdaj "potiskata" (uporabnik: vse tri plošče prosto nastavljive):
+  ročaj najprej vzame prostor urejevalniku, ko je ta na 300 px, skrči
+  ploščo na drugi strani do njenega minimuma. Preverjeno 800-1280 px.
+- Uporabnik: ob odprtju zaslona reševanja vsaka plošča 1/3 širine, nato
+  prosto nastavljive. Opis in AI plošča začneta pri 33,333 % (AI plošča je
+  odprta od 768 px, prej od 1024 px); minimumi 160 / 240 / 200 px; plošča,
+  povlečena pod pol svojega minimuma, se zapre (zavihek s puščico jo odpre).
+  Preverjeno 800-2560 px: začetek v tretjinah, vsak poteg premakne ročaj
+  natanko za razdaljo poteka.
+- Vzrok, da je uporabnik videl samo AI ploščo ali urejevalnik: okno ožje od
+  768 px = "telefonski" način (ena plošča naenkrat, AI plošča čez
+  urejevalnik, brez ročajev). Telefonski način odstranjen: vse tri plošče so
+  vedno ena ob drugi in nastavljive, AI plošča odprta ob nalaganju,
+  minimumi 80 / 120 / 80 px (ustreza 320 px). Preverjeno 320-1440 px.
+- Ročaja pri uporabniku nista delovala (v Playwrightu sta). Poskus s
+  celozaslonsko plastjo in preverjanjem `e.buttons` je uporabniku vlečenje
+  pokvaril - odstranjen. Zdaj: `setPointerCapture` na ročaju + poslušalci na
+  `window` (faza zajema) za `pointermove`/`pointerup`/`pointercancel` v
+  `useEffect` med vlečenjem; oba ročaja imata 16 px ciljno površino.
+  Preverjeno 600 in 1280 px.
+- Uporabnik uporablja **Safari z miško**; ročaja še vedno nista delovala.
+  Vlečenje zdaj z mišjimi dogodki namesto pointer dogodkov: `onMouseDown`
+  na ročaju (samo levi gumb, `preventDefault` - brez izbire besedila in
+  izvornega drag-and-drop), `mousemove`/`mouseup` na `window` (faza
+  zajema); med vlečenjem `select-none` na celem zaslonu. Preverjeno v
+  Playwright WebKit in Chrome (600, 1280 px).
+
+### Rezina R2 (odstop)
+
+- D28 rešena (uporabnik): gumb "Give up" ostane, potrditev je okno v slogu
+  Bugdr namesto `window.confirm`.
+- Backend: modul `attempts` - `POST /api/v1/attempts/:id/give-up` → 204
+  (idempotentno), tuj/neznan/neveljaven id → 404 `ATTEMPT_NOT_FOUND`, rešen
+  → 409 `ALREADY_SOLVED`. Test `backend/test/r2.test.js`.
+- Frontend: nov skupni `src/components/ConfirmDialog.tsx` (nativni
+  `<dialog>`); potrditev pokliče API, izbriše osnutek in odpre stran
+  podrobnosti.
+
+Preverjeno: backend testi 41/41; frontend lint, typecheck, build;
+Playwright WebKit: Esc in Cancel zapreta okno (poskus ostane v delu),
+Give up → `abandoned` + stran podrobnosti, ponoven start = čas 00:00 in
+izvirna koda, brez napak v konzoli.
+
+### Zgodovina poskusov (načrt)
+
+- Uporabnik: ob odstopu naj se beleži število poskusov in porabljen čas.
+  Nobena rezina tega ni pokrivala (D8 je prepisal `started_at`). Odločitev
+  D56: vsak poskus svoj zapis (`attempt_tries`), za časovni bonus šteje
+  vsota vseh poskusov. Nova rezina R2b pred R3; R4 in S1 dopolnjeni.
+
+### Rezina R2b (zgodovina poskusov, D56)
+
+- Migracija `0007_attempt_tries.sql`: vsak poskus svoja vrstica (začetek,
+  konec, izid, trajanje); največ en odprt poskus na attempt; obstoječi
+  poskusi = try 1.
+- Start odpre nov try (prvi start ali po odstopu), give-up ga zapre s
+  trajanjem s strežnika - vsak kot en SQL stavek (atomarno).
+- `Attempt` dobi `tryNumber` in `previousSeconds`; timer teče naprej čez
+  poskuse (namig "Try N"), okno Give up pove, da čas teče naprej.
+- `01_database.md`: tabela `attempt_tries`.
+
+Preverjeno: backend testi 46/46 (+5 R2b, tudi vzporedni starti);
+frontend lint, typecheck, build; Playwright WebKit: 5 min poskus → odstop →
+ponoven start kaže 05:02, "Try 2", try 1 zaprt s 302 s, brez napak.
+- Prikaz poskusov (uporabnik): samo na kartici "Problem solved" ("Solved on
+  try N · skupni čas" + seznam poskusov); dodano v načrt R4, ker podatki
+  nastanejo šele ob rešitvi.
+
+### Rezina R3 (izvajalnik v Dockerju)
+
+- `backend/src/modules/runner/runner.service.js`: `validateFiles` +
+  `runChecks` - izoliran kontejner `node:24-alpine` (brez omrežja, omejitve
+  CPU/RAM/procesov, samo za branje, ne-root, brez capabilities), datoteke
+  prek stdin (skrite zadnje), 20 s na preverjanje (`kill -9 -1` ob izteku),
+  kontejner se vedno odstrani. Brez endpointa (R4).
+- `payment-retries-disappear` je prvi izvedljiv problem (D53, seed
+  `0002_payment_retries_runnable.sql`): čisti Node 24 brez paketov, lasten
+  queue z vedenjem BullMQ; hrošč = ponovni poskus z istim `jobId`, ki ga
+  queue zavrže. Pokvarjena koda pade preverjanja 1, 5, 6; rešitev uspe vse.
+- Odprto: incident log (`attempt=2`, `attempt=3`) se ne ujema z izvedljivo
+  kodo - zapisano v Nedoslednosti, odloči uporabnik.
+
+Preverjeno: backend testi 53/53 (+7 R3, s pravim Dockerjem), po testih ni
+ostalih kontejnerjev `bugdr-run-*`.

@@ -1,6 +1,7 @@
 import express from "express";
 import { pool } from "./db.js";
 import { HttpError } from "./errors.js";
+import { attemptsRouter } from "./modules/attempts/attempts.routes.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { meRouter } from "./modules/me/me.routes.js";
 import { problemsRouter } from "./modules/problems/problems.routes.js";
@@ -10,6 +11,7 @@ app.use(express.json());
 
 export const api = express.Router();
 app.use("/api/v1", api);
+api.use("/attempts", attemptsRouter);
 api.use("/auth", authRouter);
 api.use("/me", meRouter);
 api.use("/problems", problemsRouter);

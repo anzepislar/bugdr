@@ -115,7 +115,7 @@ export function AiChatPanel({ tracker, difficulty }: { tracker: SessionTracker; 
         </label>
       </div>
 
-      <div aria-live="polite" className="flex h-8 shrink-0 items-center gap-3 overflow-x-auto bg-canvas px-4 pl-8 text-xs text-muted">
+      <div aria-live="polite" className="flex h-8 shrink-0 items-center gap-3 overflow-x-auto whitespace-nowrap bg-canvas px-4 pl-8 text-xs text-muted">
         <Stat label="Prompts" value={tracker.promptCount} />
         <span aria-hidden className="h-3 w-px shrink-0 bg-border" />
         <Stat label="Tokens" value={tracker.totalTokens} />

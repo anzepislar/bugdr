@@ -12,4 +12,6 @@ export const config = {
       ? (env.TEST_DATABASE_URL ?? "postgres://bugdr:bugdr@localhost:5432/bugdr_test")
       : (env.DATABASE_URL ?? "postgres://bugdr:bugdr@localhost:5432/bugdr"),
   jwtSecret: env.JWT_SECRET ?? "dev-only-secret",
+  // R3/D54: one Node base image for the check runner.
+  runnerImage: env.RUNNER_IMAGE ?? "node:24-alpine",
 };

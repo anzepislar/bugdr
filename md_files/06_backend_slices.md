@@ -18,12 +18,12 @@ povezala na API.
 
 ```
 Zadnja posodobitev: 8. 10. 2026
-Backend: M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema)
+Backend: M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2: R1 ✅, R2 ✅, R2b ✅, R3 ✅
 Frontend: 17 zaslonov na mocku - /login, /signup, /forgot-password, /onboarding, /dashboard,
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit
-Naslednja rezina: R1 (začetek reševanja, M2); D48 (admin) pred M6; M8 (AI seja) čaka D50-D52
+Naslednja rezina: R4 (Test in rešitev); D48 (admin) pred M6; M8 (AI seja) čaka D50-D52
 ```
 
 Oznake: ⬜ ni začeto · 🟨 v delu · ✅ narejeno (z datumom) · ⏸ odloženo
@@ -91,7 +91,7 @@ dokler je uporabnik ne potrdi.
 | D25 | **ODPRTO** - ikona obvestil v zgornji vrstici | Dizajn ima zvonec, shema in dokumenti nimajo obvestil. Predlog: v v1 ikona brez funkcije ali skrita; obvestila kasneje kot svoja rezina | - |
 | D26 | ~~Opisi preverjanj na strani podrobnosti~~ → **rešeno 8. 10. 2026** (uporabnik): `GET /problems/:slug` vrne `checks: string[]` = samo `problem_checks.description` po `check_order` (nikoli `check_command`/`expected_output`) | P2 |
 | D27 | ~~Ime repozitorija in sklad na strani podrobnosti~~ → **rešeno 8. 10. 2026** (uporabnik): `problem_codebase.repository_name VARCHAR(100)`, sklad = `language` + `framework` + tagi; zavihek Repository pokaže poti iz `repository_structure` (brez vsebine) | P2, A2 |
-| D28 | **ODPRTO** - "Give up" na zaslonu reševanja | `02` zahteva gumb Give up, dizajn ga nima. Zdaj: besedilni gumb "Give up" v zgornji vrstici (tudi na telefonu) s potrditvijo → R2 | R2 |
+| D28 | ~~"Give up" na zaslonu reševanja~~ → **rešeno 8. 10. 2026** (uporabnik): besedilni gumb "Give up" v zgornji vrstici + potrditveno okno v slogu Bugdr (`ConfirmDialog`, nativni `<dialog>`) namesto `window.confirm` | R2 |
 | D29 | ~~Iskanje in razširitve v levi vrstici zaslona reševanja~~ → **rešeno 7. 10. 2026**: prenova zaslona reševanja (split pane) odstrani levo vrstico in drevo datotek; datoteke so zavihki nad urejevalnikom | R1 |
 | D30 | **ODPRTO** - "helpful" in odgovori na komentarje | Dizajn razprave ima "N helpful", "Reply" in razvrščanje "Most helpful"; `problem_comments` nima ničesar od tega. Predlog: `problem_comments.parent_id UUID NULL REFERENCES problem_comments(id)` (odgovori samo ena raven), tabela `comment_helpful (comment_id, user_id, created_at, PK(comment_id, user_id))` + `problem_comments.helpful_count` (posodobljen v isti transakciji), `PUT/DELETE /comments/:id/helpful`, lastnega komentarja ni mogoče označiti, `GET /problems/:slug/comments?sort=helpful\|newest` | O2 |
 | D31 | ~~Stran posameznega tekmovanja~~ → **rešeno 6. 10. 2026**: uporabnik je dal dizajn, pot `/contests/[id]` (id, ker `contests` nima sluga). En incident na tekmovanje kot v dizajnu, čeprav shema dovoli več problemov (`contest_problems`) | T1, T2 |
@@ -116,6 +116,10 @@ dokler je uporabnik ne potrdi.
 | D50 | **ODPRTO** - Add Problem po razdelitvi opisa (8. 10. 2026) | Problem nima več `description`, ampak `codebase_context` + `incident_report` (`02`, migracija 0006). Zaslon Add Problem ima še eno polje "Full description", sistemski poziv A10 pa vrača `full_description`. Predlog: dve polji na koraku Review; poziv vrne `codebase_context` in `incident_report` (pravila iz `02`: brez vzroka, brez pričakovanega vedenja). Ker je poziv "dobesedno iz specifikacije", ga spremeni uporabnik |
 | D51 | **ODPRTO** - podrobnosti ocene učinkovitosti (`03`, 8. 10. 2026) | Odprto: (a) kaj je "iteracija" (par poziv-odgovor ali zagon testov med pozivi?); (b) delež urejanj zahteva razlikovanje AI vs. ročnih sprememb - mogoče samo za vgrajeni klepet (gumb "Apply"), zunanja orodja štejejo kot ročna (`02`); (c) kako uteži preslikati v 0,5-2,0 (linearno glede na benchmark težavnosti?); (d) omejitev pozivov/žetonov na poskus in kdo plača Claude API; (e) ali se izbrano orodje (GPT-4, Gemini) le zabeleži, ker vgrajeni klepet kliče samo Claude |
 | D52 | **ODPRTO** - lestvica `/leaderboard` (`00`, 8. 10. 2026) | "Global ranking by efficiency score": povprečje `efficiency_score` vseh rešitev ali skupne točke (te že vsebujejo učinkovitost)? Najmanjše število rešitev za uvrstitev, časovno okno (vse / mesec), javna za goste? Zaslona še ni |
+| D53 | ~~Izvedljivi problemi za M2~~ → **rešeno 8. 10. 2026** (uporabnik): najprej **en** pravi problem - `payment-retries-disappear` dobi skrite teste (`hidden_files`), rešitev (`solution_files`) in preverjanja, ki tečejo brez npm paketov. Ostalih 11 seed problemov ostane samo za prikaz: Test vrne jasno "checks not available yet", dokler jih ne doda admin (A2-A5) | R3, R4 |
+| D54 | ~~Jeziki izvajalnika v v1~~ → **rešeno 8. 10. 2026** (uporabnik): **samo Node/TypeScript** (ena osnovna slika); drugi jeziki, ko jih zahteva prvi problem | R3 |
+| D56 | ~~Zgodovina poskusov in čas po odstopu~~ → **rešeno 8. 10. 2026** (uporabnik): **vsak poskus (try) je svoj zapis** - začetek, konec, izid (opustil / rešil / odprt), trajanje; pozneje tudi AI poraba po poskusu. Za točke (časovni bonus) šteje **vsota časa vseh poskusov** - odstop + ponoven start ne resetira ure. Spremeni D8: vrstica `user_problem_attempts` ostane ena na problem, `started_at` se ob ponovnem startu še vedno nastavi (začetek trenutnega poskusa), čas za točke pa je vsota poskusov | R2b, R4, S1 |
+| D55 | ~~Urejevalnik v R1~~ → **rešeno 8. 10. 2026** (uporabnik): R1 doda `@monaco-editor/react` namesto `CodeEditorMock`; spremembe v `localStorage` po poskusu (D14) | R1 |
 
 ### Spremembe sheme glede na `01_database.md`
 
@@ -243,30 +247,43 @@ polnijo s seed skripto.
 
 ### M2 - Reševanje
 
-**R1 · Začetek reševanja** `M` · odvisno od: P2 · ⬜
+**R1 · Začetek reševanja** `M` · odvisno od: P2 · ✅ 8. 10. 2026
 - Naredi: tabele `problem_codebase`, `problem_checks`, `user_problem_attempts` že obstajajo (P1, P2 - D49); R1 doda samo logiko.
 - API: `POST /problems/:slug/start` → ustvari poskus (ali vrne obstoječega `in_progress`, timer teče naprej od `started_at`), vrne datoteke, drevo, `startedAt`, `timeLimitMinutes`, opise preverjanj (samo `description` + `check_order`).
 - `abandoned` poskus: ista vrstica nazaj v `in_progress`, nov `started_at` (D8).
 - Frontend shranjuje neshranjene spremembe v `localStorage` po poskusu (D14).
-- Frontend: `/problems/[slug]/solve` (Monaco, zavihki datotek, timer). Oblika odgovora je `Attempt` v `frontend/src/lib/types/attempt.ts` (+ `repositoryName` po D27); zdaj `CodeEditorMock` namesto Monaca.
+- Frontend: `/problems/[slug]/solve` (Monaco - D55, zavihki datotek, timer). Oblika odgovora je `Attempt` v `frontend/src/lib/types/attempt.ts` (+ `repositoryName` po D27).
 - Končano, ko: že rešen problem → 409 `ALREADY_SOLVED`; ponoven start ne resetira časa; skrite datoteke niso v odgovoru.
+- **Stanje:** `POST /problems/:slug/start` v `problems.routes.js` (en `INSERT … ON CONFLICT DO UPDATE`: nov / obstoječ `in_progress` nespremenjen / `abandoned` → `in_progress` z novim `started_at` / `solved` → 409) → `{ attempt: Attempt }`. Test `backend/test/r1.test.js`. Frontend: zaslon reševanja bere opis iz `GET /problems/:slug`, poskus iz API-ja; Monaco (`@monaco-editor/react`, D55) namesto `CodeEditorMock`, naložen s CDN jsdelivr (`ponytail:`); osnutki v `localStorage` po ključu `bugdr:draft:<id>:<startedAt>` (samo spremenjene datoteke; restart po odstopu = izvirna koda); zavihki razvrščeni po poti (JSONB ne ohrani vrstnega reda). **Odstopa od načrta:** brez `repository_structure` v odgovoru (drevo = ključi `files`, drevesa na zaslonu ni - D29). Seed nima `README.md` v `files` (mock ga je dodal) - kontekst je v opisu. `CodeEditorMock.tsx` izbrisan (uporabnik); `mockCodebase` ostane kot vir seeda.
 
-**R2 · Odstop** `S` · odvisno od: R1 · ⬜
+**R2 · Odstop** `S` · odvisno od: R1 · ✅ 8. 10. 2026
 - API: `POST /attempts/:id/give-up` → `status = 'abandoned'`. Ponoven start je mogoč (D8, v R1).
 - Končano, ko: tuj poskus → 404; rešen poskus se ne more opustiti.
+- **Stanje:** nov modul `backend/src/modules/attempts/attempts.routes.js` (`requireAuth` na celem routerju): `POST /attempts/:id/give-up` → 204, idempotentno (dvakrat = 204); tuj, neznan ali neveljaven id → 404 `ATTEMPT_NOT_FOUND` (ne 403 - ne razkrije obstoja); rešen → 409 `ALREADY_SOLVED`. Test `backend/test/r2.test.js` (+ ponoven start po odstopu = ista vrstica). Frontend: gumb Give up odpre `src/components/ConfirmDialog.tsx` (nov skupni gradnik, nativni `<dialog>`: Esc, fokus, ozadje), potrditev pokliče API, izbriše osnutek iz `localStorage` in odpre stran podrobnosti; napaka ostane v oknu.
 
-**R3 · Izvajalnik v Dockerju** `L` · odvisno od: R1 · ⬜
-- Naredi: `docker/` (osnovne slike po jeziku), servis `runChecks(problem, userFiles)`: ustvari kontejner → osnovne datoteke → uporabnikove datoteke → **skrite datoteke zadnje** (D10) → `setup_commands` → preverjanja po `check_order` → uniči kontejner.
+**R2b · Zgodovina poskusov** `S` · odvisno od: R2, D56 · ✅ 8. 10. 2026
+- Naredi (migracija): `attempt_tries (id, attempt_id → user_problem_attempts ON DELETE CASCADE, try_number, started_at, ended_at NULL, outcome CHECK IN ('in_progress','abandoned','solved'), duration_seconds NULL, UNIQUE (attempt_id, try_number))` + delni unikatni indeks "največ en odprt poskus na attempt". Obstoječi poskusi dobijo try 1 (backfill).
+- R1: nov attempt → try 1; `abandoned` → nov try n+1; `in_progress` → nič. Odgovor `Attempt` + `tryNumber`, `previousSeconds` (vsota zaprtih poskusov) - timer na zaslonu kaže `previousSeconds + (zdaj - startedAt)`.
+- R2: give-up zapre odprt try (`ended_at`, `duration_seconds` na strežniku, `outcome = 'abandoned'`) v isti transakciji kot `status = 'abandoned'`.
+- Frontend: besedilo okna Give up ("timer restarts" → čas teče naprej); timer z `previousSeconds`.
+- Končano, ko: start → try 1; odstop + start → try 2, try 1 zaprt s trajanjem; ponoven start brez odstopa ne ustvari novega; `previousSeconds` = vsota zaprtih; tuj poskus ne vpliva.
+- **Stanje:** `migrations/0007_attempt_tries.sql` (+ CHECK `outcome = 'in_progress'` ⇔ `ended_at IS NULL`, delni unikatni indeks `attempt_tries_one_open`, backfill: obstoječi = try 1, opuščen brez znanega trajanja = `NULL`). Start in give-up sta vsak **en SQL stavek** (CTE, atomarno) namesto transakcije; nov try se zazna z `started_at = now()`. Vzporedni starti po odstopu odprejo natanko en try (test). `Attempt` + `tryNumber`, `previousSeconds`; timer = `previousSeconds + (zdaj - startedAt)`, namig "Try N · Time limit"; besedilo okna Give up: čas teče naprej. Test `backend/test/r2b.test.js`; `r1.test.js` ob ročnem odstopu zapre tudi try. `01_database.md` posodobljen.
+
+**R3 · Izvajalnik v Dockerju** `L` · odvisno od: R1 · ✅ 8. 10. 2026
+- Naredi: `docker/` (ena osnovna slika Node - D54; izvedljiv je samo `payment-retries-disappear` - D53), servis `runChecks(problem, userFiles)`: ustvari kontejner → osnovne datoteke → uporabnikove datoteke → **skrite datoteke zadnje** (D10) → `setup_commands` → preverjanja po `check_order` → uniči kontejner.
 - Izolacija (`02`): brez omrežja (`--network none`, razen če problem zahteva), omejitev CPU/RAM/procesov, časovna omejitev na preverjanje in na celoto, brez dostopa do gostitelja, uporabnik ni root.
 - Validacija uporabnikovih datotek: samo poti znotraj projekta (brez `..`, absolutnih poti), omejitev velikosti in števila.
 - Ni endpointa - čist servis s testi.
 - Razdeli, če se zatakne: (a) kontejner + datoteke, (b) preverjanja + izhod, (c) omejitve in varnost.
 - Končano, ko: znan pokvarjen problem pade, popravljen uspe; poskus pisanja izven projekta zavrnjen; neskončna zanka prekinjena po času; kontejner ne ostane po koncu.
+- **Stanje:** `backend/src/modules/runner/runner.service.js`: `validateFiles` (relativne poti, brez `..`/`.`/praznih segmentov/`\`, ≤ 200 datotek, ≤ 200 KB na datoteko, ≤ 2 MB skupaj → 400 `INVALID_FILES`) in `runChecks(problem, userFiles)` → `[{ checkId, passed, output? }]` (`output` samo pri neuspehu, zadnjih 4000 znakov). Kontejner `docker run -d --rm` (`--network none`, 512 MB, 1 CPU, 128 procesov, `--read-only`, tmpfs `/workspace` 64 MB, uporabnik 1000, `--cap-drop ALL`, `no-new-privileges`, sam se odstrani po 300 s); datoteke po stdin kot JSON (brez priklopa map gostitelja), vrstni red problem → uporabnik → skrite (D10); vsak check `docker exec` z 20 s omejitvijo, ob izteku `kill -9 -1` v kontejnerju; `finally` → `docker rm -f`. Prehod = izhodna koda 0 (+ `expected_output`, če je nastavljen). Slika `config.runnerImage` = `node:24-alpine` (`RUNNER_IMAGE`). `seeds/0002_payment_retries_runnable.sql` (D53): `payment-retries-disappear` predelan za čisti Node 24 (TypeScript prek type stripping, `node:test`, lasten queue z vedenjem BullMQ namesto BullMQ/Redis) - hrošč: ponovni poskus uporabi `jobId = orderId`, medtem ko isti job še teče, zato ga queue zavrže; 6 skritih preverjanj v `.bugdr/checks/` + "Existing tests still pass"; pokvarjena koda pade 1, 5, 6, rešitev (`solution_files`) uspe vse. Test `backend/test/r3.test.js` (potrebuje Docker, sicer preskočen); `seed` izvožen iz `migrate.js`. **Odstopa od načrta:** brez mape `docker/` - uradna slika `node:24-alpine` zadošča (lastna slika, ko jo zahteva prvi problem z odvisnostmi); brez razdelitve (a)/(b)/(c). **Odprto:** incident log problema kaže `attempt=2`, `attempt=3`, nova koda pa po prvem neuspehu ne poskusi več (glej Nedoslednosti).
 
 **R4 · Test in rešitev** `L` · odvisno od: R3, F1 · ⬜
 - Naredi: `check_results`, `point_transactions`.
 - API: `POST /attempts/:id/test` `{ files }` → rezultat po preverjanju (`passed`, `output` samo pri neuspehu).
 - Če vsa `must_pass` uspejo - **ena transakcija:** `status = 'solved'`, `solved_at`, `time_taken_seconds` (strežnik), `time_bonus_multiplier`, `points_earned`, `final_code`, `lines_added/deleted` (diff proti izvirnim datotekam), vrstice v `point_transactions` (D15), `user_stats` (točke, nivo, `problems_solved`), `user_daily_activity` (`problems_solved`, `points_earned`), `problems.solve_count`.
+- Prikaz poskusov (uporabnik 8. 10. 2026): **samo kartica "Problem solved"** na `/problems/[slug]` - "Solved on try N · <skupni čas>" + seznam poskusov (npr. gave up after 25m, gave up after 31m, solved after 16m). `GET /problems/:slug` `result` dobi `tries: { tryNumber, outcome, durationSeconds }[]` iz `attempt_tries` (`SolveResult` v `types/problem.ts`). Drugje (stran pred rešitvijo, profil, admin) zaenkrat ne.
+- Čas za časovni bonus = **vsota vseh poskusov** (D56): zaprti `attempt_tries.duration_seconds` + trenutni; ob rešitvi se odprt try zapre z `outcome = 'solved'` v isti transakciji.
 - Formula v `03` je zdaj `base × time × efficiency_score`: R4 pred S3 računa z `efficiency = 1`, S3 doda faktor v isto transakcijo.
 - Čiste funkcije s testi: `timeMultiplier(seconds, limitMinutes)` (meje iz `03`: < 25 % → 2x, < 50 % → 1.5x, < 75 % → 1.25x, sicer 1x), `finalPoints` (zaokroženo).
 - Končano, ko: primer iz `03` (30 min, Medium, 8 min → 375; 6 min → 500); dvojni klik Test ne podeli točk dvakrat (zaklep vrstice poskusa); neuspel Test ne spremeni statusa; `SUM(point_transactions) = user_stats.total_points`.
@@ -379,7 +396,7 @@ polnijo s seed skripto.
 Čaka D51 (S1-S3) in D52 (S4). Frontend del S1/S2 je na mocku (Seja 12).
 
 **S1 · AI klepet** `M` · odvisno od: R1, D51 · ⬜
-- Naredi: `solve_sessions` (ena na poskus), `prompt_events`.
+- Naredi: `solve_sessions` (ena na poskus), `prompt_events`. Po D56 seja pripada **poskusu (try)**, ne samo attemptu: `solve_sessions.attempt_try_id` (ali agregat čez poskuse) - odloči ob rezini.
 - API: `POST /attempts/:id/ai/messages` `{ text, tool }` → strežnik pokliče Claude API (ključ samo v `backend/.env`), zapiše `prompt_events` (žetoni iz `usage` odgovora, ne ocena), posodobi števce v `solve_sessions`, vrne odgovor (pozneje SSE).
 - Frontend: `mockAskAi` (`src/lib/mock/aiChat.ts`) → API; števci v `useSessionTracker` iz odgovora.
 - Končano, ko: tuj ali zaključen poskus → 404/409; ključ ni nikoli v odgovoru; omejitev pozivov na poskus (D51) vrne 429; `total_prompts` = število vrstic `prompt_events`.
@@ -421,7 +438,7 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | `/dashboard` + stranska vrstica (`(app)/layout.tsx`) | `src/lib/mock/dashboard.ts`: `mockGetDashboard` (datumi relativni na zdaj), `MOCK_ME` (uporabnik, cilj, izkušnje), `MOCK_ACTIVE_CONTEST_COUNT`; sličice v `public/mock/` | U3, T1, U2, F4 | ⬜ |
 | `/problems` | ~~`mockGetProblems`~~ → `GET /problems` (P1), zaznamki → `PUT/DELETE /problems/:slug/bookmark` (D23); filtri/razvrščanje/drsenje ostanejo na odjemalcu. `mockGetProblems` še uporabljata mocka `profile.ts` in `adminContests.ts` | P1 | ✅ 8. 10. 2026 |
 | `/problems/[slug]` | ~~`mockGetProblem`~~ → `GET /problems/:slug` (P2, `serverFetch`); besedilo = `codebaseContext` + `incidentReport` (migracija 0006, seed iz `mock/problemBriefs.ts`). Ostane mock: ocena v `RateProblem` samo v stanju (O1), `mockGetComments` (O2; rešen problem brez mock komentarjev = prazna razprava) | P2 ✅, O1, O2 | 🟨 |
-| `/problems/[slug]/solve` | `src/lib/mock/attempts.ts`: `mockStartAttempt` (timer teče od zdaj, za `in_progress` od 18:42), `mockRunTests` (vnaprej določeni rezultati); koda v `mockCodebase` (`mock/problems.ts`); urejevalnik je `CodeEditorMock` (samo branje); split pane: opis (`ProblemOverview`) levo, urejevalnik desno, spodaj Terminal + Test Results; vsaka datoteka je zavihek, izbirnik jezika je samo prikaz; "Submit" = zagon preverjanj. Desno AI klepet (`AiChatPanel`): `src/lib/mock/aiChat.ts` - `mockAskAi` (1,5 s, 4 vnaprej napisani odgovori za payment-retries, ciklično za vse probleme), `AI_TOOLS`, `BENCHMARKS` (povprečje pozivov/žetonov po težavnosti); seja v `src/hooks/useSessionTracker.ts` (samo React stanje: pozivi, žetoni ≈ znaki/4, zagoni testov, dogodki); ocena učinkovitosti je groba primerjava z benchmarkom | R1, R2 (Give up), R4, R5 (terminal), R6, S1, S2, S3 (AI seja) | ⬜ |
+| `/problems/[slug]/solve` | ~~`mockStartAttempt`, `CodeEditorMock`~~ → `POST /problems/:slug/start` + Monaco (R1 ✅). Ostane: `src/lib/mock/attempts.ts` `mockRunTests` (vnaprej določeni rezultati); split pane: opis (`ProblemOverview`) levo, urejevalnik desno, spodaj Terminal + Test Results; vsaka datoteka je zavihek, izbirnik jezika je samo prikaz; "Submit" = zagon preverjanj. Desno AI klepet (`AiChatPanel`): `src/lib/mock/aiChat.ts` - `mockAskAi` (1,5 s, 4 vnaprej napisani odgovori za payment-retries, ciklično za vse probleme), `AI_TOOLS`, `BENCHMARKS` (povprečje pozivov/žetonov po težavnosti); seja v `src/hooks/useSessionTracker.ts` (samo React stanje: pozivi, žetoni ≈ znaki/4, zagoni testov, dogodki); ocena učinkovitosti je groba primerjava z benchmarkom | R1 ✅, R2 ✅ (Give up), R4, R5 (terminal), R6, S1, S2, S3 (AI seja) | 🟨 |
 | `/contests` | `src/lib/mock/contests.ts`: `mockGetContests` (live/upcoming/past + zgodovina uporabnika, datumi relativni na zdaj); prihajajoča tekmovanja brez težavnosti, oznak in sličice (T1); "View contest" vodi na `/contests/[id]` | T1, T2 | ⬜ |
 | `/contests/[id]` | `src/lib/mock/contests.ts`: `mockGetContest` (seznam + `DETAILS`: incident, ime repozitorija (D27), število preverjanj, nagrada, udeležba); problemi tekmovanj so obstoječi mock problemi, da "Enter contest" odpre delujoč zaslon reševanja | T1, T2 | ⬜ |
 | `/profile/[username]` | `src/lib/mock/profile.ts`: `mockGetProfile` (samo `max`, drugi → 404; 147 rešenih problemov, ciklično iz mock problemov; aktivnost 53 tednov = vsak tretji aktivni dan iz `mockActivity`; zgodovina tekmovanj iz `mockGetContests`); neskončno drsenje rešenih na odjemalcu | U1, U2, T2 | ⬜ |
@@ -450,6 +467,7 @@ Odprto:
 - **Točkovanje tekmovanj:** `03` "TBD" - za v1 velja D18 (enake točke kot redni problemi).
 - **`repository_structure`** je izpeljiv iz ključev `files` - verjetno odveč (odloči v R1). Zdaj (P2): JSON seznam poti, ki ga pokaže stran podrobnosti; seed ga zapiše iz ključev `files`.
 - **Nagrada poslana:** `04` "Admin marks reward as sent", stolpca ni (A7).
+- **Incident `payment-retries-disappear` vs. koda (R3, 8. 10. 2026):** log kaže `attempt=1..3` z `delay=30000ms`, izvedljiva koda pa po prvem neuspehu ponovni poskus izgubi (log: `gateway timeout attempt=1`, `retry scheduled delay=30000ms`, nato nič). Besedilo incidenta (`problemBriefs.ts` + seed 0001) je treba uskladiti - odloči uporabnik.
 
 ---
 - ~~`01_database.md` `user_profiles.goal_role` komentar je pisal `'ai_engineer'`~~ → popravljeno 8. 10. 2026 na `ai-engineer` (slug kategorije, F4).

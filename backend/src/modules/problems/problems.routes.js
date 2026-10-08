@@ -137,6 +137,67 @@ async function recordOpen(userId) {
   );
 }
 
+/**
+ * R1: one attempt per user and problem (UNIQUE). A new start inserts it; an attempt in progress comes back unchanged,
+ * so the timer keeps running; an abandoned one reopens with a new started_at (D8); a solved one never reopens.
+ * R2b (D56): a new or reopened attempt opens the next try in attempt_tries; previousSeconds = the closed tries, so the
+ * clock keeps counting across tries. One statement, so it is atomic.
+ * Files are the visible codebase only - never hidden_files, solution_files or check commands (D10).
+ */
+problemsRouter.post("/:slug/start", requireAuth, async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT p.id, p.slug, p.title, p.time_limit_minutes, cb.repository_name, cb.files,
+       coalesce((SELECT json_agg(json_build_object('id', k.id, 'checkOrder', k.check_order, 'description', k.description)
+         ORDER BY k.check_order) FROM problem_checks k WHERE k.problem_id = p.id), '[]') AS checks
+     FROM problems p JOIN problem_codebase cb ON cb.problem_id = p.id
+     WHERE p.slug = $1 AND p.is_published`,
+    [req.params.slug],
+  );
+  const p = rows[0];
+  if (!p) throw new HttpError(404, "PROBLEM_NOT_FOUND", "Problem not found");
+
+  // DO UPDATE always returns the row; only an abandoned attempt changes. started_at = now() marks a new try
+  // (a kept started_at is from an earlier transaction, so it never equals this one's now()).
+  const { rows: attempts } = await pool.query(
+    `WITH a AS (
+       INSERT INTO user_problem_attempts AS a (user_id, problem_id) VALUES ($1, $2)
+       ON CONFLICT (user_id, problem_id) DO UPDATE SET
+         started_at = CASE WHEN a.status = 'abandoned' THEN now() ELSE a.started_at END,
+         status = CASE WHEN a.status = 'abandoned' THEN 'in_progress' ELSE a.status END
+       RETURNING a.id, a.status, a.started_at, a.started_at = now()::timestamp AS new_try
+     ),
+     t AS (
+       INSERT INTO attempt_tries (attempt_id, try_number, started_at)
+       SELECT a.id, coalesce((SELECT max(try_number) FROM attempt_tries WHERE attempt_id = a.id), 0) + 1, a.started_at
+       FROM a WHERE a.new_try AND a.status = 'in_progress'
+       RETURNING try_number
+     )
+     SELECT a.id, a.status, a.started_at AT TIME ZONE 'UTC' AS started_at,
+       coalesce((SELECT try_number FROM t), (SELECT max(try_number) FROM attempt_tries WHERE attempt_id = a.id)) AS try_number,
+       coalesce((SELECT sum(duration_seconds) FROM attempt_tries WHERE attempt_id = a.id AND ended_at IS NOT NULL), 0)::int
+         AS previous_seconds
+     FROM a`,
+    [req.user.id, p.id],
+  );
+  const a = attempts[0];
+  if (a.status === "solved") throw new HttpError(409, "ALREADY_SOLVED", "You have already solved this problem");
+
+  res.json({
+    attempt: {
+      id: a.id,
+      problemSlug: p.slug,
+      problemTitle: p.title,
+      repositoryName: p.repository_name ?? "",
+      startedAt: a.started_at.toISOString(),
+      tryNumber: a.try_number,
+      previousSeconds: a.previous_seconds,
+      timeLimitMinutes: p.time_limit_minutes,
+      files: p.files,
+      checks: p.checks,
+    },
+  });
+});
+
 async function publishedId(slug) {
   const { rows } = await pool.query("SELECT id FROM problems WHERE slug = $1 AND is_published", [slug]);
   if (!rows[0]) throw new HttpError(404, "PROBLEM_NOT_FOUND", "Problem not found");

@@ -3,3 +3,5 @@
 .env.*
 !.env.example
 node_modules/
+
+/md_files/bug-dr-product-plan.md
