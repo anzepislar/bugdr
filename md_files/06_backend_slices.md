@@ -19,7 +19,7 @@ povezala na API.
 ```
 Zadnja posodobitev: 10. 10. 2026
 Backend: M9 ✅ (K1-K3), M8 ✅ (S1-S8), M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2), M6 ✅ (A1-A10 + A9.1)
-Frontend: 24 zaslonov (večina na API) - /login, /signup, /forgot-password, /onboarding, /dashboard,
+Frontend: 24 zaslonov (večina na API) - /login, /signup, /forgot-password, /onboarding, / (dashboard),
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit,
@@ -243,7 +243,7 @@ polnijo s seed skripto.
 - API: `PUT /me/onboarding` `{ goalRole, experienceLevel, platformGoal }` (dovoljene vrednosti iz `01`), `/auth/me` vrne `onboardingCompleted`.
 - Frontend: `/onboarding`; po prijavi preusmeritev na onboarding, dokler ni zaključen.
 - Končano, ko: neveljavna vrednost → 400; ponovna oddaja posodobi (ne podvoji).
-- **Stanje:** `migrations/0003_user_profiles.sql` (+ `languages`, D42). `goal_role` hrani slug kategorije (`ai-engineer`, …) kot `problem_categories.slug` in frontend (`01` popravljen 8. 10. 2026). `backend/src/modules/me/me.routes.js`: `PUT /me/onboarding` `{ goalRole (slug ali null, D41), experienceLevel, platformGoal, languages }` → 204, upsert po `user_id`. `auth.service.js`: `findUser` (users + `onboarding_completed`) in `toUser`; `/auth/me` in odgovor prijave vrneta `onboardingCompleted`. Dovoljene vrednosti so podvojene v backendu (komentar kaže na frontend tipe). Frontend: `/onboarding` shrani prek API-ja; prijava gre na `/onboarding`, dokler ni zaključen (tudi z `?next=`); proxy zaščitene strani (razen `/onboarding`) preusmeri na `/onboarding`. Javni `/dashboard` tega ne vsiljuje. Odjava je zdaj polno nalaganje `/login` (izbriše predpomnilnik usmerjevalnika s prednaloženimi stranmi računa - prej 404 v konzoli).
+- **Stanje:** `migrations/0003_user_profiles.sql` (+ `languages`, D42). `goal_role` hrani slug kategorije (`ai-engineer`, …) kot `problem_categories.slug` in frontend (`01` popravljen 8. 10. 2026). `backend/src/modules/me/me.routes.js`: `PUT /me/onboarding` `{ goalRole (slug ali null, D41), experienceLevel, platformGoal, languages }` → 204, upsert po `user_id`. `auth.service.js`: `findUser` (users + `onboarding_completed`) in `toUser`; `/auth/me` in odgovor prijave vrneta `onboardingCompleted`. Dovoljene vrednosti so podvojene v backendu (komentar kaže na frontend tipe). Frontend: `/onboarding` shrani prek API-ja; prijava gre na `/onboarding`, dokler ni zaključen (tudi z `?next=`); proxy zaščitene strani (razen `/onboarding`) preusmeri na `/onboarding`. Javni `/dashboard` tega ne vsiljuje. Odjava je zdaj polno nalaganje `/login` (izbriše predpomnilnik usmerjevalnika s prednaloženimi stranmi računa - prej 404 v konzoli). **10. 10. 2026:** odjava znova naloži trenutno stran (`window.location.reload()`); strani samo za račun proxy pošlje na prijavo.
 
 ### M1 - Problemi
 
@@ -631,7 +631,7 @@ Odprto:
 | `/login`, `/signup` | F2 |
 | `/forgot-password` | X5 (odloženo) |
 | `/onboarding` | F4 |
-| `/dashboard` | U3, T1 |
+| `/` (dashboard, prej `/dashboard`) | U3, T1 |
 | `/problems` | P1 |
 | `/problems/[slug]` | P2, R4 (rezultat + poskusi), O1, O2, S8 (povratna informacija) |
 | `/problems/[slug]/solve` | R1-R6 + R2b ✅, S1 ✅, S6 ✅, S2 ✅, S3 ✅ |

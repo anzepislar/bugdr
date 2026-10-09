@@ -2107,3 +2107,17 @@ sledljivost), `00` (Career Paths, pragovi, brezplačna raven), `03`, `04`,
 - Testi 203/203 (nov `k3.test.js`); lint + typecheck + build zelena.
   V brskalniku preverjeno pri 6 širinah z lokalno ustvarjeno admin sejo
   (brez poverilnic iz `.env`) in začasnimi podatki (odstranjeni).
+
+## 10. 10. 2026 — Seja 23: hitra popravka (odjava, dashboard na /)
+
+- **Odjava** (`useLogout` v `Session.tsx`): namesto na `/login` znova naloži
+  trenutno stran (polno nalaganje, predpomnilnik usmerjevalnika se še vedno
+  izbriše). Javne strani ostanejo odprte v gostujočem pogledu, strani samo
+  za račun proxy pošlje na prijavo (`?next=` vrne nazaj).
+- **Dashboard na `/`**: `src/app/(app)/dashboard/page.tsx` →
+  `src/app/(app)/page.tsx`, izbrisana privzeta Next.js stran `src/app/page.tsx`;
+  `/dashboard` → `/` trajna preusmeritev v `next.config.ts`. Povezave
+  (stranska vrstica, logotipi, solve stran, po onboardingu, privzeti `next`
+  po prijavi) kažejo na `/`. API `GET /dashboard` ostane.
+- Posodobljeni CLAUDE.md (tabela poti), 00 in 06.
+- Lint + typecheck + build zelena; v brskalniku ni preverjeno.

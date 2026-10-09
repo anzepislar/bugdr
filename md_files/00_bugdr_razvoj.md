@@ -68,7 +68,7 @@ bugdr/
 ```
 Phase: Backend slices (06_backend_slices.md) - frontend screens swap their mocks slice by slice
 Frontend: 24 screens; login, signup, logout, onboarding, /problems, /problems/[slug] (incl. rating and discussion),
-  the solve page, /profile/[username], /settings (profile tab), /dashboard, the sidebar, /contests, /contests/[id],
+  the solve page, /profile/[username], /settings (profile tab), / (dashboard), the sidebar, /contests, /contests/[id],
   /admin/login, /admin (overview), /admin/problems (+ new, edit), /admin/contests (+ new, edit, results inline)
   /admin/users (+ [id]), /admin/analytics, /admin/career-paths, /leaderboard and /career-paths use the real API,
   incl. the solve page's AI chat (M8)
@@ -289,7 +289,7 @@ PostgreSQL
 |------|-------|-------------|
 | Login / Signup | `/login` `/signup` `/forgot-password` | Standard auth + password reset request |
 | Onboarding | `/onboarding` | 4 steps after signup: role, experience, goal, languages |
-| Dashboard | `/dashboard` | Personalized feed + contests |
+| Dashboard | `/` (`/dashboard` redirects) | Personalized feed + contests |
 | Problems | `/problems` | Browse all problems |
 | Problem detail | `/problems/[slug]` | Codebase context + incident report + start |
 | Problem editor | `/problems/[slug]/solve` | Monaco + terminal + checks + AI chat |
