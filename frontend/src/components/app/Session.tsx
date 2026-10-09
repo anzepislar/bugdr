@@ -24,14 +24,13 @@ export function useLoginHref() {
 }
 
 /**
- * Clears the session cookie on the server, then loads /login as a full page: that drops the client router
- * cache, so no prefetched account page (or redirect to one) survives the logout.
+ * Clears the session cookie on the server, then reloads the current page as a full load: that drops the client
+ * router cache, so no prefetched account page survives the logout. Account-only pages go to login via the proxy.
  */
 export function useLogout() {
   return async () => {
     await api("/auth/logout", { method: "POST" }).catch(() => {});
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load is the point here
-    window.location.href = "/login";
+    window.location.reload();
   };
 }
 
