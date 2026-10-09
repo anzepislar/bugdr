@@ -3,13 +3,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Icon } from "@/components/Icon";
-import type { Difficulty, SavedProblem } from "@/lib/types/problem";
+import { CATEGORIES, type CategorySlug, type Difficulty, type SavedProblem } from "@/lib/types/problem";
 import { DifficultyBadge, ErrorMessage, Spinner, cardClass, primaryButton, secondaryButton } from "./shared";
 
 interface Props {
   title: string;
   difficulty: Difficulty;
   roleName: string;
+  careerPaths: CategorySlug[];
   tags: string[];
   checksCount: number;
   saving: boolean;
@@ -64,6 +65,11 @@ export function PublishStep(props: Props) {
           <DifficultyBadge difficulty={difficulty} />
           <span className="rounded border border-border px-2 py-0.5 text-xs font-medium text-muted">{roleName}</span>
         </div>
+        <p className="mt-3 text-sm text-muted">
+          {props.careerPaths.length
+            ? `Career paths: ${CATEGORIES.filter((c) => props.careerPaths.includes(c.slug)).map((c) => c.name).join(", ")} (not on /problems)`
+            : "General problem, shown on /problems"}
+        </p>
         {tags.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
             {tags.map((tag) => (

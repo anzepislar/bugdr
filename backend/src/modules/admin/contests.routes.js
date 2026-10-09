@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { pool } from "../../db.js";
 import { HttpError } from "../../errors.js";
+import { PATH_PROBLEM } from "../problems/problems.routes.js";
 
 // A6: contest management. The status is never stored (D43): starts_at NULL = draft, then scheduled / active / ended
 // from the dates. Drafts can be edited and deleted, scheduled contests edited or cancelled (back to a draft), ended
@@ -89,9 +90,12 @@ async function parseDraft(body) {
   if (!d.rewardType) d.rewardDescription = null;
 
   if (!details.problemSlugs && d.problemSlugs.length) {
-    // Only published problems can be part of a contest.
-    const { rows } = await pool.query("SELECT id, slug FROM problems WHERE slug = ANY($1) AND is_published", [d.problemSlugs]);
-    if (rows.length !== d.problemSlugs.length) details.problemSlugs = "Unknown or unpublished problem";
+    // Only published general problems can be part of a contest (K1: never a career path problem).
+    const { rows } = await pool.query(
+      `SELECT id, slug FROM problems p WHERE slug = ANY($1) AND is_published AND NOT ${PATH_PROBLEM}`,
+      [d.problemSlugs],
+    );
+    if (rows.length !== d.problemSlugs.length) details.problemSlugs = "Unknown, unpublished or career path problem";
     const ids = Object.fromEntries(rows.map((r) => [r.slug, r.id]));
     d.problemIds = d.problemSlugs.map((s) => ids[s]);
   }
@@ -151,7 +155,7 @@ adminContestsRouter.get("/problem-options", async (req, res) => {
   const { rows } = await pool.query(
     `SELECT p.slug, p.title, p.difficulty, c.slug AS category_slug
      FROM problems p JOIN problem_categories c ON c.id = p.category_id
-     WHERE p.is_published ORDER BY p.title`,
+     WHERE p.is_published AND NOT ${PATH_PROBLEM} ORDER BY p.title`,
   );
   res.json({ problems: rows.map((r) => ({ slug: r.slug, title: r.title, difficulty: r.difficulty, categorySlug: r.category_slug })) });
 });

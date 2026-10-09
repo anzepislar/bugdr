@@ -103,12 +103,15 @@ export function Workspace({
   incidentReport,
   checks,
   difficulty,
+  careerPath,
 }: {
   slug: string;
   codebaseContext: string;
   incidentReport: string;
   checks: string[];
   difficulty: Difficulty;
+  /** K2: the career path this problem is solved on (?path=); null = a general problem. */
+  careerPath: string | null;
 }) {
   const router = useRouter();
   const [attempt, setAttempt] = useState<Attempt | null>(null);
@@ -145,7 +148,10 @@ export function Workspace({
   const terminalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    api<{ attempt: Attempt }>(`/problems/${encodeURIComponent(slug)}/start`, { method: "POST" })
+    api<{ attempt: Attempt }>(`/problems/${encodeURIComponent(slug)}/start`, {
+      method: "POST",
+      ...(careerPath && { body: JSON.stringify({ careerPath }) }),
+    })
       .then(({ attempt: a }) => {
         setAttempt(a);
         // JSONB does not keep key order, so tabs are sorted by path.
@@ -157,7 +163,7 @@ export function Workspace({
         if (e instanceof ApiError && e.code === "ALREADY_SOLVED") router.replace(`/problems/${slug}`);
         else setStartError(e instanceof ApiError ? e.message : "Could not start the problem. Try again.");
       });
-  }, [slug, router]);
+  }, [slug, careerPath, router]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -364,7 +370,8 @@ export function Workspace({
     } catch {
       // Blocked storage: the draft key includes started_at, so a restart ignores it anyway.
     }
-    router.push(`/problems/${slug}`);
+    // K2: giving up a path problem ends it - the path assigns the next one.
+    router.push(careerPath ? "/career-paths" : `/problems/${slug}`);
   }
 
   return (

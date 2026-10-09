@@ -100,7 +100,7 @@ test("D44: scheduling needs a description, a problem and future dates in order; 
   assert.deepEqual(await details({ startsAt: at(-DAY), endsAt: at(DAY) }), { startsAt: "The start time must be in the future" });
   assert.deepEqual(await details({ startsAt: at(2 * DAY), endsAt: at(DAY) }), { endsAt: "The close time must be after the start time" });
   assert.deepEqual(await details({ startsAt: at(DAY), endsAt: null }), { startsAt: "Set both dates or neither" });
-  assert.deepEqual(await details({ problemSlugs: ["p-draft"] }), { problemSlugs: "Unknown or unpublished problem" });
+  assert.deepEqual(await details({ problemSlugs: ["p-draft"] }), { problemSlugs: "Unknown, unpublished or career path problem" });
   assert.deepEqual(await details({ rewardType: "points", rewardDescription: "" }), { rewardDescription: "Describe the reward" });
   assert.deepEqual(Object.keys(await details({ title: "", type: "yearly" })).sort(), ["title", "type"]);
 });

@@ -6,6 +6,7 @@ import { connectedKey, loadUserKey } from "../ai/apiKeys.js";
 import { chat, platformModel, systemPrompt } from "../ai/chat.service.js";
 import { feedback } from "../ai/feedback.service.js";
 import { requireAuth } from "../auth/auth.service.js";
+import { checkUnlock } from "../careerPaths/careerPaths.routes.js";
 import { runChecks, runTerminal, stopTerminal, validateFiles } from "../runner/runner.service.js";
 import { activeSeconds, efficiencyScore, finalPoints, lineChanges, pickBenchmark, timeMultiplier } from "../scoring/scoring.js";
 
@@ -60,7 +61,7 @@ attemptsRouter.post("/:id/test", async (req, res) => {
   const files = req.body?.files;
   validateFiles(files);
   const { rows } = await pool.query(
-    `SELECT a.status, p.id AS problem_id, p.base_points, p.difficulty, p.time_limit_minutes, cb.files, cb.hidden_files, cb.setup_commands,
+    `SELECT a.status, a.career_path, p.id AS problem_id, p.base_points, p.difficulty, p.time_limit_minutes, cb.files, cb.hidden_files, cb.setup_commands,
        coalesce((SELECT json_agg(json_build_object('id', k.id, 'checkOrder', k.check_order, 'command', k.check_command,
          'expectedOutput', k.expected_output, 'mustPass', k.must_pass) ORDER BY k.check_order)
          FROM problem_checks k WHERE k.problem_id = p.id), '[]') AS checks
@@ -224,6 +225,8 @@ async function solve(attemptId, userId, problem, finalCode) {
     await client.query("UPDATE problems SET solve_count = solve_count + 1 WHERE id = $1", [problem.problem_id]);
     await sessionTimes(client, attemptId);
     await updateBenchmark(client, problem.problem_id, attemptId, seconds);
+    // K2 (D66 e): a solve on a career path can open the path's next stage.
+    if (problem.career_path) await checkUnlock(client, userId, problem.career_path);
     await client.query("INSERT INTO solve_feedback (attempt_id) VALUES ($1) ON CONFLICT DO NOTHING", [attemptId]);
     // T2 (D18): a solve while the problem's contest is live adds its points to the entry; after ends_at it does not count.
     // Upsert: an attempt started before the contest went live has no entry yet.

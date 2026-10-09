@@ -26,6 +26,10 @@ Route: `/admin` — fully protected, redirects non-admins.
 2. Review: title, short description, codebase context + incident report (`02_problems.md` rules), tags, difficulty
    (AI suggestion marked), role, acceptance checks (3+). Time limit = low end of the recommended range (D45).
 3. Publish: Save as Draft, Run checks, Publish Problem.
+   Career paths (K1, built, D66): Review has a "Career paths" checkbox group (AI Engineer / Backend / Frontend /
+   Full Stack / Database), also on the edit page; none ticked = general problem on `/problems`. A path problem is
+   hidden from `/problems`, the dashboard feed and the contest problem picker; its difficulty is its stage in the
+   path. The Publish summary says where it goes, the problem list shows "Career path: …" under the title.
 - Source (github / claude_generated) + source URL: not built
 - The analysis also works with an OpenAI key (slice A9.1, done)
 
@@ -146,11 +150,16 @@ drop-off. The original list below is what it was based on.
 - Hardest problems (lowest solve rate)
 - Most popular categories
 
-**Career path metrics:** (planned, K2)
-- Engineers per path (AI, Backend, Frontend, etc.)
-- Stage distribution — how many at Easy vs Medium vs Hard vs Get a job
-- Average threshold pass rate per stage
-- Drop-off points — where engineers stop progressing
+**Career path metrics:** (built K3, on `/admin/career-paths`, not on this page)
+- Engineers per path (AI, Backend, Frontend, etc.) - per (engineer, path); the stat card counts distinct engineers
+- Stage distribution — how many at Easy vs Medium vs Hard vs Get a job (stacked bar per path)
+- Threshold pass rate per stage = engineers past the stage / engineers who reached it
+- Drop-off points — stuck = no solve on the path for 30 days (user, 10. 10. 2026), per stage, with the targets the
+  stuck engineers still miss ("blockers")
+
+**Career path thresholds (K3):** `/admin/career-paths` edits the unlock thresholds, the same for every path (user,
+10. 10. 2026): per stage min solves, efficiency ≥, prompts ≤, first run ≥ %, time bonus ≥ (empty = no time rule).
+A change applies from each engineer's next solve on a path.
 
 **Feedback metrics:** (S5, partly)
 - Average feedback rating: dropped - feedback is not rated (D65)

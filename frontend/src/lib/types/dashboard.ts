@@ -36,6 +36,8 @@ export type ContestType = "daily" | "weekly" | "monthly";
 
 export interface InProgressAttempt {
   problemSlug: string;
+  /** K2: a career path attempt resumes with ?path=. */
+  careerPath: CategorySlug | null;
   title: string;
   language: string;
   checksPassed: number;

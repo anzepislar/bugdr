@@ -16,8 +16,9 @@ const notSolved = () => new HttpError(403, "NOT_SOLVED", "Solve the problem to j
 /** The published problem and whether this user solved it (false for a guest). */
 async function problemFor(slug, userId) {
   const { rows } = await pool.query(
-    `SELECT p.id, coalesce(a.status = 'solved', false) AS solved FROM problems p
-     LEFT JOIN user_problem_attempts a ON a.problem_id = p.id AND a.user_id = $2
+    `SELECT p.id, EXISTS (SELECT 1 FROM user_problem_attempts a
+         WHERE a.problem_id = p.id AND a.user_id = $2 AND a.status = 'solved') AS solved
+     FROM problems p
      WHERE p.slug = $1 AND ${VISIBLE}`,
     [slug, userId],
   );

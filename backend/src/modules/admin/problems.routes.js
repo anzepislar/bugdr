@@ -45,6 +45,8 @@ function parseDraft(body) {
     checks: Array.isArray(body?.checks) ? body.checks : null,
     hiddenFiles: body?.hiddenFiles,
     bugSummary: typeof body?.bugSummary === "string" ? body.bugSummary : "",
+    // K1 (D66): the career paths it belongs to; none = a general problem on /problems. Missing = none.
+    careerPaths: body?.careerPaths === undefined ? [] : body.careerPaths,
   };
   const details = {};
   if (!d.title || d.title.length > 255) details.title = "1-255 characters";
@@ -78,6 +80,8 @@ function parseDraft(body) {
     Object.entries(d.hiddenFiles).some(([path, content]) => !safePath(path) || typeof content !== "string")
   )
     details.hiddenFiles = "An object of relative file paths to file contents";
+  if (!Array.isArray(d.careerPaths) || d.careerPaths.some((r) => typeof r !== "string")) details.careerPaths = "A list of roles";
+  else d.careerPaths = [...new Set(d.careerPaths)];
   if (Object.keys(details).length) throw new HttpError(400, "VALIDATION_ERROR", "Check the highlighted fields", details);
   return d;
 }
@@ -127,6 +131,11 @@ async function saveDraft(id, d, codebase = null) {
 
     await client.query("DELETE FROM problem_tags WHERE problem_id = $1", [problemId]);
     await client.query("INSERT INTO problem_tags (problem_id, tag) SELECT $1, unnest($2::text[])", [problemId, d.tags]);
+    await client.query("DELETE FROM problem_career_paths WHERE problem_id = $1", [problemId]);
+    await client.query("INSERT INTO problem_career_paths (problem_id, role) SELECT $1, unnest($2::text[])", [
+      problemId,
+      d.careerPaths,
+    ]);
     await client.query("DELETE FROM problem_checks WHERE problem_id = $1", [problemId]);
     await client.query(
       `INSERT INTO problem_checks (problem_id, check_order, description, check_type, check_command, must_pass)
@@ -174,18 +183,23 @@ async function saveDraft(id, d, codebase = null) {
       throw new HttpError(409, "SLUG_TAKEN", "A problem with this title already exists", {
         title: "Another problem already uses this title",
       });
+    if (err.code === "23503" && err.constraint === "problem_career_paths_role_fkey")
+      throw new HttpError(400, "VALIDATION_ERROR", "Check the highlighted fields", { careerPaths: "Unknown role" });
     throw err;
   } finally {
     client.release();
   }
 }
 
+const CAREER_PATHS = `coalesce((SELECT array_agg(cp.role ORDER BY cp.role) FROM problem_career_paths cp WHERE cp.problem_id = p.id),
+  '{}') AS career_paths`;
+
 // Every problem, drafts included, newest first. ponytail: no paging, the client filters (like /problems).
 adminProblemsRouter.get("/", async (req, res) => {
   const { rows } = await pool.query(
     `SELECT p.id, p.slug, p.title, p.difficulty, c.slug AS category_slug, p.is_published,
        (SELECT count(*)::int FROM user_problem_attempts a WHERE a.problem_id = p.id AND a.status = 'solved') AS solve_count,
-       p.average_rating::float AS average_rating, p.rating_count, p.created_at
+       p.average_rating::float AS average_rating, p.rating_count, p.created_at, ${CAREER_PATHS}
      FROM problems p LEFT JOIN problem_categories c ON c.id = p.category_id
      ORDER BY p.created_at DESC, p.title`,
   );
@@ -201,6 +215,7 @@ adminProblemsRouter.get("/", async (req, res) => {
       averageRating: r.average_rating,
       ratingCount: r.rating_count,
       createdAt: r.created_at,
+      careerPaths: r.career_paths,
     })),
   });
 });
@@ -210,7 +225,7 @@ adminProblemsRouter.get("/:id", async (req, res) => {
   if (!UUID.test(req.params.id)) throw notFound();
   const { rows } = await pool.query(
     `SELECT p.*, c.slug AS category_slug, coalesce(cb.hidden_files, '{}') AS hidden_files, cb.repository_name,
-       coalesce(cb.repository_structure, '[]') AS paths, coalesce(p.dry_run_passed_for = p.updated_at, false) AS checks_verified,
+       coalesce(cb.repository_structure, '[]') AS paths, ${CAREER_PATHS}, coalesce(p.dry_run_passed_for = p.updated_at, false) AS checks_verified,
        coalesce((SELECT array_agg(t.tag ORDER BY t.tag) FROM problem_tags t WHERE t.problem_id = p.id), '{}') AS tags,
        coalesce((SELECT json_agg(json_build_object('id', k.id, 'checkOrder', k.check_order, 'description', k.description,
            'checkType', k.check_type, 'checkCommand', k.check_command, 'mustPass', k.must_pass) ORDER BY k.check_order)
@@ -239,6 +254,7 @@ adminProblemsRouter.get("/:id", async (req, res) => {
       checks: r.checks,
       hiddenFiles: r.hidden_files,
       bugSummary: r.bug_summary,
+      careerPaths: r.career_paths,
       // A3: the code is shown as its file list only; it changes by uploading a new ZIP.
       repositoryName: r.repository_name,
       paths: r.paths,

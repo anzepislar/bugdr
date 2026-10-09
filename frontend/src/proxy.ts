@@ -62,6 +62,7 @@ async function adminProxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/problems/:slug/solve",
+    "/career-paths",
     "/settings",
     "/onboarding",
     "/admin/:path*",

@@ -2028,3 +2028,82 @@ build; v brskalniku kot gost 320-2560 px brez vodoravnega drsenja
 Preverjeno: backend testi 185/185 (+5 S5); frontend lint, typecheck,
 build. Zaslon ni preverjen v brskalniku (admin poverilnice so samo v
 `backend/.env`).
+
+## 9. 10. 2026 — Seja 22: priprava M9 karierne poti (samo dokumentacija)
+
+Uporabnik je popravil moje razumevanje kariernih poti in odločil D66 in D67
+(zapisano v `06` "Odločitve"):
+
+- **D66**: vsaka pot (5 vlog) ima **svoj nabor problemov** od Easy do Get a
+  job; problemi poti **niso na `/problems`**. Admin ob objavi izbere
+  "General" ali eno ali več poti. Uporabnik sme na **poljubno poti hkrati**,
+  vsaka ima svoj napredek. Pot dodeli **en problem naenkrat** (najstarejši
+  nerešeni na stopnji, brez izbire). Pragovi od uporabnika (Easy→Medium:
+  5 rešitev, ocena ≥ 1,2, pozivi ≤ 10, prvi zagon ≥ 40 %; Medium→Hard: 5,
+  1,4, 7, 50 %, časovni množitelj ≥ 1,25; Hard→Get a job: 3, 1,6, 5, 60 %,
+  ≥ 1,5), povprečja iz **zadnjih 5 rešitev** stopnje (Hard 3). Izčrpan
+  nabor → problemi se vrnejo **po 3 mesecih**, ponovna rešitev spet da
+  točke. Rešitve so **ločene po poti**. Strani `/career-paths` +
+  `/career-paths/[role]`.
+- **D67**: v razvoju je vse odprto vsem; karierne poti in AI povratna
+  informacija gredo pozneje za plačilni zid (X2).
+
+M9 na novo razrezan: **K1** problemi poti v adminu, **K2** napredek,
+dodelitev, odklep in strani, **K3** pragovi in metrike v adminu. Posodobljeni
+`06` (D66, D67, spremembe sheme `problem_career_paths`,
+`user_problem_attempts.career_path`, `career_path_progress`, M9, X2,
+sledljivost), `00` (Career Paths, pragovi, brezplačna raven), `03`, `04`,
+`CLAUDE.md` (poti, poslovna pravila, stanje). Koda ni spremenjena.
+
+### K1 problemi poti v adminu ✅
+
+- Migracija **0023** `problem_career_paths (problem_id, role)`, vloga = FK na
+  `problem_categories.slug`; problem z vsaj eno vrstico = problem poti.
+- Osnutek sprejme `careerPaths` (manjka = brez poti, neznana vloga → 400),
+  `GET /admin/problems` in `/:id` ga vrneta.
+- Problemi poti niso v `GET /problems`, feedu dashboarda (skupen pogoj
+  `LISTED`) in izbiri problemov tekmovanj; tekmovanje s problemom poti → 400.
+- Frontend: kljukice "Career paths" na obrazcu Review (zato tudi na strani
+  urejanja), povzetek Publish pove, kam gre problem, seznam
+  `/admin/problems` pokaže "Career path: …".
+- Odstopanje od načrta: izbira je na Review in ne na koraku Publish - ena
+  komponenta za nov problem in urejanje.
+- Testi 189/189 (nov `k1.test.js`), lint + typecheck + build zelena.
+  V brskalniku ni preverjeno (admin prijava rabi poverilnice iz `.env`).
+- Odprto za K2: stran `/problems/[slug]` problema poti je še dosegljiva po
+  slugu in Start deluje - K2 doda dodelitev in 403.
+
+### K2 karierna pot, dodelitev in odklep ✅ (10. 10. 2026)
+
+- Uporabnik: **ena stran `/career-paths` s harmoniko** namesto ločene strani
+  na pot (strani bi bile skoraj prazne); vrstica se razpre v stopnje,
+  napredek do pragov in naslednji problem. Pot `/career-paths/[role]` odpade.
+- Migracija **0024**: `user_problem_attempts.career_path` + delna unikatna
+  indeksa (splošni problem enkrat, na poti en odprt poskus),
+  `career_path_progress`.
+- Pragovi v `careerPaths.js` (čista funkcija, zadnjih 5 / Hard 3 rešitev),
+  dodelitev (najstarejši nezaključen, rotacija po 3 mesecih) in odklep v
+  transakciji rešitve.
+- Start problema poti samo z `careerPath` in samo dodeljenega (403
+  `PATH_PROBLEM` / `NOT_ASSIGNED`); podrobnosti berejo zadnji poskus.
+- Frontend: stran s harmoniko (`<details>`), "Career paths" v stranski
+  vrstici, `?path=` na zaslonu reševanja, povezave Resume (dashboard,
+  podrobnosti), Give up na poti → `/career-paths`.
+- Testi 199/199 (nova `k2-thresholds.test.js`, `k2.test.js` z enim pravim
+  reševanjem v Dockerju); lint + typecheck + build zelena. V brskalniku pri
+  320 / 390 / 768 / 1024 / 1440 / 2560 px brez vodoravnega drsenja; pri 320
+  popravljeni odrezani napisi. Začasni podatki v razvojni bazi odstranjeni.
+
+### K3 pragovi in metrike v adminu ✅ (10. 10. 2026) - M9 končan
+
+- Uporabnik: nova stran `/admin/career-paths`, pragovi enaki za vse poti,
+  obstal = brez rešitve na poti 30 dni.
+- Migracija **0025** `career_path_thresholds` (seme = vrednosti D66);
+  konstante v kodi odstranjene, prag se bere iz baze ob vsakem preverjanju.
+- `GET /admin/career-paths` (kartice, porazdelitev po stopnjah, prehodnost,
+  obstali + blokatorji), `PUT /admin/career-paths/thresholds`.
+- Stran: kartice, zložene vrstice po poteh, tabela prehodnosti, obrazec
+  pragov z napakami ob polju.
+- Testi 203/203 (nov `k3.test.js`); lint + typecheck + build zelena.
+  V brskalniku preverjeno pri 6 širinah z lokalno ustvarjeno admin sejo
+  (brez poverilnic iz `.env`) in začasnimi podatki (odstranjeni).

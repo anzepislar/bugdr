@@ -55,8 +55,11 @@ export default async function ProblemPage({
       {result ? (
         <SolvedSummary problem={problem} result={result} />
       ) : (
-        <Link href="/problems" className="inline-flex items-center gap-1.5 text-sm text-action hover:underline">
-          <Icon name="arrowLeft" className="h-4 w-4" /> All problems
+        <Link
+          href={problem.isPathProblem ? "/career-paths" : "/problems"}
+          className="inline-flex items-center gap-1.5 text-sm text-action hover:underline"
+        >
+          <Icon name="arrowLeft" className="h-4 w-4" /> {problem.isPathProblem ? "Career paths" : "All problems"}
         </Link>
       )}
 
@@ -188,7 +191,7 @@ function SolvedSummary({ problem, result }: { problem: ProblemDetail; result: So
           <p className="mt-2 text-lg text-muted">{problem.title}</p>
         </div>
         <Link
-          href="/problems"
+          href={problem.isPathProblem ? "/career-paths" : "/problems"}
           className="flex shrink-0 items-center justify-center gap-2 rounded bg-action px-6 py-2.5 text-sm font-medium text-canvas hover:opacity-90 sm:w-48 sm:justify-start"
         >
           Next problem <Icon name="arrowRight" className="h-4 w-4" />
@@ -200,7 +203,9 @@ function SolvedSummary({ problem, result }: { problem: ProblemDetail; result: So
         <div>
           <p className="text-lg font-semibold text-text">Your result has been recorded.</p>
           <p className="mt-2 text-sm text-action">
-            This problem is complete. Your time and score cannot be improved by retrying.
+            {problem.isPathProblem
+              ? "This solve counts toward your career path. Your next problem is waiting on the path."
+              : "This problem is complete. Your time and score cannot be improved by retrying."}
           </p>
         </div>
       </div>
@@ -262,6 +267,24 @@ function StartCard({ problem, signedIn }: { problem: ProblemDetail; signedIn: bo
   const buttonClass =
     "mt-6 flex w-full items-center justify-center gap-2 rounded bg-action px-4 py-2.5 text-sm font-medium text-canvas hover:opacity-90 sm:w-fit sm:px-6 lg:w-full lg:justify-start lg:px-4";
 
+  // K2 (D66 d): a path problem is started from its path; only an attempt in progress resumes here.
+  if (problem.isPathProblem && !(problem.status === "in_progress" && problem.careerPath)) {
+    return (
+      <section className="rounded border border-border bg-surface p-6">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-text">
+          <Icon name="stairs" className="h-5 w-5 text-muted" /> Career path problem
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted">
+          This problem is assigned on a career path. Open Career paths to see your next problem.
+        </p>
+        <Link href="/career-paths" className={buttonClass}>
+          Career paths <Icon name="arrowRight" className="h-4 w-4" />
+        </Link>
+      </section>
+    );
+  }
+  const href = problem.isPathProblem ? `${solveHref}?path=${problem.careerPath}` : solveHref;
+
   return (
     <section className="rounded border border-border bg-surface p-6 md:grid md:grid-cols-[minmax(0,1fr)_240px] md:gap-8 lg:block">
       <div>
@@ -273,7 +296,7 @@ function StartCard({ problem, signedIn }: { problem: ProblemDetail; signedIn: bo
             A codebase, terminal and {problem.checks.length} checks are ready in your workspace.
           </p>
           {signedIn ? (
-            <Link href={solveHref} className={buttonClass}>
+            <Link href={href} className={buttonClass}>
               {problem.status === "in_progress" ? "Resume problem" : "Start problem"}{" "}
               <Icon name="arrowRight" className="h-4 w-4" />
             </Link>

@@ -105,6 +105,8 @@ export interface ProblemForm {
   tags: string[];
   difficulty: Difficulty;
   categorySlug: CategorySlug | null;
+  /** K1 (D66): the career paths it belongs to; empty = a general problem on /problems. */
+  careerPaths: CategorySlug[];
   timeLimitMinutes: number;
   thumbnail: File | null;
 }
@@ -122,6 +124,7 @@ export interface AdminProblemDraft {
   checks: Check[];
   hiddenFiles: Record<string, string>;
   bugSummary: string;
+  careerPaths: CategorySlug[];
 }
 
 /** GET /admin/problems/:id - a draft (or published problem) as the edit form needs it. */
@@ -149,6 +152,7 @@ export interface AdminProblemListItem {
   averageRating: number;
   ratingCount: number;
   createdAt: string;
+  careerPaths: CategorySlug[];
 }
 
 export interface SavedProblem {
@@ -195,6 +199,10 @@ export interface ProblemDetail extends ProblemListItem {
   checks: string[];
   /** D27: `name` has no column yet; `files` are the paths of repository_structure. */
   repository: { name: string; stack: string[]; files: string[] };
+  /** K2 (D66): a career path problem starts only from its path (not on /problems). */
+  isPathProblem: boolean;
+  /** The path of the user's latest attempt; null for a general problem or no attempt. */
+  careerPath: CategorySlug | null;
   /** The user's solved attempt; null unless `status` is "solved". */
   result: SolveResult | null;
 }
@@ -264,5 +272,6 @@ export function toAdminProblemDraft(
     checks: checks.map((c, i) => ({ ...c, checkOrder: i + 1 })),
     hiddenFiles,
     bugSummary,
+    careerPaths: form.careerPaths,
   };
 }

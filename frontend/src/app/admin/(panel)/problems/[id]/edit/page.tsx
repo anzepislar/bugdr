@@ -44,6 +44,7 @@ export default function EditProblemPage() {
           tags: p.tags,
           difficulty: p.difficulty,
           categorySlug: p.categorySlug,
+          careerPaths: p.careerPaths,
           timeLimitMinutes: p.timeLimitMinutes,
           thumbnail: null,
         });

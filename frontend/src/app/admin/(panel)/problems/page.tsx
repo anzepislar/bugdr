@@ -12,6 +12,8 @@ const TABS = { all: "All", published: "Published", draft: "Drafts" } as const;
 type Tab = keyof typeof TABS;
 
 const inTab = (p: AdminProblemListItem, tab: Tab) => tab === "all" || p.isPublished === (tab === "published");
+const pathNames = (p: AdminProblemListItem) =>
+  CATEGORIES.filter((c) => p.careerPaths.includes(c.slug)).map((c) => c.name).join(", ");
 const roleName = (p: AdminProblemListItem) => CATEGORIES.find((c) => c.slug === p.categorySlug)?.name ?? "No role";
 const rating = (p: AdminProblemListItem) => (p.ratingCount ? `${p.averageRating.toFixed(1)} (${p.ratingCount})` : "—");
 
@@ -111,6 +113,7 @@ export default function AdminProblemsPage() {
               <tr key={p.id} className="border-b border-border align-top">
                 <td className="px-3 py-4 sm:px-4">
                   <p className="break-words text-[15px] text-text">{p.title}</p>
+                  {p.careerPaths.length > 0 && <p className="mt-1 text-xs text-muted">Career path: {pathNames(p)}</p>}
                   {/* Columns hidden at this width move here. */}
                   <p className="mt-1.5 text-xs text-muted lg:hidden">
                     <span className="md:hidden">

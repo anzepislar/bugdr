@@ -15,6 +15,7 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/admin/contests", label: "Contests", icon: "trophy" },
   { href: "/admin/users", label: "Users", icon: "user" },
   { href: "/admin/analytics", label: "Analytics", icon: "ranking" },
+  { href: "/admin/career-paths", label: "Career paths", icon: "stairs" },
 ];
 
 const CRUMB: [RegExp, string][] = [

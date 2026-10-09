@@ -165,7 +165,7 @@ function ResumeBanner({ attempt, now }: { attempt: InProgressAttempt; now: numbe
         </p>
       </div>
       <Link
-        href={`/problems/${attempt.problemSlug}/solve`}
+        href={`/problems/${attempt.problemSlug}/solve${attempt.careerPath ? `?path=${attempt.careerPath}` : ""}`}
         className="inline-flex items-center justify-center gap-2 rounded bg-action px-8 py-2.5 text-sm font-semibold text-canvas hover:opacity-90"
       >
         <span aria-hidden>▶</span> Resume

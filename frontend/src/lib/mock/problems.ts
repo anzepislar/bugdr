@@ -180,7 +180,7 @@ export async function mockGetProblems(): Promise<ProblemListItem[]> {
   return PROBLEMS;
 }
 
-type DetailFields = Omit<ProblemDetail, keyof ProblemListItem | "result">;
+type DetailFields = Omit<ProblemDetail, keyof ProblemListItem | "result" | "isPathProblem" | "careerPath">;
 
 // problem_codebase.files of the mock problems. README.md is added from the codebase context.
 const CODEBASES: Record<string, Record<string, string>> = {
@@ -398,7 +398,7 @@ export async function mockGetProblem(slug: string): Promise<ProblemDetail | null
   const detail = DETAILS[slug] ?? genericDetail(p);
   const solved = p.status === "solved" ? RESULTS[slug] : undefined;
   const result = solved ? { ...solved, checksPassed: detail.checks.length, checksTotal: detail.checks.length } : null;
-  return { ...p, ...detail, result };
+  return { ...p, ...detail, result, isPathProblem: false, careerPath: null };
 }
 
 /** problem_codebase.files of a mock problem; README.md is the codebase context (never the incident or a hint). */

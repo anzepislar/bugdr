@@ -63,6 +63,7 @@ function AddProblemFlow({ onReset }: { onReset: () => void }) {
       tags: result.tags,
       difficulty: result.suggestedDifficulty,
       categorySlug: null,
+      careerPaths: [],
       timeLimitMinutes: 0,
       thumbnail: null,
     });
@@ -130,6 +131,7 @@ function AddProblemFlow({ onReset }: { onReset: () => void }) {
             title={form.title.trim()}
             difficulty={form.difficulty}
             roleName={CATEGORIES.find((c) => c.slug === form.categorySlug)?.name ?? ""}
+            careerPaths={form.careerPaths}
             tags={form.tags}
             checksCount={checks.length}
             saving={saving}

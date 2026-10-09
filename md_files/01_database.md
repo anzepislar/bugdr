@@ -31,6 +31,7 @@ problems
   └── problem_tags
   └── problem_codebase     (the actual files)
   └── problem_checks       (automated tests)
+  └── problem_career_paths (K1: the career paths it belongs to)
   └── problem_ratings
   └── problem_comments
         └── comment_helpful
@@ -244,6 +245,19 @@ CREATE TABLE problem_checks (
 `problem_codebase`, `problem_checks`, `problem_ratings`, `problem_comments` and `user_daily_activity` are built in P2
 (`migrations/0005_problem_detail.sql`, D49); their logic comes in R1, O1, O2.
 
+### problem_career_paths
+The career paths a problem belongs to (K1, D66, `migrations/0023_problem_career_paths.sql`). A problem with at least
+one row is a path problem: not on `/problems`, in the dashboard feed or the contest picker. No rows = general problem.
+Set on the admin Review form (and the edit page), saved with the draft.
+
+```sql
+CREATE TABLE problem_career_paths (
+  problem_id UUID NOT NULL REFERENCES problems(id) ON DELETE CASCADE,
+  role       VARCHAR(100) NOT NULL REFERENCES problem_categories(slug),  -- 'backend', 'ai-engineer', ...
+  PRIMARY KEY (problem_id, role)
+);
+```
+
 ---
 
 ## Problem Solving
@@ -266,11 +280,50 @@ CREATE TABLE user_problem_attempts (
   lines_added             INTEGER DEFAULT 0,
   lines_deleted           INTEGER DEFAULT 0,
   final_code              JSONB,   -- snapshot of files on solve
-  UNIQUE(user_id, problem_id)      -- enforced at DB level: solve once only
+  career_path             VARCHAR(100) REFERENCES problem_categories(slug)  -- K2: NULL = general problem
+);
+-- K2 (migration 0024): solve once only for general problems; a path has one open attempt at a time.
+CREATE UNIQUE INDEX user_problem_attempts_general_key ON user_problem_attempts (user_id, problem_id)
+  WHERE career_path IS NULL;
+CREATE UNIQUE INDEX user_problem_attempts_path_open_key ON user_problem_attempts (user_id, career_path)
+  WHERE career_path IS NOT NULL AND status = 'in_progress';
+```
+
+Table built in P1 (D49) for the card status; start/solve logic comes in R1-R4. A career path problem (K2, D66) has
+one row per assignment on each path: it can be solved again 3 months after it was last finished there, and a solve on
+one path does not count on another.
+
+### career_path_thresholds
+The unlock thresholds, the same for every path (K3, `migrations/0025_career_path_thresholds.sql`), edited on
+`/admin/career-paths`; seeded with the D66 values. Read on every unlock check and on `GET /career-paths`.
+
+```sql
+CREATE TABLE career_path_thresholds (
+  stage           VARCHAR(20) PRIMARY KEY CHECK (stage IN ('easy', 'medium', 'hard')),  -- the stage being left
+  solves          INTEGER NOT NULL CHECK (solves BETWEEN 1 AND 50),       -- minimum solves = averaging window
+  efficiency      DECIMAL(3,2) NOT NULL CHECK (efficiency BETWEEN 0.5 AND 2.0),
+  prompts         DECIMAL(5,1) NOT NULL CHECK (prompts > 0 AND prompts <= 100),
+  first_run       DECIMAL(3,2) NOT NULL CHECK (first_run BETWEEN 0 AND 1),
+  time_multiplier DECIMAL(3,2) CHECK (time_multiplier BETWEEN 1 AND 2),  -- NULL = no time rule
+  updated_at      TIMESTAMP NOT NULL DEFAULT now()
 );
 ```
 
-Table built in P1 (D49) for the card status; start/solve logic comes in R1-R4.
+### career_path_progress
+The user's stage per career path (K2, D66, `migrations/0024_career_path_progress.sql`). The row appears on the first
+start in that path; no row = Easy, not started. The threshold averages are not stored: they are read from the last
+solves on the stage (last 5, Hard 3).
+
+```sql
+CREATE TABLE career_path_progress (
+  user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role              VARCHAR(100) NOT NULL REFERENCES problem_categories(slug),
+  current_stage     VARCHAR(20) NOT NULL DEFAULT 'easy' CHECK (current_stage IN ('easy', 'medium', 'hard', 'get_a_job')),
+  started_at        TIMESTAMP NOT NULL DEFAULT now(),
+  stage_unlocked_at TIMESTAMP,
+  PRIMARY KEY (user_id, role)
+);
+```
 
 ### attempt_tries
 Every try at a problem (R2b, D56). Giving up closes the open try; starting again opens the next one.
@@ -315,7 +368,7 @@ Built in R4 (migration 0008): one row per check on every Test run.
 
 ## AI Session Tracking
 
-`solve_sessions` + `prompt_events` built in S1 (migration 0018), `editor_events` in S2 (migration 0020); session counters from S2: test runs, passed on first run and iterations on every Submit, time to first prompt / on description on solve (milestone M8 in `06_backend_slices.md`). `user_api_keys` built in S6 (migration 0019). `problem_benchmarks` built in S7 (migration 0021). `solve_feedback` built in S8 (migration 0022). Also planned (not described here yet, see `06` "Spremembe sheme"): `career_path_progress` (K1). They are added to this file when the slice builds them.
+`solve_sessions` + `prompt_events` built in S1 (migration 0018), `editor_events` in S2 (migration 0020); session counters from S2: test runs, passed on first run and iterations on every Submit, time to first prompt / on description on solve (milestone M8 in `06_backend_slices.md`). `user_api_keys` built in S6 (migration 0019). `problem_benchmarks` built in S7 (migration 0021). `solve_feedback` built in S8 (migration 0022). Also planned (not described here yet, see `06` "Spremembe sheme"): `career_path_progress` and `user_problem_attempts.career_path` (built in K2, migration 0024). They are added to this file when the slice builds them.
 
 ### solve_sessions
 One session per solve attempt, across all its tries (like the solve time, D56). Tracks the full AI interaction.

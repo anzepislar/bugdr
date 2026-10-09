@@ -209,7 +209,7 @@ Built in U1 (`GET /users/:username`): total points, level, problems solved, curr
 activity grid (U2) and the solved list. The other rows are not shown on the profile screen yet (no design). The AI
 rows (average prompts / tokens, efficiency rating, favourite model, first-run pass rate) have their data since M8 but
 are deferred: no design and no thresholds for the efficiency rating yet. Feedback history: each solved problem in
-the profile links to its page, where the owner sees the feedback (S8). Career path progress waits for M9 (K1).
+the profile links to its page, where the owner sees the feedback (S8). Career path progress lives on `/career-paths` (M9, K2), not on the profile.
 
 | Stat | Description |
 |------|-------------|
@@ -225,5 +225,5 @@ the profile links to its page, where the owner sees the feedback (S8). Career pa
 | Efficiency rating | Intern / Efficient / Expert / Elite (from average `efficiency_score`) |
 | Favorite AI tool | Most used `prompt_events.ai_tool` |
 | First-run pass rate | Share of solves with `tests_passed_on_first_run` |
-| Career path progress | Current stage per role path + problems remaining to next threshold |
+| Career path progress | Current stage per role path + progress to the next threshold (shown on `/career-paths`, K2) |
 | Feedback history | All post-solve feedback reports accessible from profile |

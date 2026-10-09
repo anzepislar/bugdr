@@ -2,6 +2,7 @@ import { Router } from "express";
 import { pool } from "../../db.js";
 import { HttpError } from "../../errors.js";
 import { optionalAuth, requireAuth } from "../auth/auth.service.js";
+import { nextProblem, stageOf } from "../careerPaths/careerPaths.routes.js";
 
 export const problemsRouter = Router();
 
@@ -9,7 +10,9 @@ export const problemsRouter = Router();
 // Drafts (no dates) hide nothing. Both expect the problem aliased as p.
 const inContest = (when) =>
   `EXISTS (SELECT 1 FROM contest_problems cp JOIN contests ct ON ct.id = cp.contest_id WHERE cp.problem_id = p.id AND ${when})`;
-const LISTED = `p.is_published AND NOT ${inContest("ct.ends_at > now()")}`;
+// K1 (D66): a career path problem is only reached through its path, never listed.
+export const PATH_PROBLEM = "EXISTS (SELECT 1 FROM problem_career_paths pcp WHERE pcp.problem_id = p.id)";
+const LISTED = `p.is_published AND NOT ${inContest("ct.ends_at > now()")} AND NOT ${PATH_PROBLEM}`;
 export const VISIBLE = `p.is_published AND NOT ${inContest("ct.starts_at > now()")}`;
 
 // ponytail: the whole published list in one response, the client filters and pages it (no pagination in v1, 06).
@@ -69,11 +72,14 @@ problemsRouter.get("/:slug", optionalAuth, async (req, res) => {
        a.time_bonus_multiplier::float AS time_multiplier, r.rating AS my_rating,
        (SELECT ss.efficiency_score::float FROM solve_sessions ss WHERE ss.attempt_id = a.id) AS efficiency_score,
        (SELECT json_agg(json_build_object('tryNumber', t.try_number, 'outcome', t.outcome, 'durationSeconds', t.duration_seconds)
-          ORDER BY t.try_number) FROM attempt_tries t WHERE t.attempt_id = a.id) AS tries
+          ORDER BY t.try_number) FROM attempt_tries t WHERE t.attempt_id = a.id) AS tries,
+       ${PATH_PROBLEM} AS path_problem, a.career_path
      FROM problems p
      JOIN problem_categories c ON c.id = p.category_id
      LEFT JOIN problem_codebase cb ON cb.problem_id = p.id
-     LEFT JOIN user_problem_attempts a ON a.problem_id = p.id AND a.user_id = $2
+     -- K2: a path problem can have one attempt per assignment; the latest one is the problem's state.
+     LEFT JOIN LATERAL (SELECT * FROM user_problem_attempts a WHERE a.problem_id = p.id AND a.user_id = $2
+       ORDER BY a.started_at DESC LIMIT 1) a ON TRUE
      LEFT JOIN problem_bookmarks b ON b.problem_id = p.id AND b.user_id = $2
      LEFT JOIN problem_ratings r ON r.problem_id = p.id AND r.user_id = $2
      WHERE p.slug = $1 AND ${VISIBLE}`,
@@ -100,6 +106,9 @@ problemsRouter.get("/:slug", optionalAuth, async (req, res) => {
       codebaseContext: r.codebase_context,
       incidentReport: r.incident_report,
       solveCount: r.solve_count,
+      // K2 (D66): a path problem is started from its path; careerPath = the path of the latest attempt.
+      isPathProblem: r.path_problem,
+      careerPath: r.career_path,
       commentCount: r.comment_count,
       checks: r.checks,
       // D27: stack = language + framework + tags.
@@ -162,44 +171,29 @@ async function recordOpen(userId) {
  * so the timer keeps running; an abandoned one reopens with a new started_at (D8); a solved one never reopens.
  * R2b (D56): a new or reopened attempt opens the next try in attempt_tries; previousSeconds = the closed tries, so the
  * clock keeps counting across tries. One statement, so it is atomic.
+ * K2 (D66): a career path problem starts only with { careerPath } and only when it is the path's assigned problem.
  * Files are the visible codebase only - never hidden_files, solution_files or check commands (D10).
  */
 problemsRouter.post("/:slug/start", requireAuth, async (req, res) => {
+  const careerPath = req.body?.careerPath ?? null;
+  if (careerPath !== null && typeof careerPath !== "string")
+    throw new HttpError(400, "VALIDATION_ERROR", "careerPath must be a role");
   const { rows } = await pool.query(
-    `SELECT p.id, p.slug, p.title, p.time_limit_minutes, cb.repository_name, cb.files,
+    `SELECT p.id, p.slug, p.title, p.time_limit_minutes, cb.repository_name, cb.files, ${PATH_PROBLEM} AS path_problem,
+       EXISTS (SELECT 1 FROM problem_career_paths pcp WHERE pcp.problem_id = p.id AND pcp.role = $2) AS in_path,
        coalesce((SELECT json_agg(json_build_object('id', k.id, 'checkOrder', k.check_order, 'description', k.description)
          ORDER BY k.check_order) FROM problem_checks k WHERE k.problem_id = p.id), '[]') AS checks
      FROM problems p JOIN problem_codebase cb ON cb.problem_id = p.id
      WHERE p.slug = $1 AND ${VISIBLE}`,
-    [req.params.slug],
+    [req.params.slug, careerPath],
   );
   const p = rows[0];
   if (!p) throw new HttpError(404, "PROBLEM_NOT_FOUND", "Problem not found");
+  if (careerPath === null && p.path_problem)
+    throw new HttpError(403, "PATH_PROBLEM", "This problem is part of a career path. Start it from Career paths.");
+  if (careerPath !== null && !p.in_path) throw new HttpError(404, "PROBLEM_NOT_FOUND", "Problem not found on this path");
 
-  // DO UPDATE always returns the row; only an abandoned attempt changes. started_at = now() marks a new try
-  // (a kept started_at is from an earlier transaction, so it never equals this one's now()).
-  const { rows: attempts } = await pool.query(
-    `WITH a AS (
-       INSERT INTO user_problem_attempts AS a (user_id, problem_id) VALUES ($1, $2)
-       ON CONFLICT (user_id, problem_id) DO UPDATE SET
-         started_at = CASE WHEN a.status = 'abandoned' THEN now() ELSE a.started_at END,
-         status = CASE WHEN a.status = 'abandoned' THEN 'in_progress' ELSE a.status END
-       RETURNING a.id, a.status, a.started_at, a.started_at = now()::timestamp AS new_try
-     ),
-     t AS (
-       INSERT INTO attempt_tries (attempt_id, try_number, started_at)
-       SELECT a.id, coalesce((SELECT max(try_number) FROM attempt_tries WHERE attempt_id = a.id), 0) + 1, a.started_at
-       FROM a WHERE a.new_try AND a.status = 'in_progress'
-       RETURNING try_number
-     )
-     SELECT a.id, a.status, a.started_at AT TIME ZONE 'UTC' AS started_at,
-       coalesce((SELECT try_number FROM t), (SELECT max(try_number) FROM attempt_tries WHERE attempt_id = a.id)) AS try_number,
-       coalesce((SELECT sum(duration_seconds) FROM attempt_tries WHERE attempt_id = a.id AND ended_at IS NOT NULL), 0)::int
-         AS previous_seconds
-     FROM a`,
-    [req.user.id, p.id],
-  );
-  const a = attempts[0];
+  const a = careerPath === null ? await startGeneral(req.user.id, p.id) : await startOnPath(req.user.id, p.id, careerPath);
   if (a.status === "solved") throw new HttpError(409, "ALREADY_SOLVED", "You have already solved this problem");
   // D60: starting a problem of a live contest signs the user up for that contest, once.
   await pool.query(
@@ -225,6 +219,74 @@ problemsRouter.post("/:slug/start", requireAuth, async (req, res) => {
     },
   });
 });
+
+const ATTEMPT_OUT = `a.id, a.status, a.started_at AT TIME ZONE 'UTC' AS started_at,
+  coalesce((SELECT max(try_number) FROM attempt_tries WHERE attempt_id = a.id), 1) AS try_number,
+  coalesce((SELECT sum(duration_seconds) FROM attempt_tries WHERE attempt_id = a.id AND ended_at IS NOT NULL), 0)::int
+    AS previous_seconds`;
+
+// DO UPDATE always returns the row; only an abandoned attempt changes. started_at = now() marks a new try
+// (a kept started_at is from an earlier transaction, so it never equals this one's now()).
+async function startGeneral(userId, problemId) {
+  const { rows } = await pool.query(
+    `WITH a AS (
+       INSERT INTO user_problem_attempts AS a (user_id, problem_id) VALUES ($1, $2)
+       ON CONFLICT (user_id, problem_id) WHERE career_path IS NULL DO UPDATE SET
+         started_at = CASE WHEN a.status = 'abandoned' THEN now() ELSE a.started_at END,
+         status = CASE WHEN a.status = 'abandoned' THEN 'in_progress' ELSE a.status END
+       RETURNING a.id, a.status, a.started_at, a.started_at = now()::timestamp AS new_try
+     ),
+     t AS (
+       INSERT INTO attempt_tries (attempt_id, try_number, started_at)
+       SELECT a.id, coalesce((SELECT max(try_number) FROM attempt_tries WHERE attempt_id = a.id), 0) + 1, a.started_at
+       FROM a WHERE a.new_try AND a.status = 'in_progress'
+       RETURNING try_number
+     )
+     SELECT a.id, a.status, a.started_at AT TIME ZONE 'UTC' AS started_at,
+       coalesce((SELECT try_number FROM t), (SELECT max(try_number) FROM attempt_tries WHERE attempt_id = a.id)) AS try_number,
+       coalesce((SELECT sum(duration_seconds) FROM attempt_tries WHERE attempt_id = a.id AND ended_at IS NOT NULL), 0)::int
+         AS previous_seconds
+     FROM a`,
+    [userId, problemId],
+  );
+  return rows[0];
+}
+
+/**
+ * K2 (D66 d): the path's attempt in progress comes back unchanged; otherwise only the assigned problem starts, as a new
+ * attempt (a rotated problem gets a fresh one, D66 f). Give up ends it for good - the path assigns the next problem.
+ * The partial unique index (one open attempt per path) makes a double click start it once.
+ */
+async function startOnPath(userId, problemId, role) {
+  // ponytail: an open attempt whose problem was unpublished would block the path forever, so it is given up here
+  // (its try stays open; it never counts anywhere).
+  await pool.query(
+    `UPDATE user_problem_attempts a SET status = 'abandoned' FROM problems p
+     WHERE p.id = a.problem_id AND NOT p.is_published AND a.user_id = $1 AND a.career_path = $2 AND a.status = 'in_progress'`,
+    [userId, role],
+  );
+  await pool.query("INSERT INTO career_path_progress (user_id, role) VALUES ($1, $2) ON CONFLICT DO NOTHING", [userId, role]);
+  const { current_stage } = await stageOf(pool, userId, role);
+  const next = await nextProblem(pool, userId, role, current_stage);
+  if (next?.id !== problemId)
+    throw new HttpError(403, "NOT_ASSIGNED", "This is not your next problem on this path. Open Career paths to see it.");
+  await pool.query(
+    `WITH a AS (
+       INSERT INTO user_problem_attempts (user_id, problem_id, career_path) VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, career_path) WHERE career_path IS NOT NULL AND status = 'in_progress' DO NOTHING
+       RETURNING id, started_at
+     )
+     INSERT INTO attempt_tries (attempt_id, try_number, started_at) SELECT id, 1, started_at FROM a`,
+    [userId, problemId, role],
+  );
+  const { rows } = await pool.query(
+    `SELECT ${ATTEMPT_OUT} FROM user_problem_attempts a
+     WHERE a.user_id = $1 AND a.problem_id = $2 AND a.career_path = $3 AND a.status = 'in_progress'`,
+    [userId, problemId, role],
+  );
+  if (!rows[0]) throw new HttpError(409, "NOT_ASSIGNED", "The path changed meanwhile. Open Career paths again.");
+  return rows[0];
+}
 
 async function publishedId(slug) {
   const { rows } = await pool.query(`SELECT p.id FROM problems p WHERE p.slug = $1 AND ${VISIBLE}`, [slug]);
@@ -259,8 +321,9 @@ problemsRouter.put("/:slug/rating", requireAuth, async (req, res) => {
   try {
     await client.query("BEGIN");
     const { rows } = await client.query(
-      `SELECT p.id, a.status = 'solved' AS solved FROM problems p
-       LEFT JOIN user_problem_attempts a ON a.problem_id = p.id AND a.user_id = $2
+      `SELECT p.id, EXISTS (SELECT 1 FROM user_problem_attempts a
+           WHERE a.problem_id = p.id AND a.user_id = $2 AND a.status = 'solved') AS solved
+       FROM problems p
        WHERE p.slug = $1 AND ${VISIBLE} FOR UPDATE OF p`,
       [req.params.slug, req.user.id],
     );

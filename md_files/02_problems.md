@@ -253,7 +253,8 @@ Each check shows:
 - User can run the app in the terminal at any time
 - Clicking Submit runs all checks — partial results shown in real time
 - If all checks pass → solved, timer stops, points calculated
-- Can only solve each problem once (enforced in DB)
+- Can only solve each general problem once (enforced in DB). A career path problem (D66) is assigned by its path and
+  can come back 3 months after it was last finished there; each path counts its own solves
 - Give up → the attempt is abandoned; starting again opens the next try with the original code. Every try is stored
   (attempt_tries), and the time bonus counts all of them (D56)
 

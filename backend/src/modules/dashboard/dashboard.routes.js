@@ -32,7 +32,7 @@ dashboardRouter.get("/", optionalAuth, async (req, res) => {
  */
 async function getInProgress(userId) {
   const { rows } = await pool.query(
-    `SELECT p.slug, p.title, cb.language, a.started_at AT TIME ZONE 'UTC' AS started_at,
+    `SELECT p.slug, p.title, cb.language, a.career_path, a.started_at AT TIME ZONE 'UTC' AS started_at,
        (SELECT count(*)::int FROM problem_checks k WHERE k.problem_id = p.id) AS checks_total,
        (SELECT count(*)::int FROM (
           SELECT DISTINCT ON (r.check_id) r.passed FROM check_results r
@@ -50,6 +50,7 @@ async function getInProgress(userId) {
   return r
     ? {
         problemSlug: r.slug,
+        careerPath: r.career_path, // K2: a path attempt resumes with ?path=
         title: r.title,
         language: r.language ?? "",
         checksPassed: r.checks_passed,

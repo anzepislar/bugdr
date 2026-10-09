@@ -67,10 +67,11 @@ bugdr/
 
 ```
 Phase: Backend slices (06_backend_slices.md) - frontend screens swap their mocks slice by slice
-Frontend: 22 screens; login, signup, logout, onboarding, /problems, /problems/[slug] (incl. rating and discussion),
+Frontend: 24 screens; login, signup, logout, onboarding, /problems, /problems/[slug] (incl. rating and discussion),
   the solve page, /profile/[username], /settings (profile tab), /dashboard, the sidebar, /contests, /contests/[id],
   /admin/login, /admin (overview), /admin/problems (+ new, edit), /admin/contests (+ new, edit, results inline)
-  /admin/users (+ [id]), /admin/analytics and /leaderboard use the real API, incl. the solve page's AI chat (M8)
+  /admin/users (+ [id]), /admin/analytics, /admin/career-paths, /leaderboard and /career-paths use the real API,
+  incl. the solve page's AI chat (M8)
 Backend: Milestones M0 (F0-F4: skeleton, levels, auth, route protection, onboarding), M1 (P1-P2: problem list,
   bookmarks, problem detail, streak on view) and M2 (R1-R6: start, give up, try history, Docker check runner,
   solve + points, terminal, live results), M3 (O1-O2: ratings, comments) and M4 (U1-U3: profile + settings,
@@ -79,12 +80,14 @@ Backend: Milestones M0 (F0-F4: skeleton, levels, auth, route protection, onboard
   analysis, A3 code replacement, A4 check run, A5 publish/unpublish, A6 contests, A7 contest results + CSV +
   reward sent, A8 users + ban, A9 platform stats, A9.1 analysis with Claude or OpenAI by key) and M8 (AI session:
   S1 chat on a free model with a daily limit, S6 own API key, S2 session capture, S3 efficiency score in the points,
-  S7 per-problem benchmark, S8 post-solve feedback, S4 public leaderboard, S5 admin AI analytics) done;
-  next M7 (Z1, Z2) or M9 career paths (K1-K2, waits for D66/D67)
-Database: PostgreSQL 17 in Docker; migrations 0001-0022 (levels, users, profiles, problems, problem detail,
+  S7 per-problem benchmark, S8 post-solve feedback, S4 public leaderboard, S5 admin AI analytics) and M9 (career
+  paths: K1 path problems in the admin, K2 progress + assignment + unlock + /career-paths, K3 admin thresholds +
+  metrics) done; next M7 (Z1, Z2)
+Database: PostgreSQL 17 in Docker; migrations 0001-0025 (levels, users, profiles, problems, problem detail,
   problem brief, attempt tries, check results + points ledger, comment replies + helpful, profile fields, contests,
   contest entries, drop users.is_admin, bug summary, codebase hash, dry-run version, contest reward sent,
-  solve sessions + prompts, user API keys, editor events, problem benchmarks, solve feedback);
+  solve sessions + prompts, user API keys, editor events, problem benchmarks, solve feedback, problem career paths,
+  career path progress + attempts per path, career path thresholds);
   `npm run seed` = 12 dev problems with code and checks, no made-up ratings (D57); only payment-retries-disappear
   is runnable so far; + 5 dev contests (dates relative to the seed run)
 Detailed status: CLAUDE.md "Current Status" and 06_backend_slices.md "Stanje"
@@ -124,7 +127,8 @@ Detailed status: CLAUDE.md "Current Status" and 06_backend_slices.md "Stanje"
 ## Monetization Model
 
 ### Free tier
-- Access to Easy problems
+- During development everything is open to everyone (D67); later career paths and AI feedback go behind a paywall
+- Access to Easy problems (planned, not enforced yet)
 - AI assistant powered by a cheap model (Claude Haiku or GPT-3.5 equivalent)
 - Basic efficiency scoring
 - Public leaderboard
@@ -163,13 +167,22 @@ Detailed status: CLAUDE.md "Current Status" and 06_backend_slices.md "Stanje"
 
 Career paths guide engineers from Easy to "Get a job" difficulty through a structured progression that mirrors what they would actually encounter in their target role.
 
-### How it works
-- Engineer selects their target role on onboarding
-- Platform assigns a curated path of problems across relevant categories
-- Four stages: Easy → Medium → Hard → Get a job
-- To progress to the next stage, engineer must hit an efficiency threshold across a set of problems
-- Threshold is based on efficiency score: prompt count, token usage, time, first-run pass rate
+### How it works (D66)
+- One path per role: AI Engineer, Backend, Frontend, Full Stack, Database
+- Every path has its own set of problems, Easy to Get a job. Path problems are not shown on `/problems`;
+  the admin puts a problem into one or more paths when publishing it
+- A user can follow any number of paths at once, each with its own progress; the onboarding role is only shown first
+- Four stages: Easy → Medium → Hard → Get a job. Only the current and lower stages are open
+- The path assigns one problem at a time (oldest unsolved on the current stage first, different codebase each time);
+  no choosing or skipping, Give up moves on to the next one
+- After the minimum number of solves on a stage the threshold check runs after every solve, on the last 5 solves
+  (Hard: last 3); not met → continue through the pool
+- Pool exhausted → problems rotate back, oldest first, 3 months after they were last solved on that path; a re-solve
+  gives points again
+- Solves count only in the path they were made in (the same problem in another path is assigned there separately)
 - Feedback after every solve tells them exactly what to improve
+- Page: `/career-paths` - the paths as an accordion (your role open first); each row opens to its stages, progress to
+  the thresholds and the assigned next problem (user, 10. 10. 2026: one page, no `/career-paths/[role]`)
 
 ### Path composition by role
 
@@ -184,14 +197,18 @@ Career paths guide engineers from Easy to "Get a job" difficulty through a struc
 ### Why breadth matters
 Engineers don't just need depth in their specialty — they need enough breadth to function in a real team. Career paths reflect this. An AI engineer who can't debug a broken API is incomplete. The path teaches the full picture.
 
-### Efficiency threshold (example)
-To unlock Medium from Easy:
-- Solve 3 Easy problems
-- Average efficiency score above 1.2
-- Average prompt count below 8
-- Average first-run pass rate above 50%
+### Efficiency thresholds (D66)
 
-Thresholds increase at each stage. Exact values TBD and adjustable in admin.
+| Unlock | Min solves | Avg efficiency | Avg prompts | First-run pass rate | Avg time multiplier |
+|--------|-----------|----------------|-------------|---------------------|---------------------|
+| Easy → Medium | 5 Easy | ≥ 1.2 | ≤ 10 | ≥ 40% | — |
+| Medium → Hard | 5 Medium | ≥ 1.4 | ≤ 7 | ≥ 50% | ≥ 1.25x |
+| Hard → Get a job | 3 Hard | ≥ 1.6 | ≤ 5 | ≥ 60% | ≥ 1.5x |
+
+Averages use the last N solves on the stage, N = the minimum (5, Hard 3). The values above are the defaults; the admin
+edits them on `/admin/career-paths` (K3), one set for all paths.
+
+The composition table above is a guide for the admin when picking problems for a path.
 
 ---
 
@@ -208,7 +225,7 @@ Phase 3 — Full backend
   Connect everything, implement business logic
 
 Phase 4 — Problem execution engine
-  Docker containers, Monaco editor, test runner, terminal (done in M2); AI chat + session capture + feedback (done in M8), career paths (M9)
+  Docker containers, Monaco editor, test runner, terminal (done in M2); AI chat + session capture + feedback (done in M8), career paths (done in M9)
 
 Phase 5 — Admin dashboard
   Contest management, problem management

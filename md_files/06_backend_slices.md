@@ -17,14 +17,15 @@ povezala na API.
 ## Stanje
 
 ```
-Zadnja posodobitev: 9. 10. 2026
-Backend: M8 ✅ (S1-S8), M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2), M6 ✅ (A1-A10 + A9.1)
-Frontend: 20 zaslonov (večina na API) - /login, /signup, /forgot-password, /onboarding, /dashboard,
+Zadnja posodobitev: 10. 10. 2026
+Backend: M9 ✅ (K1-K3), M8 ✅ (S1-S8), M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2), M6 ✅ (A1-A10 + A9.1)
+Frontend: 24 zaslonov (večina na API) - /login, /signup, /forgot-password, /onboarding, /dashboard,
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit,
-          /admin/login, /admin/problems, /admin/problems/[id]/edit
-Naslednja rezina: M6 ✅ (A1-A10 + A9.1 ✅ 9. 10. 2026); M8 ✅ 9. 10. 2026 (S1-S8; odloženo: AI statistike profila iz `03`, področja izboljšav v S5); naprej M7 (Z1, Z2) ali M9 (čaka D66, D67); ali M7 Z1/Z2; za pravo analizo `ANTHROPIC_API_KEY` v `backend/.env`; odločitve M6 D20, D21, D22, D45, D46, D48, D50 rešene); testi 185/185; nove funkcije 9. 10. 2026 (brezplačni model, lasten API ključ, povratna informacija, benchmark, karierne poti) so rezine S6-S8 in M9 (K1-K2); M9 čaka D66-D67
+          /admin/login, /admin/problems, /admin/problems/[id]/edit, /admin/users (+ [id]), /admin/analytics,
+          /leaderboard, /career-paths, /admin/career-paths
+Naslednja rezina: M6 ✅ (A1-A10 + A9.1 ✅ 9. 10. 2026); M8 ✅ 9. 10. 2026 (S1-S8; odloženo: AI statistike profila iz `03`, področja izboljšav v S5); M9 ✅ 10. 10. 2026 (K1-K3); naprej M7 (Z1, Z2); za pravo analizo `ANTHROPIC_API_KEY` v `backend/.env`; odločitve M6 D20, D21, D22, D45, D46, D48, D50 rešene); testi 203/203; nove funkcije 9. 10. 2026 (brezplačni model, lasten API ključ, povratna informacija, benchmark, karierne poti) so rezine S6-S8 in M9 (K1-K3)
 ```
 
 Oznake: ⬜ ni začeto · 🟨 v delu · ✅ narejeno (z datumom) · ⏸ odloženo
@@ -120,8 +121,8 @@ dokler je uporabnik ne potrdi.
 | D63 | ~~Lasten API ključ~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M8): AES-256-GCM (`node:crypto`), glavni ključ `API_KEY_ENCRYPTION_KEY` (32 bajtov) samo v `backend/.env`; en ključ na uporabnika (nov `POST` ga zamenja). **Preizkusni klic ob shranjevanju** (neveljaven ključ → 400 `API_KEY_REJECTED`, nič se ne shrani). **Model izbere uporabnik** iz fiksnega seznama po ponudniku (konstanta v kodi; Anthropic: `claude-sonnet-5-5` privzeto, `claude-opus-5-5`, `claude-haiku-4-5`; OpenAI: `gpt-4o` privzeto, `gpt-4o-mini`) - shrani se v `user_api_keys.model`, neznan model → 400 | S6, S1 |
 | D64 | ~~Ocena in lestvica pri različnih modelih~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M8): **vse skupaj** - en benchmark (S7) in ena lestvica (D52) za vse; vsak poziv in seja zabeležita `key_source` + `model` za kasnejšo analizo | S3, S4, S7 |
 | D65 | ~~Povratna informacija po rešitvi (`02`)~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M8): klic **po** commitu transakcije R4, Submit nanj ne čaka; `solve_feedback.status` = `pending` / `ready` / `failed`, neuspela se ponovi ob `GET`; vedno platformni ključ s cenenim modelom; vidi jo samo lastnik. **Primerjava s "top performers" = zgornja četrtina rešitev problema** (izračun ob klicu iz `solve_sessions`, ne v `problem_benchmarks`); privzeto (brez vprašanja): **najmanj 8 rešitev**, do takrat konstante po težavnosti. **Brez ocene povratne informacije** (metrika `04` "Average feedback rating" odpade do nadaljnjega) | S8, S7 |
-| D66 | **ODPRTO** - karierne poti (`00` "Career Paths", 9. 10. 2026) | Odprto: (a) sestava poti - samodejno iz kategorij po razmerju (npr. jedro 60 %, podpora 30 %, občasno 10 %) ali ročno v adminu; (b) `00` omenja DevOps, Performance, APIs, "model integration", `problem_categories` ima samo 5 kategorij (= vloge) - tagi ali nove kategorije; (c) ali štejejo rešitve zunaj poti; (d) `goal_role = NULL` (D41, "exploring") = brez poti; (e) sprememba vloge v `/settings` - nova pot ali ohrani stopnjo; (f) obvestilo ob odklepu - obvestil ni (D25), predlog: pasica na dashboardu; (g) pragovi - konstante do K2. Predlog sheme: povprečja se izračunajo ob branju (kot streak, U2), shrani se samo `current_stage` + `stage_unlocked_at` | K1, K2 |
-| D67 | **ODPRTO** - kaj zaklene brezplačna raven (`00`, 9. 10. 2026) | `00`: brezplačna raven = samo Easy problemi; karierna pot odklepa težavnost s pragom. Zdaj so vsi objavljeni problemi odprti vsem (P1, R1). Odprto: ali se Medium+ dejansko zaklene (Start → 403) ali je zaklep samo na karierni poti; kaj ga odklene - napredek na poti, lasten ključ ali oboje | P1, R1, K1 |
+| D66 | ~~Karierne poti~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M9): (a) **vsaka pot ima svoj nabor problemov** (od Easy do Get a job; stopnja = težavnost problema); problem poti **ni na `/problems`** (niti v feedu dashboarda in izbiri problemov tekmovanj); **en problem je lahko v več poteh** (admin jih izbere ob objavi); (b) poti = 5 obstoječih vlog (`ai-engineer`, `backend`, `frontend`, `fullstack`, `database`), novih kategorij ni; (c) **uporabnik sme hkrati na poljubno poti**, vsaka ima svoj napredek; vloga z onboardinga je samo prva prikazana, `goal_role = NULL` ne zapre ničesar; (d) **en dodeljen problem naenkrat, brez izbire**: naslednji nerešeni problem trenutne stopnje po vrstnem redu dodajanja (najstarejši prvi); ni preskoka, "Give up" → dodeli se naslednji; (e) **pragovi** (konstante v kodi do K3): Easy→Medium: ≥ 5 rešitev, ocena ≥ 1,2, pozivi ≤ 10, prvi zagon ≥ 40 %; Medium→Hard: ≥ 5, ≥ 1,4, ≤ 7, ≥ 50 %, časovni množitelj ≥ 1,25; Hard→Get a job: ≥ 3, ≥ 1,6, ≤ 5, ≥ 60 %, množitelj ≥ 1,5; **povprečja iz zadnjih 5 rešitev stopnje** (na Hard zadnje 3), preverjanje po vsaki rešitvi od najmanjšega števila naprej; (f) **izčrpan nabor**: problem se lahko spet dodeli **3 mesece** po zadnji rešitvi na tej poti (najstarejši prvi), ponovna rešitev **spet da točke**; do takrat stran pove "New problems are coming - check back soon"; (g) **rešitve so ločene po poti**: rešitev v poti Backend ne šteje v Database - tam se isti problem dodeli posebej (nov poskus); (h) ena stran `/career-paths` s harmoniko (uporabnik 10. 10. 2026; brez `/career-paths/[role]`): vrstica na pot, odprta pokaže stopnje, napredek do praga in naslednji problem, "Career paths" v stranski vrstici; reševanje na običajnem zaslonu reševanja. Privzeto (brez vprašanja): obvestila ob odklepu ni (D25) - stran poti pokaže novo stopnjo; točke, niz, lestvica in povratna informacija (S8) delujejo kot pri ostalih problemih; ocene in komentarji zaklenjeni do rešitve kot drugje | K1, K2, K3 |
+| D67 | ~~Kaj zaklene brezplačna raven~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M9): **v razvoju je vse odprto vsem** - splošni problemi vseh težavnosti, vse karierne poti, povratna informacija. Edini zaklep so stopnje znotraj poti (prag, D66). **Pozneje gredo karierne poti in AI povratna informacija za plačilni zid** - takrat svoja rezina (X2) | P1, R1, K2 |
 | D52 | ~~Lestvica `/leaderboard`~~ → **rešeno 9. 10. 2026** (uporabnik, S4): uvrstitev po **točkah** (že vsebujejo čas in učinkovitost), **samo top 100** (brez najmanjšega števila rešitev; uporabnik brez točk ni na seznamu), zavihka **All time + This month** (UTC koledarski mesec, točke iz `point_transactions` v obdobju), **javna tudi za goste**; zasebni profili (D34) in blokirani uporabniki niso na seznamu, enake točke = enako mesto | S4 |
 | D53 | ~~Izvedljivi problemi za M2~~ → **rešeno 8. 10. 2026** (uporabnik): najprej **en** pravi problem - `payment-retries-disappear` dobi skrite teste (`hidden_files`), rešitev (`solution_files`) in preverjanja, ki tečejo brez npm paketov. Ostalih 11 seed problemov ostane samo za prikaz: Test vrne jasno "checks not available yet", dokler jih ne doda admin (A2-A5) | R3, R4 |
 | D54 | ~~Jeziki izvajalnika v v1~~ → **rešeno 8. 10. 2026** (uporabnik): **samo Node/TypeScript** (ena osnovna slika); drugi jeziki, ko jih zahteva prvi problem | R3 |
@@ -151,7 +152,9 @@ Posledica odločitev - narejene v migraciji rezine, ki tabelo ustvari:
 | `user_api_keys` | **nova** (ni v `01`): `user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE`, `provider VARCHAR(20) NOT NULL` (`anthropic` / `openai`), `model VARCHAR(100) NOT NULL` (izbira uporabnika, D63), `ciphertext BYTEA NOT NULL`, `iv BYTEA NOT NULL`, `auth_tag BYTEA NOT NULL`, `created_at` (migracija 0019) | D63 | S6 ✅ |
 | `problem_benchmarks` | **nova** (ni v `01`): `problem_id UUID PRIMARY KEY REFERENCES problems(id) ON DELETE CASCADE`, `avg_prompts`, `avg_tokens`, `avg_iterations` (dodano v S7), `avg_time_seconds`, `avg_efficiency_score`, `avg_first_run_pass_rate` (DECIMAL), `solve_count INTEGER NOT NULL DEFAULT 0`, `updated_at` (migracija 0021) | - | S7 ✅ |
 | `solve_feedback` | **nova** (ni v `01`): `attempt_id UUID PRIMARY KEY REFERENCES user_problem_attempts(id) ON DELETE CASCADE`, `content TEXT`, `status VARCHAR(10) NOT NULL` (`pending` / `ready` / `failed`), `model VARCHAR(100)`, `requested_at`, `generated_at TIMESTAMP`, `created_at` (migracija 0022) | D65 | S8 ✅ |
-| `career_path_progress` | **nova** (ni v `01`): `user_id`, `role`, `current_stage` (`easy` … `get_a_job`), `problems_completed`, `avg_efficiency`, `avg_prompts`, `avg_first_run_pass`, `stage_unlocked_at`; predlog D66: povprečja ob branju | D66 | K1 |
+| `problem_career_paths` | ✅ v `01` (migracija 0023): `problem_id UUID REFERENCES problems(id) ON DELETE CASCADE`, `role VARCHAR(50) NOT NULL` (slug vloge = `problem_categories.slug`), `PRIMARY KEY (problem_id, role)`; problem z vsaj eno vrstico = problem poti (ni na `/problems`, v feedu, izbiri tekmovanj) | D66 | K1 ✅ |
+| `user_problem_attempts` | ✅ v `01` (migracija 0024): + `career_path VARCHAR(100) NULL` (NULL = splošni problem); `UNIQUE (user_id, problem_id)` → delni `UNIQUE (user_id, problem_id) WHERE career_path IS NULL` + delni `UNIQUE (user_id, problem_id, career_path) WHERE status = 'in_progress'`; ponovna rešitev na poti po 3 mesecih = nova vrstica (seja, poskusi, povratna informacija se vežejo na `attempt_id` in ostanejo ločeni) | D66 (f, g) | K2 ✅ |
+| `career_path_progress` | ✅ v `01` (migracija 0024): `user_id UUID REFERENCES users(id) ON DELETE CASCADE`, `role VARCHAR(50)`, `current_stage VARCHAR(20) NOT NULL DEFAULT 'easy'` (`easy` / `medium` / `hard` / `get_a_job`), `started_at`, `stage_unlocked_at TIMESTAMP`, `PRIMARY KEY (user_id, role)`; vrstica ob prvem startu na poti. Povprečja se ne shranijo - ob branju iz zadnjih rešitev stopnje (`solve_sessions` + `time_bonus_multiplier`) | D66 | K2 |
 | `user_profiles` | + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, (`languages` že v F4), `is_public BOOLEAN NOT NULL DEFAULT TRUE` | D34 | U1 |
 
 Ko rezina tabelo ustvari, se `01_database.md` posodobi, da se ujema z
@@ -160,7 +163,7 @@ seznam sprememb za tabele, ki še niso zgrajene. Narejeno v `01`: `users`
 (F2), `user_profiles` + `languages` (F4), `problem_categories`, `problems`, `problem_tags`,
 `problem_bookmarks`, `user_problem_attempts` (P1), `attempt_tries` (R2b), `check_results`, `point_transactions` (R4), `problem_codebase` (+ `hidden_files`, `solution_files`,
 `repository_name`), `problem_checks`, `problem_ratings`, `problem_comments`, `user_daily_activity` (P2); `problem_comments.parent_id`, `comment_helpful` (O2, migracija 0009 - brez `helpful_count`, šteje se ob branju);
-`problems.description` → `codebase_context` + `incident_report` (migracija 0006, 8. 10. 2026); `contests` (NULL datumi, `archived_at`), `contest_problems` (T1, migracija 0011), `contest_entries` (T2, migracija 0012; `contest_attempt_links` ni zgrajena); `solve_sessions`, `prompt_events` (S1, migracija 0018); `user_api_keys` (S6, migracija 0019); `editor_events` (S2, migracija 0020); `problem_benchmarks` (S7, migracija 0021); `solve_feedback` (S8, migracija 0022).
+`problems.description` → `codebase_context` + `incident_report` (migracija 0006, 8. 10. 2026); `contests` (NULL datumi, `archived_at`), `contest_problems` (T1, migracija 0011), `contest_entries` (T2, migracija 0012; `contest_attempt_links` ni zgrajena); `solve_sessions`, `prompt_events` (S1, migracija 0018); `user_api_keys` (S6, migracija 0019); `editor_events` (S2, migracija 0020); `problem_benchmarks` (S7, migracija 0021); `solve_feedback` (S8, migracija 0022); `problem_career_paths` (K1, migracija 0023); `career_path_progress`, `user_problem_attempts.career_path` (K2, migracija 0024); `career_path_thresholds` (K3, migracija 0025).
 
 ---
 
@@ -194,7 +197,7 @@ seznam sprememb za tabele, ki še niso zgrajene. Narejeno v `01`: `users`
 | M5 Tekmovanja | T1 → T2 | Seznam tekmovanj, rezultati |
 | M6 Admin | A1 → A2 → A10 → A3 → A4 → A5 → A6-A9 → A9.1 | Upravljanje problemov, tekmovanj, uporabnikov, statistika |
 | M8 AI seja | S1 → S6 → S2 → S3 → S7 → S8 → S4, S5 | Vgrajeni AI klepet (brezplačni model / lasten ključ), zajem seje, ocena učinkovitosti v točkah, benchmark problema, povratna informacija po rešitvi, lestvica, AI analitika |
-| M9 Karierne poti | K1 → K2 | Pot po vlogi s stopnjami, odklep s pragom učinkovitosti, pragovi v adminu |
+| M9 Karierne poti | K1 → K2 → K3 | Problemi poti v adminu, 5 poti z lastnimi problemi in stopnjami, odklep s pragom, pragovi v adminu |
 | M7 Produkcija | Z1 → Z2 | Seed zaklenjen v produkciji, varna namestitev |
 
 M3-M6 so med seboj neodvisni (razen naštetih odvisnosti). Admin za probleme
@@ -517,20 +520,31 @@ Odločitve D51, D62-D65 rešene 9. 10. 2026 (priprava M8, Seja 21); čaka samo �
 - Frontend: Submit po rešitvi odpre `/problems/[slug]` - kartica "Problem solved" dobi razdelek povratne informacije (osvežuje, dokler je `pending`); profil: zgodovina rešitev s povezavo na povratno informacijo (samo lastnik). Ni dizajna.
 - Končano, ko: rešitev ustvari `pending` → `ready`; napaka ponudnika → `failed`, rešitev in točke ostanejo; tuj poskus → 404; klic ponudnika v testih nadomeščen.
 
-### M9 - Karierne poti (`00` "Career Paths")
+### M9 - Karierne poti (`00` "Career Paths", D66, D67)
 
-Čaka D66 in D67. Ni dizajna (kje se pot prikaže - dashboard, profil, nova stran - odloči uporabnik). Vloga se že shrani na onboardingu (`goal_role`, F4; slugi `ai-engineer`, `backend`, `frontend`, `fullstack`, `database` = vloge iz `00`).
+Vsaka pot (5 vlog) ima svoj nabor problemov od Easy do Get a job; višja stopnja se odklene s pragom (D66 e). V razvoju odprto vsem (D67). Ni dizajna - postavitev strani vprašaj ob K2.
 
-**K1 · Karierna pot in napredek** `M` · odvisno od: S3, S7, D66, D67 · ⬜
-- Naredi: `career_path_progress`; sestava poti po vlogi (jedro / podpora / občasno iz `00`), štiri stopnje Easy → Medium → Hard → Get a job.
-- Po vsaki rešitvi (v transakciji R4): preračun napredka trenutne stopnje; ko so izpolnjeni vsi pogoji (število rešitev + prag učinkovitosti, pozivov, prvega zagona), `current_stage` + 1 in `stage_unlocked_at`. Obvestilo ob odklepu → D66 (f).
-- API: `GET /career-path` → vloga, stopnja, napredek do praga, priporočeni naslednji problemi; `GET /career-path/progress` → podrobno po metrikah (trenutno / prag).
-- Končano, ko: primer iz `00` (3 Easy, povprečna ocena > 1,2, pozivi < 8, prvi zagon > 50 % → odklenjen Medium); en pogoj manjka → stopnja ostane; `goal_role = NULL` → po D66 (d).
+**K1 · Problemi poti v adminu** `S` · odvisno od: A2, A5 · ✅ 9. 10. 2026
+- Narejeno: migracija 0023 `problem_career_paths` (vloga = FK na `problem_categories.slug`); osnutek (`POST`/`PUT /admin/problems`) sprejme `careerPaths: string[]` (manjka = `[]`, podvojeni odstranjeni, neznana vloga → 400), `GET /admin/problems` in `/:id` ga vrneta. Izbira je **na obrazcu Review** (kljukice "Career paths" pod Role), zato velja tudi na strani urejanja; povzetek Publish pove, kam gre problem; seznam pokaže "Career path: …" pod naslovom. Poti se spreminjajo kot ostala polja - samo na osnutku. `/problems/[slug]` problema poti ostane odprt do K2 (Start z dodelitvijo). Test `test/k1.test.js`.
+- Problemi poti se skrijejo iz `GET /problems`, feeda dashboarda (U3) in izbire problemov tekmovanj (A6); admin seznam `/admin/problems` pokaže oznako poti.
+- Končano, ko: problem s potjo ni v `GET /problems` in feedu; splošni problem ostane; problem v dveh poteh ima dve vrstici; tekmovanje ne sprejme problema poti (400).
 
-**K2 · Pragovi in metrike v adminu** `S` · odvisno od: K1, A1 · ⬜
-- `00`: "Exact values TBD and adjustable in admin". Pragovi po stopnji v tabeli (do K2 konstante v kodi) + `GET`/`PUT /admin/career-paths`.
-- Metrike poti iz `04` Platform Stats (inženirji po poti, porazdelitev po stopnjah, prehodnost praga, kje obstanejo) - razširitev `GET /admin/stats` (A9) ali S5.
-- Frontend: nov admin zaslon ali razdelek - ni dizajna.
+**K2 · Karierna pot, dodelitev in odklep** `L` · odvisno od: K1, S3 · ✅ 10. 10. 2026
+- Narejeno: migracija 0024 - `user_problem_attempts.career_path` (FK na vlogo), `UNIQUE (user_id, problem_id)` → delna unikatna indeksa (splošni: en poskus na problem; pot: en odprt poskus na pot), `career_path_progress`. Pragovi kot konstante v `backend/src/modules/careerPaths/careerPaths.js` (`stageProgress`, čista funkcija), dodelitev + odklep v `careerPaths.routes.js`.
+- Dodelitev (D66 d, f): odprt poskus poti, sicer najstarejši (`created_at`) objavljen problem stopnje, ki ga na tej poti še ni zaključil, sicer najstarejši, zaključen pred > 3 meseci; sicer `null`. Zaključen = rešen (`solved_at`) ali opuščen (`started_at` zadnjega poskusa - ponytail).
+- Start: `POST /problems/:slug/start` sprejme `{ careerPath }`; problem poti brez poti → 403 `PATH_PROBLEM`, nedodeljen → 403 `NOT_ASSIGNED`, problem ni na tej poti → 404. Prvi start ustvari vrstico napredka. Odprt poskus na odstranjenem (unpublished) problemu se ob startu opusti, da pot ne obtiči.
+- Po rešitvi (transakcija R4, zaklenjena vrstica napredka): ≥ najmanjše število rešitev in povprečja zadnjih 5 (Hard 3) izpolnijo vse pogoje → naslednja stopnja + `stage_unlocked_at`. Ponovna rešitev po rotaciji = nov poskus, točke znova.
+- API: `GET /career-paths` → vseh 5 poti (vloga z onboardinga prva): `started`, `stage`, `stageUnlockedAt`, `solvesOnStage`, `progress` (metrike trenutno / prag / izpolnjeno, null na Get a job), `nextProblem`. Brez `GET /career-paths/:role` in `POST .../start` (ena stran, vrstica ob prvem startu).
+- Podrobnosti problema (`GET /problems/:slug`) berejo **zadnji** poskus (LATERAL) + `isPathProblem`, `careerPath`; ocena in komentarji: "rešen" = katerikoli rešen poskus. Dashboard `inProgress.careerPath`.
+- Frontend (uporabnik 10. 10. 2026): **ena stran `/career-paths` s harmoniko** (`<details>`, brez JS) - vrstica = ime, "Your role", 4 koraki, stopnja · rešitve; odprta = stopnje (✓ / trenutna z vrsticami metrik / 🔒) + kartica "Next problem" (Start / Resume → `/problems/[slug]/solve?path=`). "Career paths" v stranski vrstici, `/career-paths` v `proxy.ts`. Zaslon reševanja vzame `?path=`, Give up na poti → `/career-paths`; podrobnosti problema poti: "Career path problem" kartica namesto Start, "Next problem" po rešitvi → `/career-paths`.
+- Testi: `test/k2-thresholds.test.js` (pragovi), `test/k2.test.js` (dodelitev, start 403/404, dvojni start, odklep, drsno okno, ločenost po poti, rotacija, prava rešitev v Dockerju z drugimi točkami po rotaciji). 199/199. V brskalniku preverjeno pri 320-2560 px z začasnimi podatki (odstranjeni).
+
+**K3 · Pragovi in metrike v adminu** `S` · odvisno od: K2, A1 · ✅ 10. 10. 2026
+- Odločitve (uporabnik, 10. 10. 2026): **nova stran `/admin/career-paths`** ("Career paths" v admin stranski vrstici); **pragovi enaki za vse poti**; **obstal = brez rešitve na poti 30 dni** (Get a job nikoli), z "blokatorji" = cilji, ki jih še ne dosega.
+- Narejeno: migracija 0025 `career_path_thresholds` (ena vrstica na stopnjo easy/medium/hard, seme = vrednosti D66, `time_multiplier` NULL = brez časovnega pogoja); konstante odstranjene - `loadThresholds` v `careerPaths.js`, `stageProgress(t, …)` dobi prag kot argument.
+- API: `GET /admin/career-paths` → `thresholds`, `stuckDays`, `totals` (različni inženirji, dosegli Get a job, obstali), `paths` (inženirji + porazdelitev po stopnjah), `stages` (dosegli, prešli, prehodnost = prešli / dosegli brez zgodovine stopenj, obstali, blokatorji). `PUT /admin/career-paths/thresholds` zamenja vse tri stopnje (napaka po polju `easy.solves` …); velja od naslednje rešitve.
+- Frontend: 3 kartice, porazdelitev po stopnjah (zložena vrstica na pot, CSS), tabela prehodnost / obstali / blokatorji, obrazec pragov (prvi zagon v %, prazno časovno polje = brez pogoja, napake ob polju).
+- Testi: `test/k3.test.js` (samo admin, seme, metrike z obstalimi in blokatorji, validacija, znižan prag odklene ob naslednjem preverjanju); `k2-thresholds.test.js` podaja prag kot argument. 203/203. V brskalniku pri 6 širinah (začasni podatki odstranjeni, pragovi ostali na privzetih).
 
 ### M7 - Produkcija
 
@@ -565,6 +579,8 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | `/admin/problems`, `/admin/problems/[id]/edit` | na API od začetka (A2) | A2 | ✅ |
 | `/admin/users`, `/admin/users/[id]` | na API od začetka (A8) | A8 | ✅ |
 | `/admin/contests` | na API (A6): seznam, Schedule / Cancel / Delete / Archive; zavihki in iskanje na odjemalcu; rezultati, CSV in "nagrada poslana" v razširjeni vrstici (A7) | A6 ✅, A7 ✅ | ✅ |
+| `/career-paths` | na API od začetka (K2): `GET /career-paths`, start z `careerPath` | K2 | ✅ 10. 10. 2026 |
+| `/admin/career-paths` | na API od začetka (K3): `GET /admin/career-paths`, `PUT /admin/career-paths/thresholds` | K3 | ✅ 10. 10. 2026 |
 | `/admin/contests/new`, `/admin/contests/[id]/edit` | na API (A6): čarovnik `ContestWizard`, izbira objavljenih problemov, datumi iz `src/lib/getContestDates.ts`; `src/lib/mock/adminContests.ts` ni več v uporabi | A6 | ✅ |
 
 ---
@@ -583,10 +599,10 @@ Odprto:
 - **`repository_structure`** je izpeljiv iz ključev `files` - verjetno odveč (odloči v R1). Zdaj (P2): JSON seznam poti, ki ga pokaže stran podrobnosti; seed ga zapiše iz ključev `files`.
 - ~~**Nagrada poslana:**~~ → `contests.reward_sent_at` (A7).
 - **Incident `payment-retries-disappear` vs. koda (R3, 8. 10. 2026):** log kaže `attempt=1..3` z `delay=30000ms`, izvedljiva koda pa po prvem neuspehu ponovni poskus izgubi (log: `gateway timeout attempt=1`, `retry scheduled delay=30000ms`, nato nič). Besedilo incidenta (`problemBriefs.ts` + seed 0001) je treba uskladiti - odloči uporabnik.
-- **Monetizacija (`00`, 9. 10. 2026) vs. zgrajeno:** brezplačna raven = samo Easy, zdaj so odprti vsi problemi → D67. ~~"1 free problem on platform credits (trial)" poleg dnevne omejitve~~ → odpade (D62). GPT-3.5 (`00`, `CLAUDE.md`) ni več na voljo → `gpt-4o-mini` (D62).
-- **Karierne poti (`00`):** kategorije DevOps, Performance, APIs, "model integration" ne obstajajo (5 kategorij) → D66 (b); obvestilo ob odklepu, obvestil pa ni (D25) → D66 (f).
+- **Monetizacija (`00`, 9. 10. 2026) vs. zgrajeno:** ~~brezplačna raven = samo Easy~~ → D67: v razvoju vse odprto, plačilni zid pozneje (poti + povratna informacija). ~~"1 free problem on platform credits (trial)" poleg dnevne omejitve~~ → odpade (D62). GPT-3.5 (`00`, `CLAUDE.md`) ni več na voljo → `gpt-4o-mini` (D62).
+- ~~**Karierne poti (`00`):** sestava po kategorijah (jedro / podpora / občasno, DevOps, APIs …)~~ → D66: vsaka pot ima svoj nabor problemov, ki ga izbere admin; tabela sestave v `00` je vodilo za admina.
 - **Izbirnik "AI tool"** (Claude / GPT-4 / Gemini / Other) na zaslonu reševanja vs. dejanski ponudnik (platformni ključ ali ključ uporabnika) → rešeno: izbirnik odpade, oznaka modela (D51 e, S1).
-- **Nove tabele** `user_api_keys`, `problem_benchmarks`, `solve_feedback`, `career_path_progress` še niso v `01` - dodajo se, ko jih rezina zgradi (kot ostale).
+- ~~**Nove tabele** `user_api_keys`, `problem_benchmarks`, `solve_feedback`, `problem_career_paths`, `career_path_progress`~~ → vse zgrajene in v `01` (S6-S8, K1-K3, 10. 10. 2026).
 
 ---
 - ~~`01_database.md` `user_profiles.goal_role` komentar je pisal `'ai_engineer'`~~ → popravljeno 8. 10. 2026 na `ai-engineer` (slug kategorije, F4).
@@ -599,7 +615,7 @@ Odprto:
 | ID | Kaj | Zakaj čaka |
 | --- | --- | --- |
 | X1 | VS Code razširitev | `02`: "Not in scope for v1" |
-| X2 | Naročnine | `04`: nagrade po uvedbi naročnin. Model iz `00` (9. 10. 2026) naročnin nima (brezplačno + lasten ključ) - verjetno odpade, potrdi uporabnik |
+| X2 | Plačilni zid / naročnine | D67: karierne poti in AI povratna informacija gredo pozneje za plačilni zid; `04`: nagrade po uvedbi naročnin |
 | X3 | Bonusi tekmovanj | `03`: "TBD - not needed for v1" |
 | X4 | Nalaganje avatarja | `users.avatar_url` obstaja, shramba datotek ni odločena |
 | X5 | Pozabljeno geslo prek e-pošte | Pošiljanje pošte ni v stacku |
@@ -620,13 +636,14 @@ Odprto:
 | `/problems/[slug]` | P2, R4 (rezultat + poskusi), O1, O2, S8 (povratna informacija) |
 | `/problems/[slug]/solve` | R1-R6 + R2b ✅, S1 ✅, S6 ✅, S2 ✅, S3 ✅ |
 | `/leaderboard` | S4 ✅ |
-| `/profile/[username]` | U1, U2, T2, S8 (zgodovina povratnih informacij), K1 |
+| `/profile/[username]` | U1, U2, T2, S8 (zgodovina povratnih informacij) |
 | `/settings` | U1 (D34-D36), S6 ✅ (lasten API ključ, zavihek Account) |
-| karierna pot (ni zaslona) | K1 |
+| `/career-paths` (harmonika, ni dizajna) | K2 ✅ |
 | `/contests`, `/contests/[id]` | T1, T2 |
 | `/admin` | A9 |
-| `/admin/problems/new` | A10, A2, A4, A5 |
-| `/admin/problems`, `/admin/problems/[id]/edit` | A2, A3 (A5 za objavo / umik) |
+| `/admin/problems/new` | A10, A2, A4, A5, K1 |
+| `/admin/problems`, `/admin/problems/[id]/edit` | A2, A3 (A5 za objavo / umik), K1 |
 | `/admin/contests`, `/admin/contests/new`, `/admin/contests/[id]/edit` | A6 (A7 za rezultate) |
-| `/admin/analytics` | S5 ✅, K2 |
+| `/admin/analytics` | S5 ✅ |
+| `/admin/career-paths` | K3 ✅ |
 | `/admin/*` | A1-A9 |

@@ -189,6 +189,34 @@ export function ReviewStep(props: Props) {
           </div>
         </fieldset>
 
+        <fieldset>
+          <legend className="mb-1.5 text-sm font-medium text-text">Career paths</legend>
+          <p className="mb-2 text-xs text-muted">
+            A path problem is only solved through its paths and stays off /problems. None ticked = a general problem.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CATEGORIES.map((category) => (
+              <label key={category.slug} className="cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="peer sr-only"
+                  checked={form.careerPaths.includes(category.slug)}
+                  onChange={(e) =>
+                    onFormChange({
+                      careerPaths: e.target.checked
+                        ? [...form.careerPaths, category.slug]
+                        : form.careerPaths.filter((s) => s !== category.slug),
+                    })
+                  }
+                />
+                <span className={`${optionClass} py-1.5 peer-checked:border-action peer-checked:text-action`}>
+                  {category.name}
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
         <section className="space-y-3">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-medium text-text">Acceptance Checks</h2>
