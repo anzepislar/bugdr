@@ -5,6 +5,13 @@ import { optionalAuth, requireAuth } from "../auth/auth.service.js";
 
 export const problemsRouter = Router();
 
+// D17: a contest's problem stays off the lists until its contest ends, and cannot be opened while the contest is upcoming.
+// Drafts (no dates) hide nothing. Both expect the problem aliased as p.
+const inContest = (when) =>
+  `EXISTS (SELECT 1 FROM contest_problems cp JOIN contests ct ON ct.id = cp.contest_id WHERE cp.problem_id = p.id AND ${when})`;
+const LISTED = `p.is_published AND NOT ${inContest("ct.ends_at > now()")}`;
+export const VISIBLE = `p.is_published AND NOT ${inContest("ct.starts_at > now()")}`;
+
 // ponytail: the whole published list in one response, the client filters and pages it (no pagination in v1, 06).
 // Add query filters + limit/offset when the list outgrows ~1000 problems.
 problemsRouter.get("/", optionalAuth, async (req, res) => {
@@ -26,7 +33,7 @@ export async function listProblems(userId) {
      LEFT JOIN user_problem_attempts a ON a.problem_id = p.id AND a.user_id = $1
      LEFT JOIN problem_bookmarks b ON b.problem_id = p.id AND b.user_id = $1
      LEFT JOIN user_profiles up ON up.user_id = $1
-     WHERE p.is_published
+     WHERE ${LISTED}
      ORDER BY coalesce(c.slug = up.goal_role, false) DESC, p.average_rating DESC, p.title`,
     [userId],
   );
@@ -68,7 +75,7 @@ problemsRouter.get("/:slug", optionalAuth, async (req, res) => {
      LEFT JOIN user_problem_attempts a ON a.problem_id = p.id AND a.user_id = $2
      LEFT JOIN problem_bookmarks b ON b.problem_id = p.id AND b.user_id = $2
      LEFT JOIN problem_ratings r ON r.problem_id = p.id AND r.user_id = $2
-     WHERE p.slug = $1 AND p.is_published`,
+     WHERE p.slug = $1 AND ${VISIBLE}`,
     [req.params.slug, userId],
   );
   const r = rows[0];
@@ -159,7 +166,7 @@ problemsRouter.post("/:slug/start", requireAuth, async (req, res) => {
        coalesce((SELECT json_agg(json_build_object('id', k.id, 'checkOrder', k.check_order, 'description', k.description)
          ORDER BY k.check_order) FROM problem_checks k WHERE k.problem_id = p.id), '[]') AS checks
      FROM problems p JOIN problem_codebase cb ON cb.problem_id = p.id
-     WHERE p.slug = $1 AND p.is_published`,
+     WHERE p.slug = $1 AND ${VISIBLE}`,
     [req.params.slug],
   );
   const p = rows[0];
@@ -190,6 +197,14 @@ problemsRouter.post("/:slug/start", requireAuth, async (req, res) => {
   );
   const a = attempts[0];
   if (a.status === "solved") throw new HttpError(409, "ALREADY_SOLVED", "You have already solved this problem");
+  // D60: starting a problem of a live contest signs the user up for that contest, once.
+  await pool.query(
+    `INSERT INTO contest_entries (contest_id, user_id)
+     SELECT cp.contest_id, $1 FROM contest_problems cp JOIN contests ct ON ct.id = cp.contest_id
+     WHERE cp.problem_id = $2 AND ct.starts_at <= now() AND ct.ends_at > now()
+     ON CONFLICT (contest_id, user_id) DO NOTHING`,
+    [req.user.id, p.id],
+  );
 
   res.json({
     attempt: {
@@ -208,7 +223,7 @@ problemsRouter.post("/:slug/start", requireAuth, async (req, res) => {
 });
 
 async function publishedId(slug) {
-  const { rows } = await pool.query("SELECT id FROM problems WHERE slug = $1 AND is_published", [slug]);
+  const { rows } = await pool.query(`SELECT p.id FROM problems p WHERE p.slug = $1 AND ${VISIBLE}`, [slug]);
   if (!rows[0]) throw new HttpError(404, "PROBLEM_NOT_FOUND", "Problem not found");
   return rows[0].id;
 }
@@ -242,7 +257,7 @@ problemsRouter.put("/:slug/rating", requireAuth, async (req, res) => {
     const { rows } = await client.query(
       `SELECT p.id, a.status = 'solved' AS solved FROM problems p
        LEFT JOIN user_problem_attempts a ON a.problem_id = p.id AND a.user_id = $2
-       WHERE p.slug = $1 AND p.is_published FOR UPDATE OF p`,
+       WHERE p.slug = $1 AND ${VISIBLE} FOR UPDATE OF p`,
       [req.params.slug, req.user.id],
     );
     const p = rows[0];

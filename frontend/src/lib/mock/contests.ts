@@ -104,15 +104,17 @@ export async function mockGetContests(): Promise<ContestList> {
       {
         contestId: "contest-cache-eviction",
         title: "Cache eviction incident",
-        checksPassed: 7,
-        checksTotal: 7,
+        problemsSolved: 1,
+        problemCount: 1,
+        score: 375,
         endedAt: at(-8 * DAY),
       },
       {
         contestId: "contest-duplicate-invoices",
         title: "Duplicate invoices",
-        checksPassed: 4,
-        checksTotal: 6,
+        problemsSolved: 0,
+        problemCount: 1,
+        score: 0,
         endedAt: at(-9 * DAY),
       },
     ],
@@ -141,7 +143,7 @@ const DETAILS: Record<string, Pick<ContestDetail, "problem" | "rewardDescription
       checkCount: 7,
     },
     rewardDescription: "Bugdr hoodie for the top 3",
-    participation: { solved: false, checksPassed: 3, checksTotal: 7 },
+    participation: { problemsSolved: 0, problemCount: 1, score: 0 },
   },
   "contest-monthly": {
     problem: {
@@ -152,7 +154,7 @@ const DETAILS: Record<string, Pick<ContestDetail, "problem" | "rewardDescription
       checkCount: 8,
     },
     rewardDescription: "1 year free subscription for the winner",
-    participation: { solved: true, checksPassed: 8, checksTotal: 8 },
+    participation: { problemsSolved: 1, problemCount: 1, score: 375 },
   },
   "contest-cache-eviction": {
     problem: {
@@ -162,7 +164,7 @@ const DETAILS: Record<string, Pick<ContestDetail, "problem" | "rewardDescription
       checkCount: 7,
     },
     rewardDescription: null,
-    participation: { solved: true, checksPassed: 7, checksTotal: 7 },
+    participation: { problemsSolved: 1, problemCount: 1, score: 375 },
   },
   "contest-duplicate-invoices": {
     problem: {
@@ -172,7 +174,7 @@ const DETAILS: Record<string, Pick<ContestDetail, "problem" | "rewardDescription
       checkCount: 6,
     },
     rewardDescription: null,
-    participation: { solved: false, checksPassed: 4, checksTotal: 6 },
+    participation: { problemsSolved: 0, problemCount: 1, score: 0 },
   },
 };
 

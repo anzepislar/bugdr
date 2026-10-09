@@ -4,8 +4,8 @@ import { ContestHistory } from "@/components/contests/ContestHistory";
 import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
 import { countdown, formatDate } from "@/lib/format";
-import { mockGetContests } from "@/lib/mock/contests";
-import type { Contest } from "@/lib/types/contest";
+import { serverFetch } from "@/lib/serverApi";
+import type { Contest, ContestList } from "@/lib/types/contest";
 
 const TABS = { live: "Live", upcoming: "Upcoming", past: "Past contests" } as const;
 type Tab = keyof typeof TABS;
@@ -18,7 +18,9 @@ const EMPTY: Record<Tab, string> = {
 
 // Rendered per request (searchParams), so the countdowns are as of this load.
 async function load() {
-  return { data: await mockGetContests(), now: Date.now() };
+  const res = await serverFetch("/contests");
+  if (!res.ok) throw new Error(`GET /contests failed: ${res.status}`);
+  return { data: (await res.json()) as ContestList, now: Date.now() };
 }
 
 export default async function ContestsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {

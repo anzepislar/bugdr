@@ -47,7 +47,8 @@ attemptsRouter.post("/:id/give-up", async (req, res) => {
  * output? } per check as it happens, then { "type": "done", "results", "solved" }. Errors before the first line are
  * normal JSON. The run finishes (and can solve) even if the client goes away. When every must_pass check passes, the
  * attempt is solved in one transaction (06 "Konvencije"): the open try closes, time = all tries (D56), points =
- * base × time multiplier (efficiency 1 until S3), two ledger rows (D15), user_stats, daily activity, solve_count.
+ * base × time multiplier (efficiency 1 until S3), two ledger rows (D15), user_stats, daily activity, solve_count,
+ * contest entries (T2).
  * The attempt row is locked, so a double click never awards points twice.
  */
 attemptsRouter.post("/:id/test", async (req, res) => {
@@ -165,6 +166,16 @@ async function solve(attemptId, userId, problem, finalCode) {
       [userId, points],
     );
     await client.query("UPDATE problems SET solve_count = solve_count + 1 WHERE id = $1", [problem.problem_id]);
+    // T2 (D18): a solve while the problem's contest is live adds its points to the entry; after ends_at it does not count.
+    // Upsert: an attempt started before the contest went live has no entry yet.
+    await client.query(
+      `INSERT INTO contest_entries AS e (contest_id, user_id, problems_solved, total_score)
+       SELECT cp.contest_id, $1, 1, $3 FROM contest_problems cp JOIN contests ct ON ct.id = cp.contest_id
+       WHERE cp.problem_id = $2 AND ct.starts_at <= now() AND ct.ends_at > now()
+       ON CONFLICT (contest_id, user_id) DO UPDATE SET
+         problems_solved = e.problems_solved + 1, total_score = e.total_score + EXCLUDED.total_score`,
+      [userId, problem.problem_id, points],
+    );
     await client.query("COMMIT");
     return { pointsEarned: points, timeTakenSeconds: seconds, timeMultiplier: multiplier };
   } catch (err) {

@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { formatDate } from "@/lib/format";
-import type { ContestHistoryEntry } from "@/lib/types/contest";
+import type { ContestHistoryEntry, ContestResult } from "@/lib/types/contest";
+
+/** "1/1 solved · 375 pts" (D32). */
+export const resultText = (r: ContestResult) =>
+  `${r.problemsSolved}/${r.problemCount} solved · ${r.score.toLocaleString("en-US")} pts`;
 
 /** contest_entries of one user, newest first. Used on /contests and on the profile. */
 export function ContestHistory({ entries }: { entries: ContestHistoryEntry[] }) {
@@ -9,7 +13,7 @@ export function ContestHistory({ entries }: { entries: ContestHistoryEntry[] }) 
   return (
     <ul className="mt-4 divide-y divide-border">
       {entries.map((e) => {
-        const completed = e.checksPassed === e.checksTotal;
+        const completed = e.problemsSolved === e.problemCount;
         return (
           <li
             key={e.contestId}
@@ -25,9 +29,7 @@ export function ContestHistory({ entries }: { entries: ContestHistoryEntry[] }) 
             >
               {completed ? "Completed" : "Incomplete"}
             </span>
-            <span className="text-muted">
-              {e.checksPassed}/{e.checksTotal} checks passed
-            </span>
+            <span className="text-muted">{resultText(e)}</span>
             <span className="text-muted sm:text-right">{formatDate(e.endedAt)}</span>
           </li>
         );

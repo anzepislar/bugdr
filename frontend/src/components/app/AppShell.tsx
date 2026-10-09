@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useLoginHref, useLogout, useMe } from "@/components/app/Session";
 import { Icon, type IconName } from "@/components/Icon";
-import { MOCK_ACTIVE_CONTEST_COUNT } from "@/lib/mock/dashboard";
 import { EXPERIENCE_LABEL, type Me } from "@/lib/types/dashboard";
 import { CATEGORIES } from "@/lib/types/problem";
 
@@ -20,7 +19,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/problems", label: "Problems", icon: "problems" },
-  { href: "/contests", label: "Contests", icon: "trophy", badge: MOCK_ACTIVE_CONTEST_COUNT },
+  { href: "/contests", label: "Contests", icon: "trophy" },
 ];
 
 // Admin pages get their own sidebar. Overview matches /admin only, the rest by prefix.
@@ -49,7 +48,7 @@ function Avatar({ me, className }: { me: Me; className: string }) {
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, liveContests }: { children: ReactNode; liveContests: number }) {
   const pathname = usePathname();
   const me = useMe();
   const signedIn = me !== null;
@@ -58,9 +57,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Guests see the public pages only (no profile).
   const nav = admin
     ? ADMIN_NAV
-    : me
-      ? [...NAV, { href: `/profile/${me.username}`, label: "My profile", icon: "user" as const }]
-      : NAV;
+    : [
+        ...NAV.map((item) => (item.href === "/contests" ? { ...item, badge: liveContests } : item)),
+        ...(me ? [{ href: `/profile/${me.username}`, label: "My profile", icon: "user" as const }] : []),
+      ];
   const loginLink = useLoginHref();
   const logout = useLogout();
   const isNavActive = (href: string) => (href === "/admin" ? pathname === href : isActive(href));

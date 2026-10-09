@@ -10,7 +10,8 @@ import { Icon } from "@/components/Icon";
 import { api } from "@/lib/api";
 import { countdown } from "@/lib/format";
 import { mockGetDashboard } from "@/lib/mock/dashboard";
-import type { ActiveContest, Dashboard, InProgressAttempt } from "@/lib/types/dashboard";
+import type { Contest } from "@/lib/types/contest";
+import type { Dashboard, InProgressAttempt } from "@/lib/types/dashboard";
 
 type MockDashboard = Awaited<ReturnType<typeof mockGetDashboard>>;
 
@@ -51,8 +52,7 @@ export default function DashboardPage() {
   }
 
   const { data, mock, now } = state;
-  // ponytail: live contests stay on the mock until T1.
-  const contests = mock.contests;
+  const { contests } = data;
   const date = new Date(now);
 
   return (
@@ -121,7 +121,7 @@ export default function DashboardPage() {
   );
 }
 
-function ContestCard({ contest, now }: { contest: ActiveContest; now: number }) {
+function ContestCard({ contest, now }: { contest: Contest; now: number }) {
   return (
     <li>
       <Link
@@ -135,7 +135,7 @@ function ContestCard({ contest, now }: { contest: ActiveContest; now: number }) 
         <h3 className="mt-3 text-lg font-semibold text-text">{contest.title}</h3>
         <p className="mt-1 text-sm text-muted">{contest.description}</p>
         <div className="mt-auto flex items-center gap-4 pt-5 text-xs text-muted">
-          <DifficultyPill difficulty={contest.difficulty} />
+          {contest.difficulty ? <DifficultyPill difficulty={contest.difficulty} /> : null}
           <span className="flex items-center gap-1.5">
             <Icon name="user" className="h-4 w-4" />
             {contest.participantCount.toLocaleString("en-US")} participating

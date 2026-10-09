@@ -1,6 +1,5 @@
-// Mock of the dashboard's live contests (replaced by T1) and the sample progress shown blurred to guests.
-// GET /dashboard (U3) has the rest (see md_files/06_backend_slices.md, "Register mockov").
-import type { ActiveContest, ActivityDay, DashboardStats, Me, RecentWin } from "@/lib/types/dashboard";
+// Mock of the sample progress shown blurred to guests. GET /dashboard (U3, T1) has the rest (see md_files/06_backend_slices.md, "Register mockov").
+import type { ActivityDay, DashboardStats, Me, RecentWin } from "@/lib/types/dashboard";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const MIN = 60_000;
@@ -13,6 +12,7 @@ export const MOCK_ME: Me = {
   experienceLevel: "mid",
 };
 
+// Admin overview only (A9); the sidebar badge counts real live contests (T1).
 export const MOCK_ACTIVE_CONTEST_COUNT = 3;
 
 // Activity ending today (~4 months by default): an 18-day streak, a gap before it.
@@ -29,9 +29,8 @@ export function mockActivity(now: number, days = 130): ActivityDay[] {
   });
 }
 
-/** Live contests (T1) + sample progress for the guest blur (GET /dashboard sends guests none). */
+/** Sample progress for the guest blur (GET /dashboard sends guests none). */
 export async function mockGetDashboard(): Promise<{
-  contests: ActiveContest[];
   sample: {
     stats: DashboardStats;
     activity: ActivityDay[];
@@ -41,35 +40,6 @@ export async function mockGetDashboard(): Promise<{
   await delay(300);
   const now = Date.now();
   return {
-    contests: [
-      {
-        id: "contest-daily",
-        type: "daily",
-        title: "The checkout breakdown",
-        description: "Payments succeed. Orders never arrive.",
-        difficulty: "hard",
-        participantCount: 128,
-        endsAt: new Date(now + (8 * 60 + 42) * MIN).toISOString(),
-      },
-      {
-        id: "contest-weekly",
-        type: "weekly",
-        title: "Cache under pressure",
-        description: "One stale read. Thousands of wrong results.",
-        difficulty: "hard",
-        participantCount: 342,
-        endsAt: new Date(now + 3 * DAY + 8 * 60 * MIN).toISOString(),
-      },
-      {
-        id: "contest-monthly",
-        type: "monthly",
-        title: "The midnight incident",
-        description: "Restore a failing production pipeline.",
-        difficulty: "hard",
-        participantCount: 1204,
-        endsAt: new Date(now + 26 * DAY).toISOString(),
-      },
-    ],
     sample: {
       stats: {
         totalPoints: 12840,

@@ -89,7 +89,7 @@ test("the feed never has solved or unpublished problems, for users and guests", 
 
 test("guests get no personal data", async () => {
   const guest = await dashboard();
-  assert.deepEqual({ ...guest, feed: undefined }, { feed: undefined, inProgress: null, stats: null, activity: [], recentWins: [] });
+  assert.deepEqual({ ...guest, feed: undefined }, { contests: [], feed: undefined, inProgress: null, stats: null, activity: [], recentWins: [] });
 });
 
 test("signed in: stats, recent wins and the attempt in progress with the last run's checks", async () => {

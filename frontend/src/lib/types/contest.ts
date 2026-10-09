@@ -16,12 +16,17 @@ export interface Contest {
   thumbnailUrl: string | null;
 }
 
-/** The signed-in user's contest_entries row for an ended contest (slice T2). */
-export interface ContestHistoryEntry {
+/** The user's contest result (contest_entries, slice T2): problems solved within the contest and their points (D32). */
+export interface ContestResult {
+  problemsSolved: number;
+  problemCount: number;
+  score: number;
+}
+
+/** One ended contest the user entered (D60), newest first. */
+export interface ContestHistoryEntry extends ContestResult {
   contestId: string;
   title: string;
-  checksPassed: number;
-  checksTotal: number;
   endedAt: string;
 }
 
@@ -46,8 +51,8 @@ export interface ContestDetail extends Contest {
     checkCount: number;
   } | null;
   rewardDescription: string | null;
-  /** The signed-in user's contest_entries row; null = not started. */
-  participation: { solved: boolean; checksPassed: number; checksTotal: number } | null;
+  /** The signed-in user's entry; null = not entered (D60). */
+  participation: ContestResult | null;
 }
 
 export const REWARD_TYPES = { subscription: "Subscription", merch: "Merch", points: "Points" } as const;

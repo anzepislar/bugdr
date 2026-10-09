@@ -2,6 +2,7 @@ import { Router } from "express";
 import { pool } from "../../db.js";
 import { HttpError } from "../../errors.js";
 import { optionalAuth } from "../auth/auth.service.js";
+import { getContestHistory } from "../contests/contests.routes.js";
 import { getLevels, levelFor } from "../levels/levels.js";
 
 export const usersRouter = Router();
@@ -85,7 +86,12 @@ usersRouter.get("/:username", optionalAuth, async (req, res) => {
     return res.json({ profile: { username: u.username, displayName: u.username, isPublic: false, own: false } });
   }
 
-  const [stats, activity, solved] = await Promise.all([getStats(u.id), getActivity(u.id), getSolved(u.id)]);
+  const [stats, activity, solved, contests] = await Promise.all([
+    getStats(u.id),
+    getActivity(u.id),
+    getSolved(u.id),
+    getContestHistory(u.id),
+  ]);
   res.json({
     profile: {
       username: u.username,
@@ -97,7 +103,7 @@ usersRouter.get("/:username", optionalAuth, async (req, res) => {
       stats,
       activity,
       solved,
-      contests: [], // T2
+      contests,
     },
   });
 });

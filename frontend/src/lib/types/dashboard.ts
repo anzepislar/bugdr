@@ -1,3 +1,4 @@
+import type { Contest } from "@/lib/types/contest";
 import type { CategorySlug, Difficulty, ProblemListItem } from "@/lib/types/problem";
 
 export const EXPERIENCE_LEVELS = ["student", "junior", "mid", "senior"] as const;
@@ -32,17 +33,6 @@ export interface Me {
 }
 
 export type ContestType = "daily" | "weekly" | "monthly";
-
-export interface ActiveContest {
-  id: string;
-  type: ContestType;
-  title: string;
-  description: string;
-  /** Highest difficulty among the contest's problems. */
-  difficulty: Difficulty;
-  participantCount: number;
-  endsAt: string;
-}
 
 export interface InProgressAttempt {
   problemSlug: string;
@@ -84,8 +74,10 @@ export interface RecentWin {
   timeTakenSeconds: number;
 }
 
-/** Result of GET /dashboard (slice U3). Guests get the feed only (stats null). Live contests come with T1. */
+/** Result of GET /dashboard (slice U3). Guests get the feed and live contests only (stats null). */
 export interface Dashboard {
+  /** Live contests (T1), ending soonest first. */
+  contests: Contest[];
   inProgress: InProgressAttempt | null;
   /** Published problems the user has not solved (D19, D24), in the "recommended" order of GET /problems. */
   feed: ProblemListItem[];

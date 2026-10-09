@@ -1,20 +1,21 @@
 import { Router } from "express";
 import { pool } from "../../db.js";
 import { optionalAuth } from "../auth/auth.service.js";
+import { listContests } from "../contests/contests.routes.js";
 import { listProblems } from "../problems/problems.routes.js";
 import { getActivity, getSolved, getStats } from "../users/users.routes.js";
 
 export const dashboardRouter = Router();
 
-// GET /dashboard → Dashboard (frontend/src/lib/types/dashboard.ts). Contests come with T1.
+// GET /dashboard → Dashboard (frontend/src/lib/types/dashboard.ts). Live contests (T1) for guests too.
 // Feed (D19, D24): every published problem the user has not solved, in the "recommended" order of GET /problems;
 // the client filters it by category / difficulty (defaults from goal_role / experience_level), like /problems.
 // Guests get the feed only.
 dashboardRouter.get("/", optionalAuth, async (req, res) => {
   const userId = req.user?.id ?? null;
-  const problems = await listProblems(userId);
+  const [problems, { live: contests }] = await Promise.all([listProblems(userId), listContests()]);
   const feed = problems.filter((p) => p.status !== "solved");
-  if (!userId) return res.json({ feed, inProgress: null, stats: null, activity: [], recentWins: [] });
+  if (!userId) return res.json({ contests, feed, inProgress: null, stats: null, activity: [], recentWins: [] });
 
   const [stats, activity, recentWins, inProgress] = await Promise.all([
     getStats(userId),
@@ -22,7 +23,7 @@ dashboardRouter.get("/", optionalAuth, async (req, res) => {
     getSolved(userId, 3),
     getInProgress(userId),
   ]);
-  res.json({ feed, inProgress, stats, activity, recentWins });
+  res.json({ contests, feed, inProgress, stats, activity, recentWins });
 });
 
 /**

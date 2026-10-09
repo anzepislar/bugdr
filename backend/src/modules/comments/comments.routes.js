@@ -2,6 +2,7 @@ import { Router } from "express";
 import { pool } from "../../db.js";
 import { HttpError } from "../../errors.js";
 import { optionalAuth, requireAuth } from "../auth/auth.service.js";
+import { VISIBLE } from "../problems/problems.routes.js";
 
 // O2. Mounted at /api/v1: the list and posting live under the problem, the rest under the comment's id.
 export const commentsRouter = Router();
@@ -17,7 +18,7 @@ async function problemFor(slug, userId) {
   const { rows } = await pool.query(
     `SELECT p.id, coalesce(a.status = 'solved', false) AS solved FROM problems p
      LEFT JOIN user_problem_attempts a ON a.problem_id = p.id AND a.user_id = $2
-     WHERE p.slug = $1 AND p.is_published`,
+     WHERE p.slug = $1 AND ${VISIBLE}`,
     [slug, userId],
   );
   if (!rows[0]) throw problemNotFound();
@@ -29,7 +30,7 @@ async function commentFor(id, userId) {
   if (!UUID.test(id)) throw commentNotFound();
   const { rows } = await pool.query(
     `SELECT c.id, c.user_id = $2 AS own, coalesce(a.status = 'solved', false) AS solved FROM problem_comments c
-     JOIN problems p ON p.id = c.problem_id AND p.is_published
+     JOIN problems p ON p.id = c.problem_id AND ${VISIBLE}
      LEFT JOIN user_problem_attempts a ON a.problem_id = c.problem_id AND a.user_id = $2
      WHERE c.id = $1`,
     [id, userId],

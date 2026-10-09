@@ -1,10 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { resultText } from "@/components/contests/ContestHistory";
 import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
 import { countdown } from "@/lib/format";
-import { mockGetContest } from "@/lib/mock/contests";
+import { serverFetch } from "@/lib/serverApi";
 import type { ContestDetail } from "@/lib/types/contest";
 
 const RULES = [
@@ -23,13 +24,15 @@ const utc = (iso: string) => {
 
 // Rendered per request, so the countdown is as of this load.
 async function load(id: string) {
-  return { contest: await mockGetContest(id), now: Date.now() };
+  const res = await serverFetch(`/contests/${encodeURIComponent(id)}`);
+  if (res.status === 404) notFound();
+  if (!res.ok) throw new Error(`GET /contests/${id} failed: ${res.status}`);
+  return { contest: ((await res.json()) as { contest: ContestDetail }).contest, now: Date.now() };
 }
 
 export default async function ContestPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { contest: c, now } = await load(id);
-  if (!c) notFound();
 
   return (
     <div className="w-full px-6 py-8 wide:mx-auto wide:max-w-[1200px]">
@@ -111,12 +114,13 @@ function EntryCard({ contest: c, now }: { contest: ContestDetail; now: number })
   }[c.status];
 
   const p = c.problem;
+  const entry = c.participation;
   const action =
     !p || c.status === "upcoming"
       ? null
-      : c.status === "past" || c.participation?.solved
+      : c.status === "past" || (entry && entry.problemsSolved === entry.problemCount)
         ? { href: `/problems/${p.slug}`, label: "View problem" }
-        : { href: `/problems/${p.slug}/solve`, label: c.participation ? "Resume contest" : "Enter contest" };
+        : { href: `/problems/${p.slug}/solve`, label: entry ? "Resume contest" : "Enter contest" };
 
   return (
     <section className="rounded border border-border bg-surface p-6 md:grid md:grid-cols-[minmax(0,1fr)_240px] md:gap-8 lg:block">
@@ -159,18 +163,19 @@ function EntryCard({ contest: c, now }: { contest: ContestDetail; now: number })
 
 function Participation({ contest: c }: { contest: ContestDetail }) {
   const entry = c.participation;
+  const completed = entry !== null && entry.problemsSolved === entry.problemCount;
   const status = !entry
     ? c.status === "past"
       ? "You did not take part."
       : "Not started"
-    : `${entry.solved ? "Completed" : c.status === "past" ? "Not completed" : "In progress"} · ${entry.checksPassed}/${entry.checksTotal} checks passed`;
+    : `${completed ? "Completed" : c.status === "past" ? "Not completed" : "In progress"} · ${resultText(entry)}`;
 
   return (
     <section aria-labelledby="participation-heading" className="lg:px-6">
       <h2 id="participation-heading" className="text-lg font-semibold text-text">
         Your participation
       </h2>
-      <p className={`mt-3 text-sm ${entry?.solved ? "text-passed" : "text-muted"}`}>{status}</p>
+      <p className={`mt-3 text-sm ${completed ? "text-passed" : "text-muted"}`}>{status}</p>
       <p className="mt-6 text-sm leading-relaxed text-muted">
         {c.rewardDescription ? `Reward: ${c.rewardDescription}.` : "No reward has been announced for this contest."}
       </p>
