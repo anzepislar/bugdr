@@ -111,8 +111,8 @@ export function Workspace({
   difficulty: Difficulty;
 }) {
   const router = useRouter();
-  const tracker = useSessionTracker();
   const [attempt, setAttempt] = useState<Attempt | null>(null);
+  const tracker = useSessionTracker(attempt?.id ?? null);
   const [startError, setStartError] = useState("");
   const [giveUpState, setGiveUpState] = useState<{ busy: boolean; error: string } | null>(null);
   // The original files with the user's edits on top (D14). R4 sends these on Test.
@@ -122,6 +122,7 @@ export function Workspace({
   const [statuses, setStatuses] = useState<Record<string, CheckStatus>>({});
   const [results, setResults] = useState<Record<string, CheckRunResult>>({});
   const [running, setRunning] = useState(false);
+  const [runsDone, setRunsDone] = useState(0);
   const [bottomTab, setBottomTab] = useState<BottomTab>("terminal");
   const [terminal, setTerminal] = useState<TerminalLine[]>([]);
   const [command, setCommand] = useState("");
@@ -257,6 +258,7 @@ export function Workspace({
     if (!attempt || running) return;
     setRunning(true);
     tracker.track("test_run");
+    await tracker.flush(); // S2: file opens etc. must land before a solve closes the attempt
     setBottomTab("results");
     setResults({});
     setStatuses(Object.fromEntries(attempt.checks.map((c) => [c.id, "pending" as const])));
@@ -297,9 +299,10 @@ export function Workspace({
       { text: `${all.length - failed} passed · ${failed} failed · ${all.length} total`, tone: failed ? "fail" : "pass" },
     );
     setRunning(false);
+    setRunsDone((n) => n + 1); // S3: the chat panel reloads the score (test runs and iterations changed)
     if (!response.solved) return;
     print({
-      text: `Solved · +${response.solved.pointsEarned} points (${response.solved.timeMultiplier}x time bonus)`,
+      text: `Solved · +${response.solved.pointsEarned} points (${response.solved.timeMultiplier}x time · ${response.solved.efficiencyScore}x AI efficiency)`,
       tone: "pass",
     });
     try {
@@ -626,7 +629,7 @@ export function Workspace({
             dragging ? "" : "transition-all duration-300 ease-out motion-reduce:transition-none"
           } ${chatOpen ? "w-[var(--chat-w)] min-w-[80px]" : "w-0"}`}
         >
-          <AiChatPanel tracker={tracker} difficulty={difficulty} />
+          <AiChatPanel tracker={tracker} difficulty={difficulty} attemptId={attempt?.id ?? null} files={files} runsDone={runsDone} />
           <button
             type="button"
             onClick={() => setChatOpen(false)}

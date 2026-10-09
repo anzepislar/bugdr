@@ -1,21 +1,39 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Icon } from "@/components/Icon";
 import { estimateTokens, type SessionTracker } from "@/hooks/useSessionTracker";
-import { AI_TOOLS, BENCHMARKS, mockAskAi, type AiTool } from "@/lib/mock/aiChat";
+import { api, ApiError } from "@/lib/api";
 import { DIFFICULTY_LABEL, type Difficulty } from "@/lib/types/problem";
 
 interface Message {
   role: "user" | "ai";
   text: string;
-  tool: AiTool;
   at: Date;
 }
 
+// S1: GET/POST /attempts/:id/ai/messages. model = null when the server has no AI key.
+interface AiModel {
+  keySource: "platform" | "user";
+  name: string;
+}
+interface AiUsage {
+  model: AiModel | null;
+  totalPrompts: number;
+  totalTokens: number;
+  remainingTokens: number;
+  /** S3: the score so far (as on solve) and the benchmark for the problem's difficulty. */
+  /** source (S7): the problem's own averages once it has enough solves, else the difficulty's. */
+  efficiency: {
+    score: number;
+    benchmark: { prompts: number; tokens: number; iterations: number; source: "problem" | "difficulty" };
+  };
+}
+
 const MAX_INPUT_HEIGHT = 96; // px, 4 rows of text-sm
-const toolLabel = (id: AiTool) => AI_TOOLS.find((t) => t.id === id)?.label ?? id;
 const time = (d: Date) => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const modelLabel = (m: AiModel) => `${m.keySource === "user" ? "Your key" : "Free model"} · ${m.name}`;
 
 // Fenced blocks become code boxes, `inline` spans become <code>.
 function MessageText({ text }: { text: string }) {
@@ -41,18 +59,45 @@ function Stat({ label, value }: { label: string; value: number }) {
 }
 
 // Right panel of the solve page: built-in AI chat, live session stats and the efficiency estimate.
-export function AiChatPanel({ tracker, difficulty }: { tracker: SessionTracker; difficulty: Difficulty }) {
-  const [tool, setTool] = useState<AiTool>("claude");
+// The AI sees the editor's current files and the earlier messages, never the problem text (S1).
+export function AiChatPanel({
+  tracker,
+  difficulty,
+  attemptId,
+  files,
+  runsDone,
+}: {
+  tracker: SessionTracker;
+  difficulty: Difficulty;
+  attemptId: string | null;
+  files: Record<string, string>;
+  /** Finished Submits; each one reloads the score. */
+  runsDone: number;
+}) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [usage, setUsage] = useState<AiUsage | null>(null);
+  // settings = the fix is in Settings (daily limit reached, own key rejected or unreadable - S6).
+  const [error, setError] = useState<{ text: string; settings: boolean } | null>(null);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const [efficiencyOpen, setEfficiencyOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // The chat so far (after a reload), the model, today's free limit and the score; again after each Submit.
+  useEffect(() => {
+    if (!attemptId) return;
+    api<AiUsage & { messages: { role: Message["role"]; text: string; at: string }[] }>(`/attempts/${attemptId}/ai/messages`)
+      .then(({ messages: history, ...rest }) => {
+        setMessages(history.map((m) => ({ ...m, at: new Date(m.at) })));
+        setUsage(rest);
+      })
+      .catch(() => setError({ text: "Could not load the AI chat. Reload the page.", settings: false }));
+  }, [attemptId, runsDone]);
+
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
-  }, [messages, typing]);
+  }, [messages, typing, error]);
 
   // Auto-grow the textarea from 1 to 4 rows.
   useEffect(() => {
@@ -65,15 +110,33 @@ export function AiChatPanel({ tracker, difficulty }: { tracker: SessionTracker; 
 
   async function send() {
     const text = input.trim();
-    if (!text || typing) return;
+    if (!text || typing || !attemptId) return;
     setInput("");
-    setMessages((m) => [...m, { role: "user", text, tool, at: new Date() }]);
-    tracker.track("ai_prompt", { tokens: estimateTokens(text) });
+    setError(null);
+    setMessages((m) => [...m, { role: "user", text, at: new Date() }]);
+    tracker.track("ai_prompt");
     setTyping(true);
-    const reply = await mockAskAi(tracker.promptCount);
-    setMessages((m) => [...m, { role: "ai", text: reply, tool, at: new Date() }]);
-    tracker.track("ai_response", { tokens: estimateTokens(reply) });
-    setTyping(false);
+    try {
+      const { message, ...rest } = await api<AiUsage & { message: Message & { at: string } }>(
+        `/attempts/${attemptId}/ai/messages`,
+        { method: "POST", body: JSON.stringify({ text, files }) },
+      );
+      setMessages((m) => [...m, { ...message, at: new Date(message.at) }]);
+      setUsage(rest);
+      tracker.track("ai_response");
+    } catch (e) {
+      // The prompt was not recorded: take it back out and return it to the input.
+      setMessages((m) => m.slice(0, -1));
+      setInput(text);
+      const code = e instanceof ApiError ? e.code : "";
+      if (code === "AI_DAILY_LIMIT") setUsage((u) => u && { ...u, remainingTokens: 0 });
+      setError({
+        text: e instanceof ApiError ? e.message : "The AI did not answer. Try again.",
+        settings: ["AI_DAILY_LIMIT", "API_KEY_REJECTED", "API_KEY_UNREADABLE"].includes(code),
+      });
+    } finally {
+      setTyping(false);
+    }
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -83,42 +146,26 @@ export function AiChatPanel({ tracker, difficulty }: { tracker: SessionTracker; 
     }
   }
 
-  const bench = BENCHMARKS[difficulty];
   const level = DIFFICULTY_LABEL[difficulty];
-  // ponytail: average of prompt and token use vs. the benchmark; the real score (03_scoring.md) is computed on solve.
-  const usage = (tracker.promptCount / bench.prompts + tracker.totalTokens / bench.tokens) / 2;
-  const rating = usage <= 1 ? { label: "Efficient", tone: "text-passed" } : { label: "Above average use", tone: "text-pending" };
+  const prompts = usage?.totalPrompts ?? 0;
+  const tokens = usage?.totalTokens ?? 0;
+  const efficiency = usage?.efficiency;
+  const avgFor = efficiency?.benchmark.source === "problem" ? "on this problem" : `for ${level}`;
+  const round = (n: number) => Math.round(n).toLocaleString();
 
   return (
     <div className="flex h-full min-w-0 flex-col">
       <div className="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-border px-4 pl-8">
         <h2 className="truncate text-sm font-medium text-text">AI Assistant</h2>
-        <label className="flex shrink-0 items-center gap-1.5">
-          <span
-            aria-hidden
-            className="flex h-5 w-5 items-center justify-center rounded bg-highlight/15 text-[11px] font-semibold text-highlight"
-          >
-            {toolLabel(tool)[0]}
-          </span>
-          <span className="sr-only">AI tool</span>
-          <select
-            value={tool}
-            onChange={(e) => setTool(e.target.value as AiTool)}
-            className="rounded border border-border bg-canvas px-1.5 py-0.5 text-xs text-muted"
-          >
-            {AI_TOOLS.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {usage ? (
+          <span className="min-w-0 truncate text-xs text-muted">{usage.model ? modelLabel(usage.model) : "AI not available"}</span>
+        ) : null}
       </div>
 
       <div aria-live="polite" className="flex h-8 shrink-0 items-center gap-3 overflow-x-auto whitespace-nowrap bg-canvas px-4 pl-8 text-xs text-muted">
-        <Stat label="Prompts" value={tracker.promptCount} />
+        <Stat label="Prompts" value={prompts} />
         <span aria-hidden className="h-3 w-px shrink-0 bg-border" />
-        <Stat label="Tokens" value={tracker.totalTokens} />
+        <Stat label="Tokens" value={tokens} />
         <span aria-hidden className="h-3 w-px shrink-0 bg-border" />
         <Stat label="Runs" value={tracker.testRunCount} />
       </div>
@@ -133,26 +180,30 @@ export function AiChatPanel({ tracker, difficulty }: { tracker: SessionTracker; 
           Session Efficiency
           <Icon name="chevronDown" className={`h-4 w-4 transition-transform ${efficiencyOpen ? "rotate-180" : ""}`} />
         </button>
-        {efficiencyOpen ? (
+        {efficiencyOpen && efficiency ? (
           <dl className="space-y-1.5 px-4 pb-3 pl-8 text-xs">
             <div className="flex justify-between gap-3">
               <dt className="text-muted">Prompts</dt>
               <dd className="text-right text-text">
-                {tracker.promptCount} <span className="text-muted">(avg: {bench.prompts} for {level})</span>
+                {prompts} <span className="text-muted">(avg: {round(efficiency.benchmark.prompts)} {avgFor})</span>
               </dd>
             </div>
             <div className="flex justify-between gap-3">
               <dt className="text-muted">Tokens</dt>
               <dd className="text-right text-text">
-                {tracker.totalTokens.toLocaleString()}{" "}
-                <span className="text-muted">(avg: {bench.tokens.toLocaleString()} for {level})</span>
+                {tokens.toLocaleString()}{" "}
+                <span className="text-muted">(avg: {round(efficiency.benchmark.tokens)} {avgFor})</span>
               </dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-muted">Rating</dt>
-              <dd className={`font-medium ${rating.tone}`}>{rating.label}</dd>
+              <dt className="text-muted">Score so far</dt>
+              <dd className={`font-medium tabular-nums ${efficiency.score >= 1 ? "text-passed" : "text-pending"}`}>
+                {efficiency.score.toFixed(2)}x
+              </dd>
             </div>
-            <p className="pt-1 text-muted">Fewer prompts and tokens = higher score</p>
+            <p className="pt-1 text-muted">
+              Multiplies your points on solve (0.5-2x). Fewer prompts, tokens and test-fix rounds score higher.
+            </p>
           </dl>
         ) : null}
       </div>
@@ -172,7 +223,6 @@ export function AiChatPanel({ tracker, difficulty }: { tracker: SessionTracker; 
                     m.role === "user" ? "bg-surface" : "bg-canvas"
                   }`}
                 >
-                  {m.role === "ai" ? <p className="mb-1 text-xs text-muted">{toolLabel(m.tool)}</p> : null}
                   <MessageText text={m.text} />
                 </div>
                 <time className="mt-1 text-xs text-muted">{time(m.at)}</time>
@@ -190,6 +240,19 @@ export function AiChatPanel({ tracker, difficulty }: { tracker: SessionTracker; 
       </div>
 
       <div className="shrink-0 border-t border-border p-3">
+        {error ? (
+          <p role="alert" className="mb-2 text-xs text-failed">
+            {error.text}
+            {error.settings ? (
+              <>
+                {" "}
+                <Link href="/settings?tab=account" className="text-action hover:underline">
+                  Open Settings
+                </Link>
+              </>
+            ) : null}
+          </p>
+        ) : null}
         <textarea
           ref={inputRef}
           value={input}
@@ -200,13 +263,16 @@ export function AiChatPanel({ tracker, difficulty }: { tracker: SessionTracker; 
           placeholder="Ask AI for help..."
           className="block w-full resize-none rounded border border-border bg-canvas px-3 py-2 text-sm text-text placeholder:text-muted focus:border-action focus:outline-none"
         />
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-xs text-muted">~{estimateTokens(input)} tokens</span>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <span className="min-w-0 truncate text-xs text-muted">
+            ~{estimateTokens(input)} tokens
+            {usage?.model?.keySource === "platform" ? ` · ${usage.remainingTokens.toLocaleString()} free left today` : ""}
+          </span>
           <button
             type="button"
             onClick={() => void send()}
-            disabled={!input.trim() || typing}
-            className="rounded bg-action px-3 py-1 text-xs font-medium text-canvas hover:opacity-90 disabled:opacity-60"
+            disabled={!input.trim() || typing || !attemptId || usage?.model === null}
+            className="shrink-0 rounded bg-action px-3 py-1 text-xs font-medium text-canvas hover:opacity-90 disabled:opacity-60"
           >
             Send
           </button>

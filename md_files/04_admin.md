@@ -27,7 +27,7 @@ Route: `/admin` — fully protected, redirects non-admins.
    (AI suggestion marked), role, acceptance checks (3+). Time limit = low end of the recommended range (D45).
 3. Publish: Save as Draft, Run checks, Publish Problem.
 - Source (github / claude_generated) + source URL: not built
-- Planned: the analysis also with an OpenAI key (slice A9.1)
+- The analysis also works with an OpenAI key (slice A9.1, done)
 
 **Problem code (A3, decided 9. 10. 2026):**
 - The code is never edited in the admin - the whole codebase is replaced by uploading a new ZIP
@@ -146,22 +146,25 @@ drop-off. The original list below is what it was based on.
 - Hardest problems (lowest solve rate)
 - Most popular categories
 
-**Career path metrics:**
+**Career path metrics:** (planned, K2)
 - Engineers per path (AI, Backend, Frontend, etc.)
 - Stage distribution — how many at Easy vs Medium vs Hard vs Get a job
 - Average threshold pass rate per stage
 - Drop-off points — where engineers stop progressing
 
-**Feedback metrics:**
-- Average feedback rating (if user rates it)
-- Most common improvement areas across all users
-- Efficiency improvement over time per user (are people actually getting better?)
+**Feedback metrics:** (S5, partly)
+- Average feedback rating: dropped - feedback is not rated (D65)
+- Most common improvement areas across all users: not built (would need AI to read every feedback text)
+- Efficiency improvement over time: built as "Efficiency by Week" on /admin/analytics (platform average per week)
 
 ---
 
 ## AI Session Analytics (/admin/analytics)
 
-Additional admin page for AI usage insights:
+Additional admin page for AI usage insights. Built in S5 (9. 10. 2026): 5 stat cards, charts (prompts by
+difficulty, efficiency distribution, models used, efficiency by week) and a per-problem table whose rows open the
+models used and the benchmark in use; all time, only solves with an efficiency score. "AI tools" are models here
+(D51 e).
 
 **Platform-wide metrics:**
 - Average prompts per problem by difficulty

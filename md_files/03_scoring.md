@@ -53,7 +53,7 @@ final_points = base_points × time_multiplier × efficiency_score
 Rounded to nearest integer.
 Stored in `point_transactions` as two rows (D15): `'problem_solved'` = the base points, `'time_bonus'` = the rest
 (only when there is a bonus). `user_stats.total_points` and the level are updated in the same transaction.
-Until the AI session score exists (S3, D51) the efficiency score is 1.
+Built in S3 (9. 10. 2026): `efficiencyScore` in `backend/src/modules/scoring/scoring.js`, stored as `solve_sessions.efficiency_score`; solves from before S3 count as 1.
 
 ### Efficiency Score (0.5 to 2.0 multiplier)
 
@@ -66,6 +66,11 @@ Calculated from the solve session:
 | Iterations | 20% | Fewer back-and-forth = higher score |
 | Edit ratio | 15% | Modified AI output scores higher than blind accept |
 | First run pass | 10% | Tests pass on first run = bonus |
+
+v1 (D51, 9. 10. 2026): edit ratio is not measured yet - its 15% is spread proportionally (prompts 35.3%, tokens 29.4%,
+iterations 23.5%, first run 11.8%). An iteration = a test run after at least one prompt. Each metric scores
+`clamp(benchmark / actual, 0.5, 2.0)` (first run: 2.0 / 0.5), the score is the weighted sum clamped to 0.5-2.0.
+One benchmark for all models; every prompt records its key source and model (D64).
 
 **Efficiency score ranges:**
 - 2.0 — exceptional: solved in 1-3 precise prompts, tests passed first run
@@ -201,8 +206,10 @@ three share a rank. The rank is computed on read (`GET /admin/contests/:id/resul
 ## Stats Shown on Profile
 
 Built in U1 (`GET /users/:username`): total points, level, problems solved, current and longest streak, plus the
-activity grid (U2) and the solved list. The other rows are not shown on the profile screen yet (no design) and
-the AI rows wait for M8.
+activity grid (U2) and the solved list. The other rows are not shown on the profile screen yet (no design). The AI
+rows (average prompts / tokens, efficiency rating, favourite model, first-run pass rate) have their data since M8 but
+are deferred: no design and no thresholds for the efficiency rating yet. Feedback history: each solved problem in
+the profile links to its page, where the owner sees the feedback (S8). Career path progress waits for M9 (K1).
 
 | Stat | Description |
 |------|-------------|

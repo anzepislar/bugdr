@@ -275,6 +275,12 @@ Using the solve_session and prompt_events data, Claude generates a debrief cover
 "You used 12 prompts where top performers average 4. You ran tests 8 times before your first passing run. Top performers typically read the full stack trace first, identify the likely failure point, then write one targeted prompt. Try diagnosing before prompting next time."
 
 ### Implementation
+Built in S8 (9. 10. 2026, `backend/src/modules/ai/feedback.service.js`, table `solve_feedback`): a `pending` row is
+created in the solve transaction and the text is written right after the commit (Submit does not wait). The
+comparison is the top 25% of the problem's other solves by efficiency score once it has 8, typical values for the
+difficulty before that (D65). Shown as "AI feedback" above Validation results on the solved problem page, only to
+its owner; the profile links each solved problem to that page. No rating of the feedback (D65).
+
 - Triggered automatically after attempt status changes to 'solved'
 - Single Claude API call (cheap model sufficient — Haiku)
 - Input: session stats + prompt_events summary + problem difficulty + benchmark data for that problem
@@ -288,6 +294,13 @@ Using the solve_session and prompt_events data, Claude generates a debrief cover
 
 Every action in the editor is tracked during a solve session.
 
+Built in M8 (S1, S2, 9. 10. 2026) - differences from the list below: the built-in AI sees only the code (the
+editor's current files) and the earlier messages, never the incident report or codebase context - the engineer has
+to explain the problem, as with an assistant in a real repo (user decision). Prompts store the model and whose key
+(platform / own) instead of a picked AI tool (D51 e). Accepted vs. modified AI output and AI-vs-manual edits are not
+measured in v1 (D51 b). Captured from the editor: file opens and description open/close; test runs are recorded by
+the server on Submit.
+
 **What is captured:**
 - Every prompt sent to AI: text, token count, AI tool used, timestamp
 - Whether the user accepted or modified the AI response
@@ -298,7 +311,7 @@ Every action in the editor is tracked during a solve session.
 - Total test runs before solving
 
 **AI tools supported:**
-Users can use any AI tool. The editor has a built-in AI chat panel (connected to an AI API server-side; the provider is decided at M8 - the upload analysis already works with Claude or OpenAI, A9.1). If they use an external tool and paste the result, that counts as a manual edit. If they use the built-in panel, every prompt is automatically captured.
+Users can use any AI tool. The editor has a built-in AI chat panel (connected to an AI API server-side: the platform key with a cheap model and a daily token limit, or the user's own Anthropic/OpenAI key from Settings - see `00` "Monetization Model", slices S1/S6, D62/D63). If they use an external tool and paste the result, that counts as a manual edit. If they use the built-in panel, every prompt is automatically captured.
 
 **Why this matters:**
 - Fewer prompts + fewer tokens + fewer iterations = higher efficiency

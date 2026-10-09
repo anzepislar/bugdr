@@ -2,7 +2,8 @@ import Link from "next/link";
 
 interface Props {
   label: string;
-  value: number;
+  /** A number is formatted with thousands separators; a string (e.g. "1.20x", "33%") is shown as is. */
+  value: number | string;
   /** Change vs. the previous period, in %. Omit for no trend. */
   trendPct?: number | null;
   href?: string;
@@ -12,7 +13,7 @@ export function StatCard({ label, value, trendPct, href }: Props) {
   const body = (
     <>
       <p className="text-sm text-muted">{label}</p>
-      <p className="mt-2 text-3xl font-semibold tabular-nums text-text">{value.toLocaleString("en-US")}</p>
+      <p className="mt-2 text-3xl font-semibold tabular-nums text-text">{typeof value === "number" ? value.toLocaleString("en-US") : value}</p>
       {trendPct != null && (
         <p className={`mt-1 text-xs font-medium ${trendPct >= 0 ? "text-passed" : "text-failed"}`}>
           {trendPct >= 0 ? "▲ +" : "▼ "}

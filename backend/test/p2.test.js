@@ -134,7 +134,9 @@ test("a solved attempt returns the result with the user's rating", async () => {
   await pool.query("INSERT INTO problem_ratings (user_id, problem_id, rating) VALUES ($1, $2, 4)", [userId, problemId]);
   const problem = await detail(cookie);
   assert.equal(problem.status, "solved");
+  assert.match(problem.result.attemptId, /^[0-9a-f-]{36}$/); // S8
   assert.deepEqual(problem.result, {
+    attemptId: problem.result.attemptId,
     solvedAt: "2026-10-06T08:12:00.000Z",
     timeTakenSeconds: 1938,
     checksPassed: 2,
@@ -143,6 +145,7 @@ test("a solved attempt returns the result with the user's rating", async () => {
     linesDeleted: 11,
     pointsEarned: 250,
     timeMultiplier: 1.25,
+    efficiencyScore: null, // S3: solved without a session (before the AI score)
     myRating: 4,
     tries: [], // inserted by hand here; R4 tests the real tries
   });

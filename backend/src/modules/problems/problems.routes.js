@@ -65,8 +65,9 @@ problemsRouter.get("/:slug", optionalAuth, async (req, res) => {
          '{}') AS checks,
        cb.repository_name, cb.language, cb.framework, cb.repository_structure,
        nullif(a.status, 'abandoned') AS status, b.user_id IS NOT NULL AS saved,
-       a.solved_at AT TIME ZONE 'UTC' AS solved_at, a.time_taken_seconds, a.lines_added, a.lines_deleted, a.points_earned,
+       a.id AS attempt_id, a.solved_at AT TIME ZONE 'UTC' AS solved_at, a.time_taken_seconds, a.lines_added, a.lines_deleted, a.points_earned,
        a.time_bonus_multiplier::float AS time_multiplier, r.rating AS my_rating,
+       (SELECT ss.efficiency_score::float FROM solve_sessions ss WHERE ss.attempt_id = a.id) AS efficiency_score,
        (SELECT json_agg(json_build_object('tryNumber', t.try_number, 'outcome', t.outcome, 'durationSeconds', t.duration_seconds)
           ORDER BY t.try_number) FROM attempt_tries t WHERE t.attempt_id = a.id) AS tries
      FROM problems p
@@ -111,6 +112,7 @@ problemsRouter.get("/:slug", optionalAuth, async (req, res) => {
       result:
         r.status === "solved"
           ? {
+              attemptId: r.attempt_id, // S8: GET /attempts/:id/feedback
               solvedAt: r.solved_at.toISOString(),
               timeTakenSeconds: r.time_taken_seconds,
               checksPassed: r.checks.length,
@@ -119,6 +121,8 @@ problemsRouter.get("/:slug", optionalAuth, async (req, res) => {
               linesDeleted: r.lines_deleted,
               pointsEarned: r.points_earned,
               timeMultiplier: r.time_multiplier,
+              // S3: null for solves from before the AI score (their efficiency was 1).
+              efficiencyScore: r.efficiency_score,
               myRating: r.my_rating,
               // R4 (D56): every try; the last one is the solving try.
               tries: r.tries ?? [],

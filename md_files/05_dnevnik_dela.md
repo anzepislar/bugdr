@@ -1811,3 +1811,220 @@ model `gpt-4o`, AI klepet (M8) se odloči kasneje.
 Preverjeno: backend testi 134/134 (+3 A9.1 z nadomeščenim `fetch`; A10 test
 posodobljen na novo sporočilo brez ključa); frontend lint, typecheck. Ni
 preverjeno s pravim OpenAI ključem.
+
+## 9. 10. 2026 — Seja 20: nova smer izdelka v dokumentih (monetizacija, povratna informacija, karierne poti)
+
+Samo dokumentacija, brez sprememb kode. Začeta priprava M8 (vprašanja o
+D51) je bila prekinjena - uporabnik je najprej dal novo smer izdelka.
+
+### Posodobljeni dokumenti
+
+- `00`: nov "What is Bugdr?", novi razdelki "Monetization Model"
+  (brezplačna raven s cenenim modelom, lasten API ključ, karierne poti,
+  B2B in hackathoni v V2) in "Career Paths" (stopnje Easy → Get a job,
+  sestava po vlogi, prag učinkovitosti).
+- `02`: nov razdelek "Post-Solve Feedback" (AI povratna informacija po
+  vsaki rešitvi, cenen model, shranjena v bazi).
+- `03`: profil dobi vrstici "Career path progress" in "Feedback history".
+- `04`: Platform Stats dobi metrike kariernih poti in povratnih informacij
+  (načrtovano).
+- `CLAUDE.md`: nova "Key Business Rules" (po navodilu uporabnika - izpadla
+  sta pravilo o javnih / zaščitenih straneh in podrobnost "nikoli
+  pričakovano vedenje, vzrok, datoteka"; uporabnik je na to opozorjen) in
+  "Business Model Summary".
+- `06`: S1 prenovljen (brezplačni model, dnevna omejitev, 429
+  `AI_DAILY_LIMIT`); nove rezine S6 lasten API ključ (AES-256-GCM,
+  `/me/api-key`), S7 benchmark problema, S8 povratna informacija; nov
+  mejnik M9 karierne poti (K1, K2); odprte odločitve D62-D67; 4 nove
+  tabele v "Spremembe sheme"; nove nedoslednosti (samo Easy vs. odprti
+  problemi, GPT-3.5 ni več na voljo, kategorije poti, obvestila); X6 B2B,
+  X7 hackathoni; X2 naročnine verjetno odpade.
+- `01`, `02`, `00`, `CLAUDE.md`: "ponudnik klepeta se odloči ob M8"
+  zamenjano z novim modelom (platformni ključ ali ključ uporabnika).
+
+Poti endpointov iz specifikacije so prilagojene konvencijam (`/me/...`,
+`/attempts/:id/...`) - uporabnik lahko zahteva izvirne.
+
+Odprto: D62-D67, D51, D52; `bug-dr-product-plan.md` ni usklajen z novo
+smerjo (ločen dokument izdelka).
+
+## 9. 10. 2026 — Seja 21: M8 AI seja (priprava + S1-S8)
+
+Najprej priprava (samo dokumentacija), nato vse rezine M8. Uporabnik je odločil odprte
+odločitve za M8 (vse zapisane v `06` "Odločitve"):
+
+- **D62**: brezplačna dnevna omejitev **20.000 žetonov** na uporabnika
+  (`AI_FREE_DAILY_TOKENS`, dan po UTC); "1 free problem (trial)" iz `00`
+  **odpade** - dnevna omejitev je preizkus.
+- **D51 (e)**: izbirnik orodja v klepetu (Claude / GPT-4 / Gemini / Other)
+  **odpade** → oznaka modela v uporabi + preostanek omejitve.
+- **D63**: lasten ključ se **preizkusi ob shranjevanju**, **model izbere
+  uporabnik** iz fiksnega seznama po ponudniku (`user_api_keys.model`).
+- **D51 (a)**: iteracija = zagon testov po vsaj enem pozivu.
+- **D51 (b)**: delež urejanj **zaenkrat odpade**, 15 % razdeljeno
+  sorazmerno na ostale štiri metrike.
+- **D64**: en benchmark in ena lestvica za vse modele, `key_source` +
+  `model` se zabeležita.
+- **D65**: povratna informacija v ozadju, primerjava z **zgornjo četrtino**
+  rešitev problema, brez ocene povratne informacije.
+
+Privzeto brez vprašanja: preslikava ocene (D51 c) = `clamp(benchmark /
+dejansko, 0,5, 2,0)` po metriki, utežena vsota; zgornja četrtina šele od
+8 rešitev naprej, do takrat konstante po težavnosti.
+
+Posodobljeni: `06` (D51, D62-D65, S1, S3, S6, S8, shema `user_api_keys`,
+nedoslednosti, stanje), `00` (brez preizkusnega problema, izbira modela),
+`03` (pravilo ocene v1), `CLAUDE.md`.
+
+Odprto za M8: samo D52 (lestvica, S4). Naslednje: S1.
+
+### S1 · AI klepet (brezplačni model) ✅
+
+- Odločitev uporabnika ob rezini: **AI vidi samo kodo** (trenutne datoteke
+  urejevalnika) in prejšnja sporočila - nikoli codebase context ali incident
+  report; kot v pravem repozitoriju mora problem razložiti uporabnik.
+- Migracija `0018_solve_sessions.sql`: `solve_sessions` (ena na attempt,
+  čez vse poskuse), `prompt_events` (+ `response_text`, `key_source`,
+  `model`; brez `ai_tool`, `response_used`, `manual_edits_count`,
+  `ai_accepted_count` - D51 b/e).
+- `backend/src/modules/ai/chat.service.js`: `chat.complete` - Claude
+  (`@anthropic-ai/sdk`, `messages.create`) ali OpenAI (`fetch`), cenen
+  model `AI_FREE_MODEL` (privzeto `claude-haiku-4-5` / `gpt-4o-mini`).
+- `POST /attempts/:id/ai/messages` `{ text, files }` → odgovor, model,
+  števci, preostanek; dnevna omejitev `AI_FREE_DAILY_TOKENS` (20.000, UTC)
+  → 429 `AI_DAILY_LIMIT`. `GET` = pogovor po osvežitvi + model + preostanek.
+- Frontend: `AiChatPanel` na API - izbirnik orodja odstranjen, v glavi
+  "Free model · <model>", pod vnosom "N free left today", ob 429 sporočilo
+  z "Open Settings"; neuspel poziv se vrne v vnosno polje. `mockAskAi` in
+  `AI_TOOLS` odstranjena iz `mock/aiChat.ts` (`BENCHMARKS` ostane do S3/S7).
+
+Preverjeno: backend testi 143/143 (+9 S1, klic ponudnika nadomeščen);
+frontend lint, typecheck, build. Ni preverjeno s pravim ključem in ne v
+brskalniku. Naslednje: S6 (lasten API ključ).
+
+### S6 · Lasten API ključ ✅
+
+- Odločitev uporabnika ob rezini: razdelek je v **zavihku Account** na
+  `/settings` ("AI model"); Account je zaenkrat samo to (e-pošta in geslo
+  pozneje, D35).
+- Migracija `0019_user_api_keys.sql`; `backend/src/modules/ai/apiKeys.js`
+  (AES-256-GCM, `API_KEY_ENCRYPTION_KEY` = 64 hex znakov, napačna oblika
+  ustavi zagon; brez njega 503 `AI_KEYS_DISABLED`).
+- `GET /me/api-key/status` (`connected`, `provider`, `model`, `models`),
+  `POST /me/api-key` (preizkusni klic z izbranim modelom - zavrnjen ključ
+  → 400 `API_KEY_REJECTED`, nič se ne shrani), `DELETE /me/api-key`.
+- Klepet z lastnim ključem: ponudnik in model uporabnika, brez dnevne
+  omejitve, `key_source = 'user'`; ključ, ki ga ni mogoče dešifrirati →
+  409 `API_KEY_UNREADABLE`. Oznaka "Your key · <model>" v klepetu.
+- Frontend: `ApiKeyForm` (ponudnik, ključ, model, Connect / Remove s
+  `ConfirmDialog`); "Open Settings" v klepetu vodi na zavihek Account.
+
+Preverjeno: backend testi 152/152 (+9 S6); frontend lint, typecheck,
+build; zavihek Account v brskalniku (320-2560 px brez vodoravnega
+drsenja; obrazec, napaka, stanje "Connected", potrditveno okno) z
+začasnim uporabnikom, ki je bil nato izbrisan. Ni preverjeno s pravim
+ključem ponudnika. Naslednje: S2 (zajem dogodkov urejevalnika).
+
+### S2 · Zajem dogodkov urejevalnika ✅
+
+- Migracija `0020_editor_events.sql`. Odjemalec pošilja samo `file_open`,
+  `description_open`, `description_close` (`POST /attempts/:id/events`,
+  1-100 na paket, `id` dogodka od odjemalca → dvojno poslan paket ne
+  podvoji ničesar); `test_run` zapiše strežnik ob Submit, pozivi so že
+  `prompt_events` (S1).
+- Submit (R4): `test_runs_count`, `tests_passed_on_first_run`,
+  `total_ai_iterations` (zagon po vsaj enem pozivu - D51 a). Rešitev:
+  `time_to_first_prompt` in `time_on_description` v času reševanja
+  (premori med poskusi ne štejejo, `activeSeconds` v `scoring.js`).
+- Frontend: `useSessionTracker(attemptId)` - pošiljanje vsakih 10 s, pred
+  Submit in ob odhodu s strani; odstranjeni neuporabljeni lokalni števci
+  pozivov in žetonov (od S1 jih da strežnik).
+
+Preverjeno: backend testi 158/158 (+6 S2, Docker zagoni pravih preverjanj);
+frontend lint, typecheck, build; v brskalniku z začasnim uporabnikom
+(nato izbrisan): dva klika na zavihke datotek sta po 10 s v
+`editor_events`. En zagon celotnega nabora (vzporedno z buildom in
+brskalnikom) je imel eno padlo trditev, ki je nisem mogel določiti; dva
+naslednja zagona 158/158. Naslednje: S3 (ocena učinkovitosti).
+
+### S3 · Ocena učinkovitosti v točkah ✅
+
+- `efficiencyScore` + `BENCHMARKS` v `scoring.js` (uteži D51 b, preslikava
+  D51 c, zaokroženo na 2 decimalki); benchmark iteracij privzeto 2/3/4/5
+  (ugib do S7). Ob rešitvi: `efficiency_score` v seji, točke =
+  base × čas × ocena; pod osnovo ena vrstica `problem_solved`.
+- Sprotna ocena in benchmark v `GET`/`POST /attempts/:id/ai/messages`;
+  plošča "Session Efficiency" bere s strežnika (osveži se po Submit),
+  kartica rešitve in terminal kažeta "x AI efficiency".
+  `mock/aiChat.ts` ni več v uporabi (ni izbrisan - vprašanje).
+- Najden in popravljen zastoj (deadlock) iz S2 ob dvojnem Submit: rešitev
+  zdaj zaklene najprej sejo, nato poskus. Verjetno vzrok nepojasnjene
+  napake iz S2.
+- Testi R4 in P2 posodobljeni za oceno (683 / 1000 točk, `efficiencyScore`).
+- Odloženo: AI statistike profila iz `03` (ni dizajna, ni pragov ocene).
+
+Preverjeno: backend testi 163/163 (+5 S3), R4 + S3 trikrat zapored brez
+zastoja; frontend lint, typecheck, build; plošča v brskalniku z začasnim
+uporabnikom (nato izbrisan).
+
+### S7 · Benchmark problema ✅
+
+- Migracija `0021_problem_benchmarks.sql` (+ `avg_iterations`, ki ga
+  potrebuje ocena); začetne vrednosti iz že ocenjenih rešitev.
+- Ob vsaki rešitvi (v isti transakciji, po oceni) se povprečja problema
+  posodobijo inkrementalno; dvojni Submit šteje enkrat.
+- Ocena (S3) od 5 rešitev naprej uporablja povprečja problema (spodaj
+  omejena na 1), prej konstante po težavnosti; plošča v klepetu kaže
+  "avg on this problem" ali "avg for Medium".
+
+Preverjeno: backend testi 168/168 (+5 S7, tudi primerjava INSERT-a
+migracije z inkrementalnimi povprečji); frontend lint, typecheck, build.
+Naslednje: S8 (povratna informacija po rešitvi).
+
+### S8 · Povratna informacija po rešitvi ✅
+
+- Odločitev uporabnika: razdelek "AI feedback" je **nad "Validation
+  results"** na kartici rešitve.
+- Migracija `0022_solve_feedback.sql`; vrstica `pending` v transakciji
+  rešitve, besedilo po commitu (`feedback.service.js`, cenen model,
+  platformni ključ, primerjava z zgornjo četrtino od 8 rešitev naprej).
+- `GET /attempts/:id/feedback` (samo lastnik; `unavailable` za rešitve
+  pred S8). Med preverjanjem v brskalniku najdena napaka: brez AI ključa
+  je vsako osveževanje znova sprožilo generiranje in stran je 2 minuti
+  kazala "Writing your feedback..." - zdaj se neuspela ponovi največ
+  vsakih 30 s in nikoli brez ključa.
+- Testno okolje ne bere AI ključev iz `.env` (generiranje teče v ozadju po
+  vsaki rešitvi, tudi v testih).
+
+Preverjeno: backend testi 175/175 (+7 S8); frontend lint, typecheck,
+build; kartica rešitve v brskalniku (390 in 1440 px) z začasnim
+uporabnikom, ki je bil nato izbrisan (števec rešitev in benchmark
+problema popravljena nazaj). Ni preverjeno s pravim AI ključem.
+
+### S4 · Lestvica ✅
+
+- D52 (uporabnik): po točkah, samo top 100, All time + This month (UTC),
+  javna tudi za goste; zasebni profili in blokirani niso na seznamu.
+- `GET /leaderboard?period=all|month` (brez migracije); enake točke =
+  isto mesto, `you` za prijavljenega.
+- Nov zaslon `/leaderboard` (ni dizajna - po pravilih UI) in element
+  "Leaderboard" v stranski vrstici.
+
+Preverjeno: backend testi 180/180 (+5 S4); frontend lint, typecheck,
+build; v brskalniku kot gost 320-2560 px brez vodoravnega drsenja
+(prazno stanje in tabela z začasnimi uporabniki, nato izbrisani).
+
+### S5 · AI analitika (admin) ✅ - M8 končan
+
+- Odločitev uporabnika: celotna postavitev ("Full page") - 5 kartic,
+  4 grafi (pozivi po težavnosti, porazdelitev ocen, modeli, ocena po
+  tednih), tabela po problemih z razširitvijo (modeli, benchmark).
+- `GET /admin/analytics`, `GET /admin/analytics/problems/:id`; nov
+  zaslon `/admin/analytics` + "Analytics" v admin stranski vrstici;
+  `StatCard` sprejme tudi besedilno vrednost.
+- Odloženo: najpogostejša področja izboljšav (AI branje povratnih
+  informacij).
+
+Preverjeno: backend testi 185/185 (+5 S5); frontend lint, typecheck,
+build. Zaslon ni preverjen v brskalniku (admin poverilnice so samo v
+`backend/.env`).

@@ -82,7 +82,8 @@ test("a failing submission records the results and changes nothing else", { skip
   assert.equal((await one("SELECT count(*)::int AS n FROM point_transactions WHERE user_id = $1", [alice.id])).n, 0);
 });
 
-test("solving counts every try (D56): 5 min given up + 6 min → 1.5x → 375 points, all in one transaction", { skip }, async () => {
+// S3: no AI, but the first run (the failing submission above) did not pass → efficiency 1.82.
+test("solving counts every try (D56): 5 min given up + 6 min → 1.5x × 1.82 efficiency → 683 points, all in one transaction", { skip }, async () => {
   const attempt = await start(alice.cookie);
   await pool.query("UPDATE attempt_tries SET started_at = started_at - interval '5 minutes' WHERE attempt_id = $1", [attempt.id]);
   await request("POST", `/attempts/${attempt.id}/give-up`, alice.cookie);
@@ -96,23 +97,24 @@ test("solving counts every try (D56): 5 min given up + 6 min → 1.5x → 375 po
   const body = await outcome(await submit(attempt.id, alice.cookie, solution));
   assert.ok(body.results.every((r) => r.passed));
   assert.equal(body.solved.timeMultiplier, 1.5);
-  assert.equal(body.solved.pointsEarned, 375);
+  assert.equal(body.solved.pointsEarned, 683);
+  assert.equal(body.solved.efficiencyScore, 1.82);
   assert.ok(Math.abs(body.solved.timeTakenSeconds - 660) <= 3, `time ${body.solved.timeTakenSeconds}`);
 
   const a = await one("SELECT * FROM user_problem_attempts WHERE id = $1", [attempt.id]);
   assert.equal(a.status, "solved");
-  assert.equal(a.points_earned, 375);
+  assert.equal(a.points_earned, 683);
   assert.ok(a.solved_at);
   assert.ok(a.lines_added > 0 && a.lines_deleted > 0);
   assert.deepEqual(Object.keys(a.final_code).sort(), Object.keys(solution).sort());
   assert.deepEqual(
     (await pool.query("SELECT amount, reason FROM point_transactions WHERE user_id = $1 ORDER BY reason", [alice.id])).rows,
-    [{ amount: 250, reason: "problem_solved" }, { amount: 125, reason: "time_bonus" }],
+    [{ amount: 250, reason: "problem_solved" }, { amount: 433, reason: "time_bonus" }],
   );
   const stats = await one("SELECT total_points, problems_solved, current_level FROM user_stats WHERE user_id = $1", [alice.id]);
-  assert.deepEqual(stats, { total_points: 375, problems_solved: 1, current_level: "Intern" });
+  assert.deepEqual(stats, { total_points: 683, problems_solved: 1, current_level: "Junior" });
   const day = await one("SELECT problems_solved, points_earned FROM user_daily_activity WHERE user_id = $1", [alice.id]);
-  assert.deepEqual(day, { problems_solved: 1, points_earned: 375 });
+  assert.deepEqual(day, { problems_solved: 1, points_earned: 683 });
   assert.equal((await one("SELECT solve_count FROM problems WHERE slug = 'payment-retries-disappear'")).solve_count, solveCount + 1);
 
   // The detail page shows every try (D56).
@@ -131,15 +133,15 @@ test("after solving: Test → 409 ALREADY_SOLVED, give up → 409; a given-up at
   assert.equal((await (await submit(attempt.id, carol.cookie, solution)).json()).error.code, "ATTEMPT_NOT_ACTIVE");
 });
 
-test("a double click awards the points once; a fast solve is 2x and reaches Junior", { skip }, async () => {
+test("a double click awards the points once; a fast solve is 2x (× 2.0 efficiency) and reaches Junior", { skip }, async () => {
   const attempt = await start(bob.cookie);
   const [first, second] = await Promise.all([1, 2].map(async () => outcome(await submit(attempt.id, bob.cookie, solution))));
   assert.deepEqual(first.solved, second.solved);
-  assert.equal(first.solved.pointsEarned, 500);
+  assert.equal(first.solved.pointsEarned, 1000);
   const ledger = await one("SELECT count(*)::int AS n, sum(amount)::int AS total FROM point_transactions WHERE user_id = $1", [bob.id]);
-  assert.deepEqual(ledger, { n: 2, total: 500 });
+  assert.deepEqual(ledger, { n: 2, total: 1000 });
   const stats = await one("SELECT total_points, problems_solved, current_level FROM user_stats WHERE user_id = $1", [bob.id]);
-  assert.deepEqual(stats, { total_points: 500, problems_solved: 1, current_level: "Junior" });
+  assert.deepEqual(stats, { total_points: 1000, problems_solved: 1, current_level: "Junior" });
 });
 
 test("SUM(point_transactions) = user_stats.total_points for every user", { skip }, async () => {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ApiKeyForm, type ApiKeyStatus } from "@/components/settings/ApiKeyForm";
 import { ProfileForm } from "@/components/settings/ProfileForm";
 import { serverFetch } from "@/lib/serverApi";
 import type { ProfileSettings } from "@/lib/types/profile";
@@ -12,6 +13,12 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const res = await serverFetch("/me/profile");
   if (!res.ok) throw new Error(`GET /me/profile failed: ${res.status}`);
   const { username, settings } = (await res.json()) as { username: string; settings: ProfileSettings };
+  let apiKey: ApiKeyStatus | null = null;
+  if (tab === "account") {
+    const keyRes = await serverFetch("/me/api-key/status");
+    if (!keyRes.ok) throw new Error(`GET /me/api-key/status failed: ${keyRes.status}`);
+    apiKey = (await keyRes.json()) as ApiKeyStatus;
+  }
 
   return (
     <div className="w-full px-6 py-8 wide:mx-auto wide:max-w-[1200px]">
@@ -35,8 +42,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
       {tab === "profile" ? (
         <ProfileForm initial={settings} profileHref={`/profile/${username}`} />
+      ) : apiKey ? (
+        // S6: the account tab holds only the own API key for now; email and password come with D35.
+        <ApiKeyForm initial={apiKey} />
       ) : (
-        // ponytail: no design for these two tabs yet (D35).
+        // ponytail: no design for this tab yet (D35).
         <p className="mt-8 rounded border border-border bg-surface px-4 py-10 text-center text-sm text-muted">
           {TABS[tab]} settings are coming soon.
         </p>

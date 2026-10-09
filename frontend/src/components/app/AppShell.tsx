@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/problems", label: "Problems", icon: "problems" },
   { href: "/contests", label: "Contests", icon: "trophy" },
+  { href: "/leaderboard", label: "Leaderboard", icon: "ranking" },
 ];
 
 function Avatar({ me, className }: { me: Me; className: string }) {

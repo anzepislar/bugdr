@@ -2,6 +2,7 @@
 const PATHS = {
   dashboard: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",
   problems: "M4 4h16v6H4zM4 14h16v6H4zM7 7h.01M7 17h.01",
+  ranking: "M6 20v-8M12 20V4M18 20v-5M3 20h18",
   trophy: "M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4",
   user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
   settings: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",

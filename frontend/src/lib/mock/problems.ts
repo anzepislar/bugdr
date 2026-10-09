@@ -378,12 +378,14 @@ function genericDetail(p: ProblemListItem): DetailFields {
 // Solved attempts of the mock user. 32:18 of a 40 min limit is over 75 % → 1x, Medium → 250 points (03_scoring.md).
 const RESULTS: Record<string, Omit<SolveResult, "checksPassed" | "checksTotal">> = {
   "fixed-the-memory-leak": {
+    attemptId: "00000000-0000-0000-0000-000000000001",
     solvedAt: "2026-10-06T08:12:00.000Z",
     timeTakenSeconds: 32 * 60 + 18,
     linesAdded: 24,
     linesDeleted: 11,
     pointsEarned: 250,
     timeMultiplier: 1,
+    efficiencyScore: null,
     tries: [{ tryNumber: 1, outcome: "solved", durationSeconds: 32 * 60 + 18 }],
     myRating: null,
   },

@@ -201,6 +201,8 @@ export interface ProblemDetail extends ProblemListItem {
 
 /** Solved row of user_problem_attempts, as the detail page shows it. */
 export interface SolveResult {
+  /** S8: for GET /attempts/:id/feedback. */
+  attemptId: string;
   solvedAt: string;
   timeTakenSeconds: number;
   checksPassed: number;
@@ -210,6 +212,8 @@ export interface SolveResult {
   pointsEarned: number;
   /** time_bonus_multiplier (03_scoring.md): 1, 1.25, 1.5 or 2. */
   timeMultiplier: number;
+  /** S3: AI efficiency 0.5-2.0; null for solves from before the score (counted as 1). */
+  efficiencyScore: number | null;
   /** problem_ratings.rating of this user, 1-5. */
   myRating: number | null;
   /** attempt_tries in order (R4, D56); the last one solved it. timeTakenSeconds is their sum. */

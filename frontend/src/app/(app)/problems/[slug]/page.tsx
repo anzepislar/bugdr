@@ -1,3 +1,4 @@
+import { SolveFeedback } from "@/components/problems/SolveFeedback";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -167,7 +168,10 @@ function SolvedSummary({ problem, result }: { problem: ProblemDetail; result: So
     { value: DIFFICULTY_LABEL[problem.difficulty], label: "Difficulty" },
     {
       value: `+${result.pointsEarned.toLocaleString("en-US")}`,
-      label: `Points earned · ${result.timeMultiplier}x time bonus`,
+      label:
+        result.efficiencyScore === null
+          ? `Points earned · ${result.timeMultiplier}x time bonus`
+          : `Points earned · ${result.timeMultiplier}x time · ${result.efficiencyScore}x AI efficiency`,
     },
   ];
 
@@ -212,6 +216,7 @@ function SolvedSummary({ problem, result }: { problem: ProblemDetail; result: So
 
       <div className="mt-8 flex flex-col gap-10 lg:flex-row lg:items-start">
         <section aria-labelledby="validation-heading" className="min-w-0 flex-1">
+          <SolveFeedback attemptId={result.attemptId} />
           {result.tries.length > 0 ? <Tries tries={result.tries} total={result.timeTakenSeconds} /> : null}
           <h2 id="validation-heading" className="text-xl font-semibold text-text">
             Validation results

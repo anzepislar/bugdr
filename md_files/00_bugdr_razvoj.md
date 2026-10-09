@@ -23,7 +23,7 @@ This defines the next generation of engineering skill — not "can you code" but
 | Code editor | Monaco Editor (@monaco-editor/react) |
 | Problem execution | Docker containers |
 | Auth | JWT |
-| AI | Claude API or OpenAI (by key, A9.1) for problem analysis; built-in AI chat provider decided at M8 — server-side only |
+| AI | Claude API or OpenAI (by key, A9.1) for problem analysis; built-in AI chat = platform key with a cheap model + daily limit, or the user's own encrypted key (S1, S6; D62/D63) — server-side only |
 
 ---
 
@@ -70,18 +70,21 @@ Phase: Backend slices (06_backend_slices.md) - frontend screens swap their mocks
 Frontend: 22 screens; login, signup, logout, onboarding, /problems, /problems/[slug] (incl. rating and discussion),
   the solve page, /profile/[username], /settings (profile tab), /dashboard, the sidebar, /contests, /contests/[id],
   /admin/login, /admin (overview), /admin/problems (+ new, edit), /admin/contests (+ new, edit, results inline)
-  and /admin/users (+ [id]) use the real API; still on mock data: the solve page's AI chat (M8)
+  /admin/users (+ [id]), /admin/analytics and /leaderboard use the real API, incl. the solve page's AI chat (M8)
 Backend: Milestones M0 (F0-F4: skeleton, levels, auth, route protection, onboarding), M1 (P1-P2: problem list,
   bookmarks, problem detail, streak on view) and M2 (R1-R6: start, give up, try history, Docker check runner,
   solve + points, terminal, live results), M3 (O1-O2: ratings, comments) and M4 (U1-U3: profile + settings,
   activity grid + streak on read, dashboard) and M5 (T1-T2: contest list + detail, entries, participation,
   history) and M6 (admin: A1 login (not a user account, D48), A2 problem list + drafts, A10 ZIP upload + AI
   analysis, A3 code replacement, A4 check run, A5 publish/unpublish, A6 contests, A7 contest results + CSV +
-  reward sent, A8 users + ban, A9 platform stats, A9.1 analysis with Claude or OpenAI by key) done;
-  next M7 (Z1, Z2) or M8 AI session (S1-S5, waits for D51/D52)
-Database: PostgreSQL 17 in Docker; migrations 0001-0017 (levels, users, profiles, problems, problem detail,
+  reward sent, A8 users + ban, A9 platform stats, A9.1 analysis with Claude or OpenAI by key) and M8 (AI session:
+  S1 chat on a free model with a daily limit, S6 own API key, S2 session capture, S3 efficiency score in the points,
+  S7 per-problem benchmark, S8 post-solve feedback, S4 public leaderboard, S5 admin AI analytics) done;
+  next M7 (Z1, Z2) or M9 career paths (K1-K2, waits for D66/D67)
+Database: PostgreSQL 17 in Docker; migrations 0001-0022 (levels, users, profiles, problems, problem detail,
   problem brief, attempt tries, check results + points ledger, comment replies + helpful, profile fields, contests,
-  contest entries, drop users.is_admin, bug summary, codebase hash, dry-run version, contest reward sent);
+  contest entries, drop users.is_admin, bug summary, codebase hash, dry-run version, contest reward sent,
+  solve sessions + prompts, user API keys, editor events, problem benchmarks, solve feedback);
   `npm run seed` = 12 dev problems with code and checks, no made-up ratings (D57); only payment-retries-disappear
   is runnable so far; + 5 dev contests (dates relative to the seed run)
 Detailed status: CLAUDE.md "Current Status" and 06_backend_slices.md "Stanje"
@@ -125,12 +128,12 @@ Detailed status: CLAUDE.md "Current Status" and 06_backend_slices.md "Stanje"
 - AI assistant powered by a cheap model (Claude Haiku or GPT-3.5 equivalent)
 - Basic efficiency scoring
 - Public leaderboard
-- 1 free problem on platform credits (trial)
+- Daily free AI limit (20,000 tokens, resets at midnight UTC) is the trial - no separate trial problem (D62)
 - Feedback after every solve
 
 ### Connect API key (free upgrade)
 - User connects their own Anthropic or OpenAI API key
-- Unlocks powerful model (Claude Sonnet, GPT-4o, etc.)
+- Unlocks powerful model - the user picks it from a fixed list (Claude Sonnet / Opus / Haiku, GPT-4o / GPT-4o-mini); the key is tested on save (D63)
 - Their credits, their bill — platform pays nothing beyond the free trial
 - Efficiency scores improve with better model — natural conversion incentive
 - Framing: "Connect your API key to use a more powerful AI and improve your efficiency score"
@@ -205,7 +208,7 @@ Phase 3 — Full backend
   Connect everything, implement business logic
 
 Phase 4 — Problem execution engine
-  Docker containers, Monaco editor, test runner, terminal (done in M2); AI chat + session capture (M8)
+  Docker containers, Monaco editor, test runner, terminal (done in M2); AI chat + session capture + feedback (done in M8), career paths (M9)
 
 Phase 5 — Admin dashboard
   Contest management, problem management
@@ -247,7 +250,7 @@ Backend (Node.js/Express)
   → Business logic
   → PostgreSQL queries
   → Docker container management
-  → Claude API or OpenAI (problem analysis, A9.1; AI chat provider decided at M8) — keys server-side only
+  → Claude API or OpenAI (problem analysis, A9.1; AI chat: platform cheap model or the user's own key, S1/S6) — keys server-side only
 
 Docker (Problem Execution, backend/src/modules/runner)
   → Official node:24-alpine image, driven through the docker CLI (no extra dependency)
@@ -277,7 +280,7 @@ PostgreSQL
 | Settings | `/settings` | Profile details, engineering path, public profile |
 | Contests | `/contests` | Daily/weekly/monthly |
 | Contest detail | `/contests/[id]` | Incident, rules, entry + your participation |
-| Leaderboard | `/leaderboard` | Global ranking by efficiency score |
+| Leaderboard | `/leaderboard` | Public top 100 by points (include efficiency), All time / This month (D52) |
 | Admin | `/admin` | Problem + contest management, AI session analytics (`/admin/analytics`) |
 | Landing | Separate repo | Friend 2 builds this |
 

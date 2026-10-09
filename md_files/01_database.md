@@ -315,60 +315,126 @@ Built in R4 (migration 0008): one row per check on every Test run.
 
 ## AI Session Tracking
 
-Planned, not built yet — slices S1 and S2 (milestone M8 in `06_backend_slices.md`).
+`solve_sessions` + `prompt_events` built in S1 (migration 0018), `editor_events` in S2 (migration 0020); session counters from S2: test runs, passed on first run and iterations on every Submit, time to first prompt / on description on solve (milestone M8 in `06_backend_slices.md`). `user_api_keys` built in S6 (migration 0019). `problem_benchmarks` built in S7 (migration 0021). `solve_feedback` built in S8 (migration 0022). Also planned (not described here yet, see `06` "Spremembe sheme"): `career_path_progress` (K1). They are added to this file when the slice builds them.
 
 ### solve_sessions
-One session per solve attempt. Tracks the full AI interaction.
+One session per solve attempt, across all its tries (like the solve time, D56). Tracks the full AI interaction.
+Created in `migrations/0018_solve_sessions.sql` (S1) on the first prompt. No `manual_edits_count` /
+`ai_accepted_count`: edit ratio is not measured in v1 (D51 b).
 
 ```sql
 CREATE TABLE solve_sessions (
-  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  attempt_id            UUID REFERENCES user_problem_attempts(id) ON DELETE CASCADE UNIQUE,
-  total_prompts         INTEGER DEFAULT 0,
-  total_tokens_used     INTEGER DEFAULT 0,
-  total_ai_iterations   INTEGER DEFAULT 0,
-  manual_edits_count    INTEGER DEFAULT 0,
-  ai_accepted_count     INTEGER DEFAULT 0,
-  time_to_first_prompt  INTEGER,  -- seconds from start to first prompt
-  time_on_description   INTEGER,  -- seconds spent reading before first action
-  test_runs_count       INTEGER DEFAULT 0,
-  tests_passed_on_first_run BOOLEAN DEFAULT FALSE,
-  efficiency_score      DECIMAL(5,2) DEFAULT 0,  -- calculated on solve
-  created_at            TIMESTAMP DEFAULT NOW(),
-  updated_at            TIMESTAMP DEFAULT NOW()
+  id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  attempt_id                UUID NOT NULL UNIQUE REFERENCES user_problem_attempts(id) ON DELETE CASCADE,
+  total_prompts             INTEGER NOT NULL DEFAULT 0,
+  total_tokens_used         INTEGER NOT NULL DEFAULT 0,
+  total_ai_iterations       INTEGER NOT NULL DEFAULT 0,
+  time_to_first_prompt      INTEGER,  -- seconds from start to first prompt (S2)
+  time_on_description       INTEGER,  -- seconds spent reading before first action (S2)
+  test_runs_count           INTEGER NOT NULL DEFAULT 0,
+  tests_passed_on_first_run BOOLEAN NOT NULL DEFAULT FALSE,
+  efficiency_score          DECIMAL(5,2),  -- set on solve (S3)
+  created_at                TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at                TIMESTAMP NOT NULL DEFAULT NOW()
 );
 ```
 
 ### prompt_events
-Every prompt sent to AI during a solve session.
+Every prompt sent to the built-in AI chat, with its answer (earlier turns go back to the AI as context) and the
+provider's real token usage. `key_source` + `model` serve the daily free limit (D62: sum of today's `platform`
+tokens, UTC) and scores across models (D64). No `ai_tool` (D51 e) and no `response_used` (D51 b).
 
 ```sql
 CREATE TABLE prompt_events (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id      UUID REFERENCES solve_sessions(id) ON DELETE CASCADE,
-  prompt_index    INTEGER NOT NULL,        -- 1st, 2nd, 3rd prompt etc
+  session_id      UUID NOT NULL REFERENCES solve_sessions(id) ON DELETE CASCADE,
+  prompt_index    INTEGER NOT NULL CHECK (prompt_index >= 1),
   prompt_text     TEXT NOT NULL,
-  prompt_tokens   INTEGER NOT NULL,
-  response_tokens INTEGER NOT NULL,
-  total_tokens    INTEGER NOT NULL,
-  ai_tool         VARCHAR(50),             -- 'claude', 'gpt-4', 'gemini', 'copilot', 'other'
-  response_used   BOOLEAN DEFAULT TRUE,    -- did user accept or ignore the response
-  sent_at         TIMESTAMP DEFAULT NOW()
+  response_text   TEXT NOT NULL,  -- earlier turns go back to the AI as context
+  prompt_tokens   INTEGER NOT NULL CHECK (prompt_tokens >= 0),
+  response_tokens INTEGER NOT NULL CHECK (response_tokens >= 0),
+  total_tokens    INTEGER NOT NULL CHECK (total_tokens >= 0),
+  key_source      VARCHAR(10) NOT NULL CHECK (key_source IN ('platform', 'user')),
+  model           VARCHAR(100) NOT NULL,
+  sent_at         TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (session_id, prompt_index)
+);
+```
+
+### user_api_keys
+The user's own Anthropic / OpenAI key for the built-in AI chat (S6, D63), one per user - a new one replaces it.
+Created in `migrations/0019_user_api_keys.sql`. Encrypted with AES-256-GCM under `API_KEY_ENCRYPTION_KEY`
+(`backend/.env` only, 64 hex chars); the plain key exists only in memory for a provider call and is never returned.
+`model` is picked from a fixed list per provider (`USER_MODELS` in `backend/src/modules/ai/chat.service.js`).
+
+```sql
+CREATE TABLE user_api_keys (
+  user_id     UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  provider    VARCHAR(20) NOT NULL CHECK (provider IN ('anthropic', 'openai')),
+  model       VARCHAR(100) NOT NULL,  -- picked by the user from a fixed list per provider (D63)
+  ciphertext  BYTEA NOT NULL,
+  iv          BYTEA NOT NULL,
+  auth_tag    BYTEA NOT NULL,
+  created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
+
+### problem_benchmarks
+Per-problem averages of the solves with a scored AI session (S7, `migrations/0021_problem_benchmarks.sql`), updated
+incrementally (`avg + (x - avg) / n`) in every solve transaction, after that solve's score. No row = no solves yet.
+From 5 solves the efficiency score (S3) uses these averages (floored at 1) instead of the per-difficulty constants.
+
+```sql
+CREATE TABLE problem_benchmarks (
+  problem_id              UUID PRIMARY KEY REFERENCES problems(id) ON DELETE CASCADE,
+  avg_prompts             DECIMAL(10,4) NOT NULL,
+  avg_tokens              DECIMAL(12,4) NOT NULL,
+  avg_iterations          DECIMAL(10,4) NOT NULL,
+  avg_time_seconds        DECIMAL(12,4) NOT NULL,
+  avg_efficiency_score    DECIMAL(6,4) NOT NULL,
+  avg_first_run_pass_rate DECIMAL(5,4) NOT NULL,  -- 0-1
+  solve_count             INTEGER NOT NULL DEFAULT 0 CHECK (solve_count >= 0),
+  updated_at              TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
+
+### solve_feedback
+AI feedback after every solve (S8, `migrations/0022_solve_feedback.sql`, D65). Created as `pending` in the solve
+transaction, written after the commit with the cheap model on the platform key; only the owner reads it
+(`GET /attempts/:id/feedback`). `requested_at` = when generation last started (NULL = not yet).
+
+```sql
+CREATE TABLE solve_feedback (
+  attempt_id    UUID PRIMARY KEY REFERENCES user_problem_attempts(id) ON DELETE CASCADE,
+  status        VARCHAR(10) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'ready', 'failed')),
+  content       TEXT,
+  model         VARCHAR(100),
+  requested_at  TIMESTAMP,
+  generated_at  TIMESTAMP,
+  created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+  CHECK ((status = 'ready') = (content IS NOT NULL))
 );
 ```
 
 ### editor_events
-Key actions during a solve session for behavioral analysis.
+Key actions during a solve session for behavioral analysis. Created in `migrations/0020_editor_events.sql` (S2).
+The client sends `file_open` / `description_open` / `description_close` in batches (`POST /attempts/:id/events`)
+with its own `id` per event, so a batch sent twice adds nothing. `test_run` is written by the server on every Submit
+(R4, `metadata` = passed / total / allPassed). No `file_edit` / `ai_*`: edit ratio is not measured in v1 (D51 b),
+prompts are `prompt_events`.
 
 ```sql
 CREATE TABLE editor_events (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id  UUID REFERENCES solve_sessions(id) ON DELETE CASCADE,
-  event_type  VARCHAR(30) NOT NULL,  -- 'file_open', 'file_edit', 'test_run', 'ai_prompt', 'ai_accept', 'ai_reject', 'description_open', 'description_close'
+  session_id  UUID NOT NULL REFERENCES solve_sessions(id) ON DELETE CASCADE,
+  event_type  VARCHAR(30) NOT NULL
+              CHECK (event_type IN ('file_open', 'description_open', 'description_close', 'test_run')),
   file_name   VARCHAR(255),
-  metadata    JSONB,                 -- flexible extra data per event type
-  occurred_at TIMESTAMP DEFAULT NOW()
+  metadata    JSONB,
+  occurred_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX editor_events_session ON editor_events (session_id, occurred_at);
 ```
 
 ---

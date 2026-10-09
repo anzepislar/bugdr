@@ -25,6 +25,8 @@ export interface SolvedRun {
   pointsEarned: number;
   timeTakenSeconds: number;
   timeMultiplier: number;
+  /** S3: AI efficiency 0.5-2.0; points = base × time × efficiency. */
+  efficiencyScore: number;
 }
 
 /**

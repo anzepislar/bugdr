@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { pool } from "../../db.js";
 import { HttpError } from "../../errors.js";
+import { connectedKey, encryptKey } from "../ai/apiKeys.js";
+import { chat, USER_MODELS } from "../ai/chat.service.js";
 import { requireAuth } from "../auth/auth.service.js";
 
 export const meRouter = Router();
@@ -84,5 +86,44 @@ meRouter.put("/profile", async (req, res) => {
        experience_level = $6, languages = $7, is_public = $8`,
     [req.user.id, name, head || null, github || null, goalRole, experienceLevel, [...new Set(languages)], isPublic],
   );
+  res.status(204).end();
+});
+
+/** S6: whether the user has their own key connected, and the models they can pick per provider (D63). Never the key. */
+meRouter.get("/api-key/status", async (req, res) => {
+  const key = await connectedKey(req.user.id);
+  res.json({ connected: !!key, provider: key?.provider ?? null, model: key?.model ?? null, models: USER_MODELS });
+});
+
+/**
+ * S6 (D63): connect the user's own Anthropic / OpenAI key. One test call with the chosen model first - a key the
+ * provider rejects is never stored (400 API_KEY_REJECTED). Stored encrypted; a new key replaces the old one.
+ */
+meRouter.post("/api-key", async (req, res) => {
+  const { provider, key, model } = req.body ?? {};
+  const apiKey = typeof key === "string" ? key.trim() : "";
+  const details = {};
+  if (!Object.hasOwn(USER_MODELS, provider)) details.provider = "Choose Anthropic or OpenAI";
+  else if (!USER_MODELS[provider].includes(model)) details.model = "Choose a model from the list";
+  if (apiKey.length < 20 || apiKey.length > 500 || /\s/.test(apiKey)) details.key = "Paste the whole API key";
+  if (Object.keys(details).length) throw new HttpError(400, "VALIDATION_ERROR", "Check the key details", details);
+
+  const encrypted = encryptKey(apiKey); // 503 AI_KEYS_DISABLED before any provider call
+  await chat.complete({
+    system: "Reply with the single word OK.",
+    messages: [{ role: "user", content: "OK?" }],
+    userKey: { provider, model, apiKey },
+  });
+  await pool.query(
+    `INSERT INTO user_api_keys (user_id, provider, model, ciphertext, iv, auth_tag) VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (user_id) DO UPDATE SET provider = $2, model = $3, ciphertext = $4, iv = $5, auth_tag = $6, created_at = now()`,
+    [req.user.id, provider, model, encrypted.ciphertext, encrypted.iv, encrypted.authTag],
+  );
+  res.status(204).end();
+});
+
+/** S6: remove the user's key - the chat goes back to the free model and its daily limit. Idempotent. */
+meRouter.delete("/api-key", async (req, res) => {
+  await pool.query("DELETE FROM user_api_keys WHERE user_id = $1", [req.user.id]);
   res.status(204).end();
 });
