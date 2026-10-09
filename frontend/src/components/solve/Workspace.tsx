@@ -380,7 +380,7 @@ export function Workspace({
     >
       <header className="grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border bg-surface px-3 sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
-          <Link href="/dashboard" className="shrink-0">
+          <Link href="/" className="shrink-0">
             <Image src="/logo/bugdr-mark.png" alt="Bugdr" width={90} height={126} className="h-7 w-auto sm:hidden" />
             <Image src="/logo/bugdr-logo.png" alt="Bugdr" width={447} height={126} className="hidden h-7 w-auto sm:block" />
           </Link>

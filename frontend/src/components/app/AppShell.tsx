@@ -17,7 +17,7 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+  { href: "/", label: "Dashboard", icon: "dashboard" },
   { href: "/problems", label: "Problems", icon: "problems" },
   { href: "/career-paths", label: "Career paths", icon: "stairs" },
   { href: "/contests", label: "Contests", icon: "trophy" },
@@ -59,7 +59,7 @@ export function AppShell({ children, liveContests }: { children: ReactNode; live
   return (
     <div className="flex min-h-screen flex-1">
       <aside className="sticky top-0 hidden h-screen w-[220px] shrink-0 flex-col border-r border-border bg-canvas px-3 py-4 lg:flex">
-        <Link href="/dashboard" className="mb-6 px-2">
+        <Link href="/" className="mb-6 px-2">
           <Image src="/logo/bugdr-logo.png" alt="Bugdr" width={447} height={126} priority className="h-10 w-auto" />
         </Link>
 
@@ -163,7 +163,7 @@ export function AppShell({ children, liveContests }: { children: ReactNode; live
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-4 border-b border-border px-4 py-3 sm:px-8">
-          <Link href="/dashboard" className="lg:hidden">
+          <Link href="/" className="lg:hidden">
             <Image src="/logo/bugdr-mark.png" alt="Bugdr" width={90} height={126} className="h-8 w-auto" />
           </Link>
           <nav aria-label="Breadcrumb" className="hidden items-center gap-3 text-sm sm:flex">

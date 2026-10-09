@@ -96,7 +96,7 @@ export default function OnboardingPage() {
         languages,
       };
       await api("/me/onboarding", { method: "PUT", body: JSON.stringify(answers) });
-      router.push("/dashboard");
+      router.push("/");
       router.refresh();
     } catch {
       setStatus("error");
