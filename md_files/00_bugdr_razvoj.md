@@ -2,18 +2,11 @@
 
 ## What is Bugdr?
 
-Bugdr is a platform where engineers solve real production bugs using AI — and we measure how well they do it.
+Bugdr is a platform where engineers solve real production bugs using AI — and we measure how efficiently they do it.
 
-The question is no longer "can you code?" — it's "can you use AI effectively to solve real engineering problems?"
+Engineers solve problems using any AI tool they want. Bugdr captures the full session and scores them on how fast they solved it, how many prompts they needed, how many tokens they used, how many iterations it took, and how much they understood the AI output.
 
-Engineers solve problems using any AI tool they want (Claude, GPT, Gemini, Copilot — anything). Bugdr captures the full session and scores them on:
-- How fast they solved it
-- How many prompts they needed
-- How many tokens they used
-- How many iterations it took
-- How much they understood the AI output (edit ratio)
-
-This defines the next generation of engineering skill.
+This defines the next generation of engineering skill — not "can you code" but "can you use AI effectively to solve real production problems."
 
 **Slogan:** Debug real code. With real AI. Prove you're the best at it.
 **Domain:** bugdr.app
@@ -122,6 +115,80 @@ Detailed status: CLAUDE.md "Current Status" and 06_backend_slices.md "Stanje"
 - Force pushing
 - Changing Git remote
 - Live API or database changes in production
+
+---
+
+## Monetization Model
+
+### Free tier
+- Access to Easy problems
+- AI assistant powered by a cheap model (Claude Haiku or GPT-3.5 equivalent)
+- Basic efficiency scoring
+- Public leaderboard
+- 1 free problem on platform credits (trial)
+- Feedback after every solve
+
+### Connect API key (free upgrade)
+- User connects their own Anthropic or OpenAI API key
+- Unlocks powerful model (Claude Sonnet, GPT-4o, etc.)
+- Their credits, their bill — platform pays nothing beyond the free trial
+- Efficiency scores improve with better model — natural conversion incentive
+- Framing: "Connect your API key to use a more powerful AI and improve your efficiency score"
+
+### Career paths (earned progression)
+- Free to follow, locked by efficiency threshold not payment
+- Must hit efficiency benchmark to unlock next difficulty tier
+- Career paths cover all problem types an engineer in that role would encounter — not just role-labeled problems
+- Example: AI Engineer path includes AI/ML core + backend + database + occasional frontend
+
+### B2B (V2)
+- Companies upload their own problems
+- Engineers solve them for free
+- Best performers get interview invites
+- Companies pay to post problems and access candidate scores
+- Session replay for hiring managers
+
+### Hackathons (V2)
+- Time-boxed competitive events
+- Company sponsored (revenue)
+- Winners get visibility and prizes
+- Seasonal events drive signups
+
+---
+
+## Career Paths
+
+Career paths guide engineers from Easy to "Get a job" difficulty through a structured progression that mirrors what they would actually encounter in their target role.
+
+### How it works
+- Engineer selects their target role on onboarding
+- Platform assigns a curated path of problems across relevant categories
+- Four stages: Easy → Medium → Hard → Get a job
+- To progress to the next stage, engineer must hit an efficiency threshold across a set of problems
+- Threshold is based on efficiency score: prompt count, token usage, time, first-run pass rate
+- Feedback after every solve tells them exactly what to improve
+
+### Path composition by role
+
+| Role | Core | Supporting | Occasional |
+|------|------|-----------|-----------|
+| AI Engineer | AI/ML, model integration | Backend, database | Frontend |
+| Backend Engineer | Backend, APIs | Database, DevOps | Frontend |
+| Frontend Engineer | Frontend, UI | Backend APIs | Performance |
+| Full Stack | Frontend + Backend | Database | DevOps |
+| Database Engineer | Database, queries | Backend | DevOps |
+
+### Why breadth matters
+Engineers don't just need depth in their specialty — they need enough breadth to function in a real team. Career paths reflect this. An AI engineer who can't debug a broken API is incomplete. The path teaches the full picture.
+
+### Efficiency threshold (example)
+To unlock Medium from Easy:
+- Solve 3 Easy problems
+- Average efficiency score above 1.2
+- Average prompt count below 8
+- Average first-run pass rate above 50%
+
+Thresholds increase at each stage. Exact values TBD and adjustable in admin.
 
 ---
 

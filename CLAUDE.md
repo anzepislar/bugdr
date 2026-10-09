@@ -126,10 +126,22 @@ and scale with a CSS height. Raster files: for sharp retina display keep the ren
 - Comments are locked until the problem is solved
 - Ratings are locked until the problem is solved
 - Streak continues if user opens at least one problem per day
-- Points are never updated directly — always insert a new `point_transactions` row
+- Points are never updated directly — always insert a new point_transactions row
 - Frontend never reads the database directly — always through API
-- Problem descriptions never hint at the bug — users see codebase context (what the system does) and incident report (symptoms, logs, user complaints) only. Never expected behavior, never the cause, never the file location.
-- Public without login: `/dashboard`, `/problems`, `/problems/[slug]` (+ auth pages). Account-only parts are blurred with "Log in to unlock" (`Locked`, `src/components/app/Session.tsx`). The editor (`/problems/[slug]/solve`), `/settings`, `/onboarding`, `/contests/*`, `/profile/*` redirect to `/login?next=…` (`src/proxy.ts`, which checks the session with the backend). `/admin/*` needs the separate admin session (D48) → `/admin/login?next=…`; the admin is not a user and cannot open user pages
+- Free tier uses cheap model (Claude Haiku / GPT-3.5) — platform absorbs cost
+- Premium model requires user's own API key — their credits, platform pays nothing
+- Career path progression is locked by efficiency threshold, not payment
+- Post-solve feedback is generated automatically after every solve — cheap model sufficient
+- Problem descriptions never hint at the bug — codebase context + incident report only
+
+---
+
+## Business Model Summary
+
+Free tier: cheap AI model, Easy problems, basic scoring, feedback after every solve
+API key: connect own key → powerful model → better scores → natural conversion
+Career paths: structured role-based progression, efficiency-gated stages
+V2: company problems, hackathons, B2B hiring pipeline
 
 ---
 

@@ -146,6 +146,17 @@ drop-off. The original list below is what it was based on.
 - Hardest problems (lowest solve rate)
 - Most popular categories
 
+**Career path metrics:**
+- Engineers per path (AI, Backend, Frontend, etc.)
+- Stage distribution — how many at Easy vs Medium vs Hard vs Get a job
+- Average threshold pass rate per stage
+- Drop-off points — where engineers stop progressing
+
+**Feedback metrics:**
+- Average feedback rating (if user rates it)
+- Most common improvement areas across all users
+- Efficiency improvement over time per user (are people actually getting better?)
+
 ---
 
 ## AI Session Analytics (/admin/analytics)

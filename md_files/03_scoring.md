@@ -218,3 +218,5 @@ the AI rows wait for M8.
 | Efficiency rating | Intern / Efficient / Expert / Elite (from average `efficiency_score`) |
 | Favorite AI tool | Most used `prompt_events.ai_tool` |
 | First-run pass rate | Share of solves with `tests_passed_on_first_run` |
+| Career path progress | Current stage per role path + problems remaining to next threshold |
+| Feedback history | All post-solve feedback reports accessible from profile |

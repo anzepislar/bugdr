@@ -259,6 +259,31 @@ Each check shows:
 
 ---
 
+## Post-Solve Feedback
+
+After every successful solve, the platform generates a personalized AI feedback report for the engineer.
+
+### What it analyzes
+Using the solve_session and prompt_events data, Claude generates a debrief covering:
+- Efficiency comparison: how their metrics compared to top performers on this problem
+- Prompt quality: were prompts precise and targeted or broad and exploratory
+- Token usage: did they use the model efficiently or dump large context
+- Test run pattern: did they diagnose before prompting or fire prompts blindly
+- Specific actionable advice: 2-3 concrete things to do differently next time
+
+### Example feedback
+"You used 12 prompts where top performers average 4. You ran tests 8 times before your first passing run. Top performers typically read the full stack trace first, identify the likely failure point, then write one targeted prompt. Try diagnosing before prompting next time."
+
+### Implementation
+- Triggered automatically after attempt status changes to 'solved'
+- Single Claude API call (cheap model sufficient — Haiku)
+- Input: session stats + prompt_events summary + problem difficulty + benchmark data for that problem
+- Output: 200-400 word personalized debrief
+- Stored in database, shown on solve completion screen and in profile history
+- Cost: ~€0.001-0.003 per feedback generation
+
+---
+
 ## AI Session Capture
 
 Every action in the editor is tracked during a solve session.

@@ -18,13 +18,13 @@ povezala na API.
 
 ```
 Zadnja posodobitev: 9. 10. 2026
-Backend: M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2), M6 🟨 (A1, A2, A10, A3, A4, A5, A6)
+Backend: M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2), M6 ✅ (A1-A10 + A9.1)
 Frontend: 20 zaslonov (večina na API) - /login, /signup, /forgot-password, /onboarding, /dashboard,
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit,
           /admin/login, /admin/problems, /admin/problems/[id]/edit
-Naslednja rezina: M6 ✅ (A1-A10 + A9.1 ✅ 9. 10. 2026); naprej M7 Z1/Z2 ali M8 (čaka D51-D52); za pravo analizo `ANTHROPIC_API_KEY` v `backend/.env`; odločitve M6 D20, D21, D22, D45, D46, D48, D50 rešene); testi 134/134; M8 (AI seja) čaka D51-D52
+Naslednja rezina: M6 ✅ (A1-A10 + A9.1 ✅ 9. 10. 2026); naprej M7 Z1/Z2 ali M8 (čaka D51-D52); za pravo analizo `ANTHROPIC_API_KEY` v `backend/.env`; odločitve M6 D20, D21, D22, D45, D46, D48, D50 rešene); testi 134/134; M8 (AI seja) čaka D51-D52 + D62-D65; nove funkcije 9. 10. 2026 (brezplačni model, lasten API ključ, povratna informacija, benchmark, karierne poti) so rezine S6-S8 in M9 (K1-K2), čakajo D62-D67
 ```
 
 Oznake: ⬜ ni začeto · 🟨 v delu · ✅ narejeno (z datumom) · ⏸ odloženo
@@ -115,7 +115,13 @@ dokler je uporabnik ne potrdi.
 | D49 | ~~Tabele, ki jih M1 potrebuje iz kasnejših rezin~~ → **rešeno 8. 10. 2026** (uporabnik): **tabele zgodaj, logika kasneje**. M1 ustvari `user_problem_attempts`, `problem_codebase`, `problem_checks` (R1), `problem_ratings` (O1), `problem_comments` (O2) - samo `CREATE TABLE` po `01` + spremembe iz tabele spodaj; endpointi in pravila ostanejo v svojih rezinah. Seed jih napolni, da se stanja rešen / v delu preverijo na pravih podatkih | P1, P2, R1, O1, O2 |
 | D48 | ~~Admin ni uporabnik~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M6): **ločena prijava `/admin/login`, samo e-pošta + geslo** (brez drugega faktorja). Poverilnice samo v `backend/.env`: `ADMIN_EMAIL` + `ADMIN_PASSWORD_HASH` (scrypt, ukaz `npm run hash-password`). Ločen httpOnly piškotek admin seje (8 h), neodvisen od uporabniške seje; `requireAdmin` in proxy preverita admin sejo, `users.is_admin` odpade. Admin ne rešuje in ne komentira. `/admin` dobi **svojo postavitev** (stranska vrstica samo z admin povezavami + "Log out", brez avatarja in nivoja). Nadomesti Z1 (`create-admin`). Omejitev poskusov prijave pride z Z2 | F3, Z1, A1-A10 |
 | D50 | ~~Add Problem po razdelitvi opisa~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M6): Review ima **dve polji** "Codebase context" in "Incident report" (namesto "Full description"), oba predizpolni AI. Sistemski poziv A10 spremenim jaz: vrne `codebase_context` + `incident_report` po pravilih iz `02` (nikoli vzrok, pričakovano vedenje ali datoteka) | A10, A2 |
-| D51 | **ODPRTO** - podrobnosti ocene učinkovitosti (`03`, 8. 10. 2026) | Odprto: (a) kaj je "iteracija" (par poziv-odgovor ali zagon testov med pozivi?); (b) delež urejanj zahteva razlikovanje AI vs. ročnih sprememb - mogoče samo za vgrajeni klepet (gumb "Apply"), zunanja orodja štejejo kot ročna (`02`); (c) kako uteži preslikati v 0,5-2,0 (linearno glede na benchmark težavnosti?); (d) omejitev pozivov/žetonov na poskus in kdo plača Claude API; (e) ali se izbrano orodje (GPT-4, Gemini) le zabeleži, ker vgrajeni klepet kliče samo Claude |
+| D51 | **ODPRTO** - podrobnosti ocene učinkovitosti (`03`, 8. 10. 2026) | Odprto: (a) kaj je "iteracija" (par poziv-odgovor ali zagon testov med pozivi?); (b) delež urejanj zahteva razlikovanje AI vs. ročnih sprememb - mogoče samo za vgrajeni klepet (gumb "Apply"), zunanja orodja štejejo kot ročna (`02`); (c) kako uteži preslikati v 0,5-2,0 (linearno glede na benchmark težavnosti?); (d) ~~omejitev pozivov/žetonov na poskus in kdo plača Claude API~~ → monetizacija 9. 10. 2026 (`00`): platforma plača cenen model z **dnevno** omejitvijo žetonov na uporabnika (D62), z lastnim ključem plača uporabnik in omejitve ni (D63); (e) ali se izbrano orodje (GPT-4, Gemini) le zabeleži, ker vgrajeni klepet kliče samo Claude |
+| D62 | **ODPRTO** - brezplačni model in dnevna omejitev (`00` "Monetization Model", 9. 10. 2026) | Predlog: platformni ključ = obstoječi `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` z izbiro ponudnika iz A9.1; cenen model v `AI_FREE_MODEL` (privzeto `claude-haiku-4-5` oz. `gpt-4o-mini` - GPT-3.5 ni več na voljo); dnevna omejitev `AI_FREE_DAILY_TOKENS` (npr. 20.000) na uporabnika, dan po UTC (D7). Poraba = vsota `prompt_events.total_tokens` z `key_source = 'platform'` za današnji dan - brez nove tabele. Odprto: vrednost omejitve; kaj pomeni "1 free problem on platform credits (trial)" iz `00` poleg dnevne omejitve (močan model na enem problemu?) | S1, S8 |
+| D63 | **ODPRTO** - lasten API ključ (9. 10. 2026) | Predlog: AES-256-GCM (`node:crypto`, brez odvisnosti), glavni ključ `API_KEY_ENCRYPTION_KEY` (32 bajtov) samo v `backend/.env`; en ključ na uporabnika (nov `POST` ga zamenja). Odprto: preizkusni klic ponudniku ob shranjevanju (neveljaven ključ → 400 takoj) ali šele ob prvem pozivu; model z lastnim ključem fiksen (`claude-sonnet-5-5` / `gpt-4o`) ali izbira uporabnika | S6 |
+| D64 | **ODPRTO** - ocena in lestvica pri različnih modelih (9. 10. 2026) | Z lastnim ključem (močnejši model) je ocena učinkovitosti namenoma boljša (`00`: "natural conversion incentive"). Odprto: ali benchmark (S7) in lestvica (D52) ločita rešitve po `key_source` ali vse skupaj. Predlog: skupaj, `key_source` + `model` se zabeležita za kasnejšo analizo | S3, S4, S7 |
+| D65 | **ODPRTO** - povratna informacija po rešitvi (`02` "Post-Solve Feedback", 9. 10. 2026) | Predlog: klic **po** commitu transakcije R4 (zunanji klic ne drži zaklepa), Submit nanj ne čaka; `solve_feedback.status` = `pending` / `ready` / `failed`, neuspela se ponovi ob `GET`; vedno platformni ključ s cenenim modelom; vidi jo samo lastnik. Odprto: "top performers" = povprečje vseh rešitev (S7) ali zgornja četrtina; najmanjše število rešitev za primerjavo (do takrat konstante po težavnosti); ocena povratne informacije (`04` "Average feedback rating") da / ne | S8, S7 |
+| D66 | **ODPRTO** - karierne poti (`00` "Career Paths", 9. 10. 2026) | Odprto: (a) sestava poti - samodejno iz kategorij po razmerju (npr. jedro 60 %, podpora 30 %, občasno 10 %) ali ročno v adminu; (b) `00` omenja DevOps, Performance, APIs, "model integration", `problem_categories` ima samo 5 kategorij (= vloge) - tagi ali nove kategorije; (c) ali štejejo rešitve zunaj poti; (d) `goal_role = NULL` (D41, "exploring") = brez poti; (e) sprememba vloge v `/settings` - nova pot ali ohrani stopnjo; (f) obvestilo ob odklepu - obvestil ni (D25), predlog: pasica na dashboardu; (g) pragovi - konstante do K2. Predlog sheme: povprečja se izračunajo ob branju (kot streak, U2), shrani se samo `current_stage` + `stage_unlocked_at` | K1, K2 |
+| D67 | **ODPRTO** - kaj zaklene brezplačna raven (`00`, 9. 10. 2026) | `00`: brezplačna raven = samo Easy problemi; karierna pot odklepa težavnost s pragom. Zdaj so vsi objavljeni problemi odprti vsem (P1, R1). Odprto: ali se Medium+ dejansko zaklene (Start → 403) ali je zaklep samo na karierni poti; kaj ga odklene - napredek na poti, lasten ključ ali oboje | P1, R1, K1 |
 | D52 | **ODPRTO** - lestvica `/leaderboard` (`00`, 8. 10. 2026) | "Global ranking by efficiency score": povprečje `efficiency_score` vseh rešitev ali skupne točke (te že vsebujejo učinkovitost)? Najmanjše število rešitev za uvrstitev, časovno okno (vse / mesec), javna za goste? Zaslona še ni |
 | D53 | ~~Izvedljivi problemi za M2~~ → **rešeno 8. 10. 2026** (uporabnik): najprej **en** pravi problem - `payment-retries-disappear` dobi skrite teste (`hidden_files`), rešitev (`solution_files`) in preverjanja, ki tečejo brez npm paketov. Ostalih 11 seed problemov ostane samo za prikaz: Test vrne jasno "checks not available yet", dokler jih ne doda admin (A2-A5) | R3, R4 |
 | D54 | ~~Jeziki izvajalnika v v1~~ → **rešeno 8. 10. 2026** (uporabnik): **samo Node/TypeScript** (ena osnovna slika); drugi jeziki, ko jih zahteva prvi problem | R3 |
@@ -141,6 +147,11 @@ Posledica odločitev - narejene v migraciji rezine, ki tabelo ustvari:
 | `users` | − `is_admin` (migracija 0013) - admin je v `.env` | D48 | A1 ✅ |
 | `users` | `username` brez `UNIQUE` v stolpcu; namesto tega `UNIQUE INDEX ON lower(username)` (unikaten ne glede na velikost črk, gre v URL) | F2 | F2 |
 | `user_profiles` | + `languages TEXT[] NOT NULL DEFAULT '{}'` (narejeno v F4); `goal_role` NULL = raziskujem | D42, D41 | F4 |
+| `prompt_events` | + `key_source VARCHAR(10) NOT NULL` (`platform` / `user`), + `model VARCHAR(100)` - dnevna omejitev in D64 | D62, D64 | S1 |
+| `user_api_keys` | **nova** (ni v `01`): `user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE`, `provider VARCHAR(20) NOT NULL` (`anthropic` / `openai`), `ciphertext BYTEA NOT NULL`, `iv BYTEA NOT NULL`, `auth_tag BYTEA NOT NULL`, `created_at` | D63 | S6 |
+| `problem_benchmarks` | **nova** (ni v `01`): `problem_id UUID PRIMARY KEY REFERENCES problems(id) ON DELETE CASCADE`, `avg_prompts`, `avg_tokens`, `avg_time_seconds`, `avg_efficiency_score`, `avg_first_run_pass_rate` (DECIMAL), `solve_count INTEGER NOT NULL DEFAULT 0`, `updated_at` | - | S7 |
+| `solve_feedback` | **nova** (ni v `01`): `attempt_id UUID PRIMARY KEY REFERENCES user_problem_attempts(id) ON DELETE CASCADE`, `content TEXT`, `status VARCHAR(10) NOT NULL` (`pending` / `ready` / `failed`), `model VARCHAR(100)`, `generated_at TIMESTAMP` | D65 | S8 |
+| `career_path_progress` | **nova** (ni v `01`): `user_id`, `role`, `current_stage` (`easy` … `get_a_job`), `problems_completed`, `avg_efficiency`, `avg_prompts`, `avg_first_run_pass`, `stage_unlocked_at`; predlog D66: povprečja ob branju | D66 | K1 |
 | `user_profiles` | + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, (`languages` že v F4), `is_public BOOLEAN NOT NULL DEFAULT TRUE` | D34 | U1 |
 
 Ko rezina tabelo ustvari, se `01_database.md` posodobi, da se ujema z
@@ -182,7 +193,8 @@ seznam sprememb za tabele, ki še niso zgrajene. Narejeno v `01`: `users`
 | M4 Profil in dashboard | U1 → U2 → U3 | Profil s statistiko in grafom, personaliziran dashboard |
 | M5 Tekmovanja | T1 → T2 | Seznam tekmovanj, rezultati |
 | M6 Admin | A1 → A2 → A10 → A3 → A4 → A5 → A6-A9 → A9.1 | Upravljanje problemov, tekmovanj, uporabnikov, statistika |
-| M8 AI seja | S1 → S2 → S3 → S4, S5 | Vgrajeni AI klepet, zajem seje, ocena učinkovitosti v točkah, lestvica, AI analitika |
+| M8 AI seja | S1 → S6 → S2 → S3 → S7 → S8 → S4, S5 | Vgrajeni AI klepet (brezplačni model / lasten ključ), zajem seje, ocena učinkovitosti v točkah, benchmark problema, povratna informacija po rešitvi, lestvica, AI analitika |
+| M9 Karierne poti | K1 → K2 | Pot po vlogi s stopnjami, odklep s pragom učinkovitosti, pragovi v adminu |
 | M7 Produkcija | Z1 → Z2 | Seed zaklenjen v produkciji, varna namestitev |
 
 M3-M6 so med seboj neodvisni (razen naštetih odvisnosti). Admin za probleme
@@ -440,18 +452,26 @@ polnijo s seed skripto.
 - Analiza ob nalaganju (A10, `modules/admin/analysis.service.js`) naj deluje tudi z `OPENAI_API_KEY`. Zdaj je vezana na Anthropic SDK (`@anthropic-ai/sdk`, model `claude-sonnet-5-5`, `output_config` JSON shema, effort, `fallbacks`).
 - Ostane enako: cevovod (Duplicate Check → Production Test → AI Analysis), preverjanje odgovora (`parseDraft`), ustvarjanje osnutka, sistemski poziv in JSON shema (`hidden_files` kot seznam).
 - Odpre se ob rezini (vprašaj uporabnika): (a) OpenAI **namesto** Claude ali **izbira** po ključu / `AI_PROVIDER`; (b) model in cena; (c) odvisnost `openai` + njegov način vsiljene JSON oblike; (d) ali to velja tudi za AI klepet na zaslonu reševanja (M8, stack v CLAUDE.md zdaj pravi "Claude API").
-- Odločeno (uporabnik 9. 10. 2026): (a) **izbira po ključu** - nastavljen samo eden → ta; oba → `AI_PROVIDER=anthropic|openai` (privzeto anthropic); (b) privzet model **`gpt-4o`** (`OPENAI_MODEL`); (c) privzeto brez vprašanja: **brez nove odvisnosti** - `fetch` na Chat Completions z `response_format: json_schema, strict: true` (ista `SCHEMA` ustreza strogemu načinu); (d) **odloči se ob M8**.
+- Odločeno (uporabnik 9. 10. 2026): (a) **izbira po ključu** - nastavljen samo eden → ta; oba → `AI_PROVIDER=anthropic|openai` (privzeto anthropic); (b) privzet model **`gpt-4o`** (`OPENAI_MODEL`); (c) privzeto brez vprašanja: **brez nove odvisnosti** - `fetch` na Chat Completions z `response_format: json_schema, strict: true` (ista `SCHEMA` ustreza strogemu načinu); (d) **odloči se ob M8** → monetizacija 9. 10. 2026: klepet = platformni ključ s cenenim modelom (D62) ali uporabnikov ključ (D63).
 - Narejeno: `analysis.service.js` - `analyze` izbere ponudnika ob vsakem klicu (iz `config`, tudi spremembe med testi); `analyzeWithClaude` (nespremenjen A10) in `analyzeWithOpenAI` (zavrnitev / `finish_reason: length` / neveljaven JSON → 502 `ANALYSIS_INVALID`, 401 → 502 `ANALYSIS_FAILED`, 429 / 5xx → 503 `ANALYSIS_BUSY`, časovna omejitev 10 min). Brez ključa → 503 `ANALYSIS_DISABLED` "Set ANTHROPIC_API_KEY or OPENAI_API_KEY (and AI_PROVIDER=anthropic or openai) on the server". `config.js`: `openaiApiKey`, `openaiModel`, `aiProvider`; `.env.example` dopolnjen. Test `backend/test/a91.test.js` (3 testi, `fetch` nadomeščen - brez omrežja); A10 test posodobljen na novo sporočilo. **Ni preverjeno s pravim ključem** (ni ga v `.env`). Znana omejitev: `gpt-4o` ima nižjo mejo izhoda (16k žetonov) kot Claude (64k) - pri velikih skritih testih se analiza lahko odreže ("The analysis was cut off").
 
 ### M8 - AI seja (`02` "AI Session Capture", `03`, `04` "AI Session Analytics")
 
-Čaka D51 (S1-S3) in D52 (S4). Frontend del S1/S2 je na mocku (Seja 12).
+Čaka D51 (S1-S3), D52 (S4), D62 (S1), D63 (S6), D64 (S3, S7) in D65 (S8). Frontend del S1/S2 je na mocku (Seja 12). Funkcije 1-3 in 5 iz specifikacije 9. 10. 2026 (`00` "Monetization Model", `02` "Post-Solve Feedback") so S1, S6, S7, S8.
 
-**S1 · AI klepet** `M` · odvisno od: R1, D51 · ⬜
-- Naredi: `solve_sessions` (ena na poskus), `prompt_events`. Po D56 seja pripada **poskusu (try)**, ne samo attemptu: `solve_sessions.attempt_try_id` (ali agregat čez poskuse) - odloči ob rezini.
-- API: `POST /attempts/:id/ai/messages` `{ text, tool }` → strežnik pokliče Claude API (ključ samo v `backend/.env`), zapiše `prompt_events` (žetoni iz `usage` odgovora, ne ocena), posodobi števce v `solve_sessions`, vrne odgovor (pozneje SSE).
-- Frontend: `mockAskAi` (`src/lib/mock/aiChat.ts`) → API; števci v `useSessionTracker` iz odgovora.
-- Končano, ko: tuj ali zaključen poskus → 404/409; ključ ni nikoli v odgovoru; omejitev pozivov na poskus (D51) vrne 429; `total_prompts` = število vrstic `prompt_events`.
+**S1 · AI klepet (brezplačni model)** `M` · odvisno od: R1, D51, D62 · ⬜
+- Naredi: `solve_sessions` (ena na poskus), `prompt_events` (+ `key_source`, `model`). Po D56 seja pripada **poskusu (try)**, ne samo attemptu: `solve_sessions.attempt_try_id` (ali agregat čez poskuse) - odloči ob rezini.
+- API: `POST /attempts/:id/ai/messages` `{ text, tool }` (= `POST /api/ai/chat` iz specifikacije 9. 10. 2026; vezan na poskus, ker se poziv zapiše v njegovo sejo) → strežnik izbere ključ: lasten ključ uporabnika (S6) ali platformni ključ s cenenim modelom (D62); brez lastnega ključa preveri dnevno omejitev; pokliče ponudnika (klici iz A9.1, brez nove odvisnosti); zapiše `prompt_events` (žetoni iz `usage` odgovora, ne ocena); posodobi števce v `solve_sessions`; vrne odgovor + preostanek dnevne omejitve (pozneje SSE). Kaj gre v kontekst (besedilo problema, trenutne datoteke, prejšnja sporočila) - odloči ob rezini.
+- Porabljena dnevna omejitev → 429 `AI_DAILY_LIMIT` "Daily free AI limit reached. Connect your own API key in Settings to keep going." - reševanje brez AI teče naprej.
+- Frontend: `mockAskAi` (`src/lib/mock/aiChat.ts`) → API; števci v `useSessionTracker` iz odgovora; ob 429 sporočilo s povezavo na `/settings`; oznaka modela (brezplačni / lasten ključ).
+- Končano, ko: tuj ali zaključen poskus → 404/409; ključ ni nikoli v odgovoru; brez lastnega ključa nad dnevno omejitvijo → 429, naslednji dan (UTC) spet dela; `total_prompts` = število vrstic `prompt_events`; klic ponudnika v testih nadomeščen (brez omrežja, kot A9.1).
+
+**S6 · Lasten API ključ** `M` · odvisno od: S1, D63 · ⬜
+- Naredi: `user_api_keys`; šifriranje AES-256-GCM (`node:crypto`), glavni ključ `API_KEY_ENCRYPTION_KEY` samo v `backend/.env` (brez njega → 503 `AI_KEYS_DISABLED`); `.env.example` dopolnjen.
+- API (specifikacija `/api/user/api-key` → po konvenciji pod `/me`): `POST /me/api-key` `{ provider: 'anthropic' | 'openai', key }` → shrani šifrirano (zamenja obstoječega) → 204; `DELETE /me/api-key` → 204 (nazaj na brezplačni model); `GET /me/api-key/status` → `{ connected, provider }` - nikoli ključ ali njegov del.
+- S1: z lastnim ključem se ključ dešifrira samo v pomnilniku za klic (nikoli v log ali odgovor), pokliče se ponudnik uporabnika z močnim modelom (D63), `key_source = 'user'`, dnevne omejitve ni. Ponudnik zavrne ključ (401) → 400 `API_KEY_REJECTED`; 429 ponudnika → 503 `AI_BUSY`.
+- Frontend: `/settings` - razdelek "AI model" (Connect / Remove, stanje). Zavihek ni določen (Account je "coming soon", D35) in ni dizajna - vprašaj ob rezini.
+- Končano, ko: v bazi ni ključa v čistem besedilu (test bere vrstico); noben odgovor ne vsebuje ključa; po `DELETE` S1 spet uporabi platformni ključ in omejitev; spremenjen `ciphertext` ali napačen glavni ključ → dešifriranje pade (GCM), ne vrne smeti; neznan `provider` → 400.
 
 **S2 · Zajem dogodkov urejevalnika** `S` · odvisno od: S1 · ⬜
 - Naredi: `editor_events`.
@@ -469,7 +489,35 @@ polnijo s seed skripto.
 - API: `GET /leaderboard` (pravilo uvrstitve po D52). Frontend: nov zaslon `/leaderboard` (še ni zgrajen).
 
 **S5 · AI analitika (admin)** `S` · odvisno od: A1, S3 · ⬜
-- API: `GET /admin/analytics` (platforma) in `GET /admin/analytics/problems/:id` (`04`); povprečja po problemu postanejo benchmark za S3. Frontend: nov zaslon `/admin/analytics` (še ni zgrajen).
+- API: `GET /admin/analytics` (platforma) in `GET /admin/analytics/problems/:id` (`04`); povprečja po problemu bere iz `problem_benchmarks` (S7). + metrike povratnih informacij (`04` "Feedback metrics": najpogostejša področja izboljšav, napredek učinkovitosti uporabnikov skozi čas). Frontend: nov zaslon `/admin/analytics` (še ni zgrajen).
+
+**S7 · Benchmark problema** `S` · odvisno od: S3 · ⬜
+- Naredi: `problem_benchmarks`; migracija izračuna začetne vrednosti iz obstoječih rešitev.
+- V transakciji R4 (ob rešitvi): upsert vrstice problema, drseča povprečja inkrementalno (`avg + (x - avg) / n`), `solve_count + 1`. Brez endpointa.
+- Uporabljajo: S3 (benchmark problema namesto konstant po težavnosti, ko ima dovolj rešitev - do takrat `BENCHMARKS` iz `mock/aiChat.ts`), S8 (primerjava), K1 (pragovi), S5 (admin prikaz).
+- Končano, ko: po 3 rešitvah so povprečja enaka ročno izračunanim; dvojni Submit ne šteje rešitve dvakrat; problem brez rešitev nima vrstice (bralci uporabijo konstante).
+
+**S8 · Povratna informacija po rešitvi** `M` · odvisno od: S3, S7, D65 · ⬜
+- Naredi: `solve_feedback`.
+- Sprožilec: po commitu uspešne transakcije R4 (ne v njej), Submit nanj ne čaka. Vhod: seja (pozivi, žetoni, čas, zagoni testov, prvi zagon, ocena), povzetek `prompt_events`, težavnost, `problem_benchmarks`. En klic s cenenim modelom (D62), sistemski poziv v kodi, 200-400 besed, navaden tekst (nikoli HTML, kot komentarji).
+- API (specifikacija `GET /api/problems/:id/feedback/:attemptId` → poskus je en na problem, zato zadošča id poskusa): `GET /attempts/:id/feedback` → `{ status: 'pending' | 'ready' | 'failed', content }`; samo lastnik (tuj → 404), nerešen poskus → 409; `failed` se ob `GET` sproži znova.
+- Frontend: Submit po rešitvi odpre `/problems/[slug]` - kartica "Problem solved" dobi razdelek povratne informacije (osvežuje, dokler je `pending`); profil: zgodovina rešitev s povezavo na povratno informacijo (samo lastnik). Ni dizajna.
+- Končano, ko: rešitev ustvari `pending` → `ready`; napaka ponudnika → `failed`, rešitev in točke ostanejo; tuj poskus → 404; klic ponudnika v testih nadomeščen.
+
+### M9 - Karierne poti (`00` "Career Paths")
+
+Čaka D66 in D67. Ni dizajna (kje se pot prikaže - dashboard, profil, nova stran - odloči uporabnik). Vloga se že shrani na onboardingu (`goal_role`, F4; slugi `ai-engineer`, `backend`, `frontend`, `fullstack`, `database` = vloge iz `00`).
+
+**K1 · Karierna pot in napredek** `M` · odvisno od: S3, S7, D66, D67 · ⬜
+- Naredi: `career_path_progress`; sestava poti po vlogi (jedro / podpora / občasno iz `00`), štiri stopnje Easy → Medium → Hard → Get a job.
+- Po vsaki rešitvi (v transakciji R4): preračun napredka trenutne stopnje; ko so izpolnjeni vsi pogoji (število rešitev + prag učinkovitosti, pozivov, prvega zagona), `current_stage` + 1 in `stage_unlocked_at`. Obvestilo ob odklepu → D66 (f).
+- API: `GET /career-path` → vloga, stopnja, napredek do praga, priporočeni naslednji problemi; `GET /career-path/progress` → podrobno po metrikah (trenutno / prag).
+- Končano, ko: primer iz `00` (3 Easy, povprečna ocena > 1,2, pozivi < 8, prvi zagon > 50 % → odklenjen Medium); en pogoj manjka → stopnja ostane; `goal_role = NULL` → po D66 (d).
+
+**K2 · Pragovi in metrike v adminu** `S` · odvisno od: K1, A1 · ⬜
+- `00`: "Exact values TBD and adjustable in admin". Pragovi po stopnji v tabeli (do K2 konstante v kodi) + `GET`/`PUT /admin/career-paths`.
+- Metrike poti iz `04` Platform Stats (inženirji po poti, porazdelitev po stopnjah, prehodnost praga, kje obstanejo) - razširitev `GET /admin/stats` (A9) ali S5.
+- Frontend: nov admin zaslon ali razdelek - ni dizajna.
 
 ### M7 - Produkcija
 
@@ -490,11 +538,11 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | `/dashboard` + stranska vrstica (`(app)/layout.tsx`) | U3 ✅ + T1 ✅ 9. 10. 2026: feed, statistika, aktivnost, nedokončan poskus, zadnje zmage in aktivna tekmovanja iz `GET /dashboard`; uporabnik iz `useMe()` (U1); značka "Contests" = število aktivnih iz `GET /contests`. Ostane `src/lib/mock/dashboard.ts`: `mockGetDashboard` = samo vzorčna statistika za goste (zameglitev); `MOCK_ACTIVE_CONTEST_COUNT` samo še za admin pregled (A9) | - | ✅ 9. 10. 2026 |
 | `/problems` | ~~`mockGetProblems`~~ → `GET /problems` (P1), zaznamki → `PUT/DELETE /problems/:slug/bookmark` (D23); filtri/razvrščanje/drsenje ostanejo na odjemalcu. `mockGetProblems` še uporabljata mocka `profile.ts` in `adminContests.ts` | P1 | ✅ 8. 10. 2026 |
 | `/problems/[slug]` | ~~`mockGetProblem`~~ → `GET /problems/:slug` (P2, `serverFetch`); besedilo = `codebaseContext` + `incidentReport` (migracija 0006, seed iz `mock/problemBriefs.ts`). Ocena → `PUT /problems/:slug/rating` (O1), razprava → `GET/POST /problems/:slug/comments`, `DELETE /comments/:id`, `PUT/DELETE /comments/:id/helpful` (O2). `mockGetComments` ni več v uporabi | P2 ✅, O1 ✅, O2 ✅ | ✅ 8. 10. 2026 |
-| `/problems/[slug]/solve` | ~~`mockStartAttempt`, `CodeEditorMock`~~ → `POST /problems/:slug/start` + Monaco (R1 ✅); ~~`mockRunTests`~~ → `POST /attempts/:id/test` (R4 ✅); split pane: opis (`ProblemOverview`) levo, urejevalnik desno, spodaj Terminal + Test Results; vsaka datoteka je zavihek, izbirnik jezika je samo prikaz; "Submit" = zagon preverjanj. Desno AI klepet (`AiChatPanel`): `src/lib/mock/aiChat.ts` - `mockAskAi` (1,5 s, 4 vnaprej napisani odgovori za payment-retries, ciklično za vse probleme), `AI_TOOLS`, `BENCHMARKS` (povprečje pozivov/žetonov po težavnosti); seja v `src/hooks/useSessionTracker.ts` (samo React stanje: pozivi, žetoni ≈ znaki/4, zagoni testov, dogodki); ocena učinkovitosti je groba primerjava z benchmarkom | R1 ✅, R2 ✅ (Give up), R4 ✅, R5 ✅ (terminal), R6 ✅, S1, S2, S3 (AI seja) | 🟨 |
+| `/problems/[slug]/solve` | ~~`mockStartAttempt`, `CodeEditorMock`~~ → `POST /problems/:slug/start` + Monaco (R1 ✅); ~~`mockRunTests`~~ → `POST /attempts/:id/test` (R4 ✅); split pane: opis (`ProblemOverview`) levo, urejevalnik desno, spodaj Terminal + Test Results; vsaka datoteka je zavihek, izbirnik jezika je samo prikaz; "Submit" = zagon preverjanj. Desno AI klepet (`AiChatPanel`): `src/lib/mock/aiChat.ts` - `mockAskAi` (1,5 s, 4 vnaprej napisani odgovori za payment-retries, ciklično za vse probleme), `AI_TOOLS`, `BENCHMARKS` (povprečje pozivov/žetonov po težavnosti); seja v `src/hooks/useSessionTracker.ts` (samo React stanje: pozivi, žetoni ≈ znaki/4, zagoni testov, dogodki); ocena učinkovitosti je groba primerjava z benchmarkom | R1 ✅, R2 ✅ (Give up), R4 ✅, R5 ✅ (terminal), R6 ✅, S1, S6 (lasten ključ), S2, S3 (AI seja) | 🟨 |
 | `/contests` | ~~`mockGetContests`~~ → `GET /contests` (T1 ✅, T2 ✅ 9. 10. 2026: udeleženci in zgodovina). `src/lib/mock/contests.ts` ni več v uporabi na zaslonih (uvaža ga samo neuporabljen `mock/profile.ts`; ni izbrisan) | T1, T2 | ✅ 9. 10. 2026 |
 | `/contests/[id]` | ~~`mockGetContest`~~ → `GET /contests/:id` (T1 ✅, T2 ✅ 9. 10. 2026); incident = `incident_report` prvega problema; udeležba in udeleženci iz `contest_entries` | T1, T2 | ✅ 9. 10. 2026 |
 | `/profile/[username]` | ~~`mockGetProfile`~~ → U1 ✅ + U2 ✅ + T2 ✅ 9. 10. 2026 (API, aktivnost, streak, zgodovina tekmovanj). `src/lib/mock/profile.ts` ni več v uporabi (ni izbrisan) | - | ✅ 9. 10. 2026 |
-| `/settings` | ~~`MOCK_SETTINGS`, `mockSaveSettings`~~ → U1 ✅ 9. 10. 2026 (`GET`/`PUT /me/profile`). Zavihka Practice preferences in Account ostaneta "coming soon" (D35) | D35 | 🟨 |
+| `/settings` | ~~`MOCK_SETTINGS`, `mockSaveSettings`~~ → U1 ✅ 9. 10. 2026 (`GET`/`PUT /me/profile`). Zavihka Practice preferences in Account ostaneta "coming soon" (D35). Razdelek za lasten API ključ pride s S6 | D35, S6 | 🟨 |
 | `/login` | ~~`mockLogin`, `mockLogout`~~ → `POST /auth/login`, `POST /auth/logout` (F2). Ostane mock: "Continue with GitHub" pokaže napako (D37) | F2 | ✅ 7. 10. 2026 |
 | `/signup` | ~~`mockSignup`~~ → `POST /auth/signup` (F2): Username (D38), geslo ≥ 8 (D39) | F2 | ✅ 7. 10. 2026 |
 | `/forgot-password` | `src/lib/mock/auth.ts`: `mockRequestPasswordReset` (uspe za vsak e-mail - stran ne razkrije, ali račun obstaja); pošiljanje pošte je odloženo (X5) | X5 (rezina še ne obstaja) | ⏸ |
@@ -522,6 +570,10 @@ Odprto:
 - **`repository_structure`** je izpeljiv iz ključev `files` - verjetno odveč (odloči v R1). Zdaj (P2): JSON seznam poti, ki ga pokaže stran podrobnosti; seed ga zapiše iz ključev `files`.
 - ~~**Nagrada poslana:**~~ → `contests.reward_sent_at` (A7).
 - **Incident `payment-retries-disappear` vs. koda (R3, 8. 10. 2026):** log kaže `attempt=1..3` z `delay=30000ms`, izvedljiva koda pa po prvem neuspehu ponovni poskus izgubi (log: `gateway timeout attempt=1`, `retry scheduled delay=30000ms`, nato nič). Besedilo incidenta (`problemBriefs.ts` + seed 0001) je treba uskladiti - odloči uporabnik.
+- **Monetizacija (`00`, 9. 10. 2026) vs. zgrajeno:** brezplačna raven = samo Easy, zdaj so odprti vsi problemi → D67. "1 free problem on platform credits (trial)" poleg dnevne omejitve → D62. GPT-3.5 (`00`, `CLAUDE.md`) ni več na voljo → `gpt-4o-mini` (D62).
+- **Karierne poti (`00`):** kategorije DevOps, Performance, APIs, "model integration" ne obstajajo (5 kategorij) → D66 (b); obvestilo ob odklepu, obvestil pa ni (D25) → D66 (f).
+- **Izbirnik "AI tool"** (Claude / GPT-4 / Gemini / Other) na zaslonu reševanja vs. dejanski ponudnik (platformni ključ ali ključ uporabnika) → D51 (e).
+- **Nove tabele** `user_api_keys`, `problem_benchmarks`, `solve_feedback`, `career_path_progress` še niso v `01` - dodajo se, ko jih rezina zgradi (kot ostale).
 
 ---
 - ~~`01_database.md` `user_profiles.goal_role` komentar je pisal `'ai_engineer'`~~ → popravljeno 8. 10. 2026 na `ai-engineer` (slug kategorije, F4).
@@ -531,10 +583,12 @@ Odprto:
 | ID | Kaj | Zakaj čaka |
 | --- | --- | --- |
 | X1 | VS Code razširitev | `02`: "Not in scope for v1" |
-| X2 | Naročnine | `04`: nagrade po uvedbi naročnin |
+| X2 | Naročnine | `04`: nagrade po uvedbi naročnin. Model iz `00` (9. 10. 2026) naročnin nima (brezplačno + lasten ključ) - verjetno odpade, potrdi uporabnik |
 | X3 | Bonusi tekmovanj | `03`: "TBD - not needed for v1" |
 | X4 | Nalaganje avatarja | `users.avatar_url` obstaja, shramba datotek ni odločena |
 | X5 | Pozabljeno geslo prek e-pošte | Pošiljanje pošte ni v stacku |
+| X6 | B2B: problemi podjetij, vabila na razgovor, ogled seje za zaposlovalce | `00` "Monetization Model": V2 |
+| X7 | Hackathoni (sponzorirani dogodki) | `00` "Monetization Model": V2 |
 
 ---
 
@@ -547,15 +601,16 @@ Odprto:
 | `/onboarding` | F4 |
 | `/dashboard` | U3, T1 |
 | `/problems` | P1 |
-| `/problems/[slug]` | P2, R4 (rezultat + poskusi), O1, O2 |
-| `/problems/[slug]/solve` | R1-R6 + R2b ✅, S1-S3 |
+| `/problems/[slug]` | P2, R4 (rezultat + poskusi), O1, O2, S8 (povratna informacija) |
+| `/problems/[slug]/solve` | R1-R6 + R2b ✅, S1-S3, S6 |
 | `/leaderboard` (ni zgrajen) | S4 |
-| `/profile/[username]` | U1, U2, T2 |
-| `/settings` | U1 (D34-D36) |
+| `/profile/[username]` | U1, U2, T2, S8 (zgodovina povratnih informacij), K1 |
+| `/settings` | U1 (D34-D36), S6 (lasten API ključ) |
+| karierna pot (ni zaslona) | K1 |
 | `/contests`, `/contests/[id]` | T1, T2 |
 | `/admin` | A9 |
 | `/admin/problems/new` | A10, A2, A4, A5 |
 | `/admin/problems`, `/admin/problems/[id]/edit` | A2, A3 (A5 za objavo / umik) |
 | `/admin/contests`, `/admin/contests/new`, `/admin/contests/[id]/edit` | A6 (A7 za rezultate) |
-| `/admin/analytics` (ni zgrajen) | S5 |
+| `/admin/analytics` (ni zgrajen) | S5, K2 |
 | `/admin/*` | A1-A9 |
