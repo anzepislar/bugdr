@@ -124,6 +124,8 @@ Streaks work like GitHub commit graphs.
 - Longest streak is tracked separately from current streak
 - "Opening" = a signed-in user loads the problem detail page (`GET /problems/:slug`); a day is a UTC calendar day
   (D6, D7). Built in slice P2: `user_daily_activity.problems_opened` + `user_stats.current_streak/longest_streak`
+- The reset is applied on read (U2), without a nightly job: if `last_activity_date` is older than yesterday, the
+  profile and dashboard show a current streak of 0; the next opened problem starts it again at 1
 
 **Why opening counts (not just solving):**
 Solving a Hard or "Get a job" problem can take multiple days.
@@ -131,7 +133,7 @@ Penalizing users for working on hard problems would discourage tackling them.
 
 **Streak display:**
 - GitHub-style commit graph on profile page
-- Shows last 52 weeks (1 year)
+- Shows last 52 weeks (1 year): 53 columns, from the Monday 52 weeks ago to today (U2)
 - Color intensity = number of problems solved that day
 - Current streak and longest streak shown as numbers
 
@@ -196,6 +198,10 @@ Ranks are calculated and written to `contest_entries.rank` when the contest ends
 ---
 
 ## Stats Shown on Profile
+
+Built in U1 (`GET /users/:username`): total points, level, problems solved, current and longest streak, plus the
+activity grid (U2) and the solved list. The other rows are not shown on the profile screen yet (no design) and
+the AI rows wait for M8.
 
 | Stat | Description |
 |------|-------------|

@@ -4,8 +4,10 @@ import { HttpError } from "./errors.js";
 import { attemptsRouter } from "./modules/attempts/attempts.routes.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { commentsRouter } from "./modules/comments/comments.routes.js";
+import { dashboardRouter } from "./modules/dashboard/dashboard.routes.js";
 import { meRouter } from "./modules/me/me.routes.js";
 import { problemsRouter } from "./modules/problems/problems.routes.js";
+import { usersRouter } from "./modules/users/users.routes.js";
 
 export const app = express();
 // 3 MB: a Test submission carries the user's files (runner limit 2 MB, R3).
@@ -15,8 +17,10 @@ export const api = express.Router();
 app.use("/api/v1", api);
 api.use("/attempts", attemptsRouter);
 api.use("/auth", authRouter);
+api.use("/dashboard", dashboardRouter);
 api.use("/me", meRouter);
 api.use("/problems", problemsRouter);
+api.use("/users", usersRouter);
 api.use(commentsRouter);
 
 api.get("/health", async (req, res) => {

@@ -39,9 +39,9 @@ async function commentFor(id, userId) {
 }
 
 // One shape for the list and for a new post (ProblemComment in frontend/src/lib/types/problem.ts).
-// displayName = username until U1 adds display_name (D58, D34).
+// displayName falls back to the username (D34).
 const SELECT_COMMENTS = `
-  SELECT c.id, c.parent_id, c.content, c.created_at AT TIME ZONE 'UTC' AS created_at, u.username, up.goal_role,
+  SELECT c.id, c.parent_id, c.content, c.created_at AT TIME ZONE 'UTC' AS created_at, u.username, coalesce(up.display_name, u.username) AS display_name, up.goal_role,
     (SELECT count(*)::int FROM comment_helpful h WHERE h.comment_id = c.id) AS helpful_count,
     EXISTS (SELECT 1 FROM comment_helpful h WHERE h.comment_id = c.id AND h.user_id = $2) AS marked_helpful,
     c.user_id = $2 AS own
@@ -51,7 +51,7 @@ const SELECT_COMMENTS = `
 
 const toComment = (r) => ({
   id: r.id,
-  author: { username: r.username, displayName: r.username, goalRole: r.goal_role },
+  author: { username: r.username, displayName: r.display_name, goalRole: r.goal_role },
   content: r.content,
   createdAt: r.created_at.toISOString(),
   helpfulCount: r.helpful_count,

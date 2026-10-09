@@ -17,13 +17,13 @@ povezala na API.
 ## Stanje
 
 ```
-Zadnja posodobitev: 8. 10. 2026
-Backend: M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2)
+Zadnja posodobitev: 9. 10. 2026
+Backend: M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3)
 Frontend: 17 zaslonov na mocku - /login, /signup, /forgot-password, /onboarding, /dashboard,
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit
-Naslednja rezina: M4 (U1 profil - D34-D36 odprte); testi 81/81; M4 (U1) odklenjen; D48 (admin) pred M6; M8 (AI seja) čaka D50-D52
+Naslednja rezina: M5 T1 (M4 ✅ 9. 10. 2026; D35 ostane odprta); testi 93/93; D48 (admin) pred M6; M8 (AI seja) čaka D50-D52
 ```
 
 Oznake: ⬜ ni začeto · 🟨 v delu · ✅ narejeno (z datumom) · ⏸ odloženo
@@ -87,7 +87,7 @@ dokler je uporabnik ne potrdi.
 | D21 | **ODPRTO** - Claude analiza | Klic samo v backendu (ključ `ANTHROPIC_API_KEY` nikoli v frontendu), model iz konfiguracije, omejitev velikosti ZIP-a in števila/velikosti datotek, izpusti `node_modules`, `.git`, binarne datoteke; strogo preverjanje JSON odgovora (oblika `ProblemAnalysis`), ob neveljavnem odgovoru 502 `ANALYSIS_INVALID` | A10 |
 | D22 | **ODPRTO** - kje živi razpakiran ZIP med analizo in shranjevanjem | Predlog: analiza takoj ustvari osnutek problema (`is_published = false`) in shrani datoteke v `problem_codebase`; odgovor vrne `problemId`, "Save as Draft"/"Publish" sta nato `PATCH` istega osnutka. Brez začasnih map na disku | A10, A2 |
 | D23 | ~~Zaznamki (bookmark) na kartici problema~~ → **rešeno 8. 10. 2026** (uporabnik): tabela `problem_bookmarks (user_id, problem_id, created_at, PK(user_id, problem_id))` + `PUT/DELETE /problems/:slug/bookmark` v P1; kartica dobi `saved` | U3, P1 |
-| D24 | **ODPRTO** - feed na dashboardu: filtri in rešeni problemi | Dizajn ima filtre (kategorija, težavnost, "Hide solved", razvrščanje). D19 pravi, da feed ne vsebuje rešenih. Predlog: `GET /dashboard/feed?category=&difficulty=&hideSolved=&sort=`, privzeto po D19 (`hideSolved=true`); ko je "Hide solved" izklopljen, so rešeni problemi v feedu z oznako `solved` | U3 |
+| D24 | ~~Feed na dashboardu: filtri in rešeni problemi~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M4): rešeni problemi so **vedno skriti** (D19), stikalo "Hide solved" se odstrani. Filtri kategorija, težavnost in razvrščanje ostanejo | U3 |
 | D25 | **ODPRTO** - ikona obvestil v zgornji vrstici | Dizajn ima zvonec, shema in dokumenti nimajo obvestil. Predlog: v v1 ikona brez funkcije ali skrita; obvestila kasneje kot svoja rezina | - |
 | D26 | ~~Opisi preverjanj na strani podrobnosti~~ → **rešeno 8. 10. 2026** (uporabnik): `GET /problems/:slug` vrne `checks: string[]` = samo `problem_checks.description` po `check_order` (nikoli `check_command`/`expected_output`) | P2 |
 | D27 | ~~Ime repozitorija in sklad na strani podrobnosti~~ → **rešeno 8. 10. 2026** (uporabnik): `problem_codebase.repository_name VARCHAR(100)`, sklad = `language` + `framework` + tagi; zavihek Repository pokaže poti iz `repository_structure` (brez vsebine) | P2, A2 |
@@ -96,9 +96,9 @@ dokler je uporabnik ne potrdi.
 | D30 | ~~"Helpful" in odgovori na komentarje~~ → **rešeno 8. 10. 2026** (uporabnik, priprava M3): **vse, kot je v UI** (izvedba O2: števec iz `comment_helpful` ob branju namesto stolpca, razvrščanje na odjemalcu) - `problem_comments.parent_id UUID NULL REFERENCES problem_comments(id) ON DELETE CASCADE` (odgovori samo ena raven: odgovor na odgovor → 400), tabela `comment_helpful (comment_id, user_id, created_at, PK(comment_id, user_id))` + `problem_comments.helpful_count INTEGER NOT NULL DEFAULT 0` (posodobljen v isti transakciji), `PUT/DELETE /comments/:id/helpful` (lastnega komentarja ni mogoče označiti → 403), `GET /problems/:slug/comments?sort=helpful\|newest` | O2 |
 | D31 | ~~Stran posameznega tekmovanja~~ → **rešeno 6. 10. 2026**: uporabnik je dal dizajn, pot `/contests/[id]` (id, ker `contests` nima sluga). En incident na tekmovanje kot v dizajnu, čeprav shema dovoli več problemov (`contest_problems`) | T1, T2 |
 | D33 | ~~En ali več problemov na tekmovanje~~ → **rešeno 7. 10. 2026** (uporabnik, prenova admin tekmovanj): **vsaj 1 problem, lahko več** (`contest_problems`). Javni `ContestDetail.problem` (`/contests/[id]`) je še en problem - T1 ga razširi v seznam | T1, A6 |
-| D34 | **ODPRTO** - polja profila iz `/settings` | Dizajn ima prikazno ime, naslov profila (headline), GitHub uporabniško ime, jezike in stikalo "Public profile"; shema nima nobenega (`users` ima samo `username`). Predlog: `user_profiles` + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, `languages TEXT[]`, `is_public BOOLEAN DEFAULT TRUE`; API `PUT /me/profile`. Zdaj fiksen seznam jezikov (`LANGUAGES`) | U1 |
-| D35 | **ODPRTO** - zavihka "Practice preferences" in "Account" na `/settings` | Dizajn ju ima, vsebine ne. Zdaj prazno stanje "coming soon". Predlog: Account = e-pošta, sprememba gesla, odjava; Practice preferences = `platform_goal` (F4) | U1, F2 |
-| D36 | **ODPRTO** - "Starting difficulty" na `/settings` | Dizajn ima polje Starting difficulty, shema hrani `experience_level`, iz katerega D19 izpelje začetno težavnost. Zdaj polje "Production experience" (isto kot v stranski vrstici) z opombo, da določa začetno težavnost | U1, U3 |
+| D34 | ~~Polja profila iz `/settings`~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M4): **vsa polja** - `user_profiles` + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, `is_public BOOLEAN NOT NULL DEFAULT TRUE` (`languages` že v F4); API `PUT /me/profile`. Zaseben profil drugim pokaže samo `username`. Jeziki ostanejo fiksen seznam (`LANGUAGES`) | U1 |
+| D35 | **ODPRTO** - zavihka "Practice preferences" in "Account" na `/settings` | Dizajn ju ima, vsebine ne. **Uporabnik 9. 10. 2026: ostaneta, kot sta ("coming soon"), vrnemo se kmalu** - ni del U1. Zdaj prazno stanje "coming soon". Predlog: Account = e-pošta, sprememba gesla, odjava; Practice preferences = `platform_goal` (F4) | U1, F2 |
+| D36 | ~~"Starting difficulty" na `/settings`~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M4): **ostane `experience_level`** - polje "Production experience" z opombo, da določa začetno težavnost (D19). Brez ločene nastavitve težavnosti | U1, U3 |
 | D32 | **ODPRTO** - "N/M checks passed" v zgodovini tekmovanj | Dizajn kaže preverjanja, `contest_entries` ima `problems_solved` in `total_score`. Zdaj mock vrne `checksPassed`/`checksTotal` (vsota čez probleme tekmovanja), "Completed" = vsa preverjanja uspešna. Predlog: prikaži `problems_solved` / število problemov in točke | T2 |
 | D37 | **ODPRTO** - "Continue with GitHub" na `/login` in `/signup` | Dizajn ima prijavo z GitHubom, stack ima samo JWT z geslom (F2). Zdaj gumb pokaže "not available yet". Predlog: v v1 skrit; OAuth kasneje kot svoja rezina (`users.github_id`) | F2 |
 | D38 | ~~"Full name" namesto `username` na `/signup`~~ → **rešeno 7. 10. 2026** (uporabnik): obrazec ima polje **Username** (3-50 znakov: črke, številke, `-`, `_`; unikaten brez razlike v velikosti črk), polno ime odpade do `display_name` (D34) | F2, U1 |
@@ -136,7 +136,7 @@ Posledica odločitev - narejene v migraciji rezine, ki tabelo ustvari:
 | `contests` | + `archived_at TIMESTAMP` (NULL = ni arhivirano; arhiviranje končanih tekmovanj, `04`) | - | A6 |
 | `users` | `username` brez `UNIQUE` v stolpcu; namesto tega `UNIQUE INDEX ON lower(username)` (unikaten ne glede na velikost črk, gre v URL) | F2 | F2 |
 | `user_profiles` | + `languages TEXT[] NOT NULL DEFAULT '{}'` (narejeno v F4); `goal_role` NULL = raziskujem | D42, D41 | F4 |
-| `user_profiles` | + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, (`languages` že v F4), `is_public BOOLEAN DEFAULT TRUE` (predlog, čaka odločitev) | D34 | U1 |
+| `user_profiles` | + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, (`languages` že v F4), `is_public BOOLEAN NOT NULL DEFAULT TRUE` | D34 | U1 |
 
 Ko rezina tabelo ustvari, se `01_database.md` posodobi, da se ujema z
 migracijo (uporabnik 8. 10. 2026: "update all md files"). Ta tabela ostane
@@ -326,23 +326,26 @@ polnijo s seed skripto.
 
 ### M4 - Profil in dashboard
 
-**U1 · Profil** `M` · odvisno od: R4 · ⬜
+**U1 · Profil** `M` · odvisno od: R4 · ✅ 9. 10. 2026
 - API: `GET /users/:username` → statistika iz `03` "Stats Shown on Profile" (točke, nivo + napredek do naslednjega, rešeni, streak, najdaljši streak, po težavnosti, po kategoriji, povprečni čas) + seznam rešenih problemov. Brez e-pošte.
-- API: `PUT /me/profile` (polja iz D34, `goalRole`, `experienceLevel`) za `/settings`; zaseben profil (`is_public = false`) drugim vrne samo ime.
+- API: `PUT /me/profile` (polja iz D34, `goalRole`, `experienceLevel`, `languages`) za `/settings`; zaseben profil (`is_public = false`) drugim vrne samo `username`. Polje težavnosti = `experienceLevel` (D36). Zavihka Practice preferences in Account ostaneta "coming soon" (D35).
 - Frontend: `/profile/[username]`, `/settings`. Oblika odgovora je `Profile` v `frontend/src/lib/types/profile.ts` (+ `contests` = zgodovina tekmovanj iz T2).
 - Končano, ko: neznan username → 404; banned uporabnik → 404; števci se ujemajo z `user_problem_attempts`.
+- **Stanje:** migracija 0010 (`display_name`, `headline`, `github_username`, `is_public` v `user_profiles`), nov modul `backend/src/modules/users/users.routes.js` (`GET /users/:username`, ime brez razlike v velikosti črk, `optionalAuth`), v `me.routes.js` `GET /me/profile` (`{ username, settings }`) in `PUT /me/profile` (cel obrazec; prazna neobvezna polja = NULL, ime obrezano, GitHub po pravilu GitHuba). Profil ima novo polje `own` (gledalec je lastnik) namesto primerjave z `MOCK_ME`; zaseben profil drugim vrne `PrivateProfile` = `{ username, displayName: username, isPublic: false, own: false }`. Avtor komentarja ima zdaj `display_name` (O2). **Odstopa od načrta (enostavneje):** brez statistike po težavnosti, kategoriji in povprečnega časa - zaslon jih ne kaže (dodati, ko jih dobi dizajn); `problemsSolved` se šteje iz poskusov; `activity: []` do U2, `contests: []` do T2; streak se bere, kot je shranjen (pravilo "starejši od včeraj = 0" je U2). **Dodatno (sicer bi bile povezave pokvarjene):** `(app)/layout.tsx` naloži prijavljenega uporabnika z `GET /me/profile`, `SessionProvider` nosi `Me` (`useMe()`), stranska vrstica, zgornja vrstica in pozdrav + povezava na profil na `/dashboard` ne uporabljajo več `MOCK_ME`; po shranjevanju nastavitev `router.refresh()`. `Me.goalRole` je lahko `null` (stranska vrstica: "Exploring my path"), obrazec ima to možnost pri vlogi. Test `backend/test/u1.test.js` (6 testov).
 
-**U2 · Graf aktivnosti in streak** `S` · odvisno od: U1, P2 · ⬜
+**U2 · Graf aktivnosti in streak** `S` · odvisno od: U1, P2 · ✅ 9. 10. 2026
 - API: `GET /users/:username/activity` → zadnjih 52 tednov iz `user_daily_activity` (intenziteta = rešeni na dan, `03`). Mreža na profilu ima 53 stolpcev (52 polnih tednov + tekoči), zato naj API vrne od ponedeljka pred 52 tedni naprej.
 - Streak na branje: če je `last_activity_date` starejši od včeraj, se prikaže `current_streak = 0` (brez cron opravila).
 - Končano, ko: dan brez aktivnosti prekine streak; najdaljši streak se ne zmanjša.
+- **Stanje:** **Odstopa od načrta (enostavneje):** brez ločenega `GET /users/:username/activity` - `activity` je del `GET /users/:username` (en klic, en odjemalec; dashboard dobi svojo v U3). Vrne samo dneve z vrstico (`date` = `YYYY-MM-DD` po UTC, `problemsOpened`, `problemsSolved`) od ponedeljka pred 52 tedni (`date_trunc('week', …) - 364`), mreža ostale dopolni z 0. Streak na branje: `last_activity_date` starejši od včeraj → `currentStreak = 0`; shranjena vrednost ostane (naslednji ogled problema jo začne znova pri 1, P2). Zapis streaka je bil narejen in testiran že v P2. Frontend brez sprememb. Test `backend/test/u2.test.js` (2 testa); U1 test nastavi `last_activity_date`.
 
-**U3 · Dashboard** `M` · odvisno od: P1, F4 · ⬜
+**U3 · Dashboard** `M` · odvisno od: P1, F4 · ✅ 9. 10. 2026
 - API: `GET /dashboard` → personaliziran feed (D19), aktivna tekmovanja (po T1), lastna statistika na kratko, nedokončani poskusi.
-- Frontend: `/dashboard`. Oblika odgovora je `Dashboard` v `frontend/src/lib/types/dashboard.ts` (`contests`, `inProgress`, `feed`, `stats` z `level`/`nextLevel` iz `level_thresholds`, `activity` iz `user_daily_activity`, `recentWins`). Filtri feeda po D24 (zdaj filtrira mock na odjemalcu).
+- Frontend: `/dashboard`. Oblika odgovora je `Dashboard` v `frontend/src/lib/types/dashboard.ts` (`contests`, `inProgress`, `feed`, `stats` z `level`/`nextLevel` iz `level_thresholds`, `activity` iz `user_daily_activity`, `recentWins`). Filtri feeda po D24: rešeni vedno skriti, stikalo "Hide solved" odstranjeno; kategorija/težavnost/razvrščanje (zdaj filtrira mock na odjemalcu).
 - Kartica tekmovanja: težavnost = najvišja težavnost problemov tekmovanja, `participantCount` = število `contest_entries`.
 - Kartica problema prikaže `time_limit_minutes` (dizajn ima razpon "25-40 min", ki ga shema nima).
 - Končano, ko: feed ne vsebuje rešenih ali neobjavljenih problemov.
+- **Stanje:** nov modul `backend/src/modules/dashboard/dashboard.routes.js` (`GET /dashboard`, `optionalAuth`). Ponovna uporaba: `listProblems(userId)` izvlečen iz `GET /problems` (feed = isti seznam brez rešenih, isti vrstni red "recommended"), `getStats` / `getActivity` / `getSolved` izvlečeni iz profila (`users.routes.js`), zato se dashboard in profil vedno ujemata. `inProgress` = zadnji poskus v teku objavljenega problema; "checks passed" = najnovejši rezultat vsakega preverjanja od začetka trenutnega poskusa (`check_results.executed_at >= started_at`); jezik iz `problem_codebase.language`. `recentWins` = zadnji 3 rešeni. Gost dobi samo feed (`stats: null`, `inProgress: null`, prazni seznami). **Odstopa od načrta (enostavneje):** filtri feeda (kategorija, težavnost, razvrščanje) ostanejo na odjemalcu kot na `/problems` (oznaka `ponytail:`); feed ima obliko `ProblemListItem` (tip `FeedProblem` odstranjen) in s tem `saved` - zaznamki na dashboardu so zdaj pravi (`PUT/DELETE /problems/:slug/bookmark`, ob napaki nazaj). D24: stikalo "Hide solved" in oznaka "Solved" odstranjena. Tekmovanja ostanejo mock do T1, vzorčna statistika pod zameglitvijo za goste ostane mock. Test `backend/test/u3.test.js` (4 testi).
 
 ### M5 - Tekmovanja
 
@@ -447,14 +450,14 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 
 | Zaslon | Mock (datoteka / konstanta) | Zamenja rezina | Stanje |
 | --- | --- | --- | --- |
-| `/dashboard` + stranska vrstica (`(app)/layout.tsx`) | `src/lib/mock/dashboard.ts`: `mockGetDashboard` (datumi relativni na zdaj), `MOCK_ME` (uporabnik, cilj, izkušnje), `MOCK_ACTIVE_CONTEST_COUNT`; sličice v `public/mock/` | U3, T1, U2, F4 | ⬜ |
+| `/dashboard` + stranska vrstica (`(app)/layout.tsx`) | U3 ✅ 9. 10. 2026: feed, statistika, aktivnost, nedokončan poskus in zadnje zmage iz `GET /dashboard`; uporabnik iz `useMe()` (U1). Ostane `src/lib/mock/dashboard.ts`: `mockGetDashboard` = samo aktivna tekmovanja + vzorčna statistika za goste (zameglitev), `MOCK_ACTIVE_CONTEST_COUNT` (stranska vrstica, admin) | T1 | 🟨 |
 | `/problems` | ~~`mockGetProblems`~~ → `GET /problems` (P1), zaznamki → `PUT/DELETE /problems/:slug/bookmark` (D23); filtri/razvrščanje/drsenje ostanejo na odjemalcu. `mockGetProblems` še uporabljata mocka `profile.ts` in `adminContests.ts` | P1 | ✅ 8. 10. 2026 |
 | `/problems/[slug]` | ~~`mockGetProblem`~~ → `GET /problems/:slug` (P2, `serverFetch`); besedilo = `codebaseContext` + `incidentReport` (migracija 0006, seed iz `mock/problemBriefs.ts`). Ocena → `PUT /problems/:slug/rating` (O1), razprava → `GET/POST /problems/:slug/comments`, `DELETE /comments/:id`, `PUT/DELETE /comments/:id/helpful` (O2). `mockGetComments` ni več v uporabi | P2 ✅, O1 ✅, O2 ✅ | ✅ 8. 10. 2026 |
 | `/problems/[slug]/solve` | ~~`mockStartAttempt`, `CodeEditorMock`~~ → `POST /problems/:slug/start` + Monaco (R1 ✅); ~~`mockRunTests`~~ → `POST /attempts/:id/test` (R4 ✅); split pane: opis (`ProblemOverview`) levo, urejevalnik desno, spodaj Terminal + Test Results; vsaka datoteka je zavihek, izbirnik jezika je samo prikaz; "Submit" = zagon preverjanj. Desno AI klepet (`AiChatPanel`): `src/lib/mock/aiChat.ts` - `mockAskAi` (1,5 s, 4 vnaprej napisani odgovori za payment-retries, ciklično za vse probleme), `AI_TOOLS`, `BENCHMARKS` (povprečje pozivov/žetonov po težavnosti); seja v `src/hooks/useSessionTracker.ts` (samo React stanje: pozivi, žetoni ≈ znaki/4, zagoni testov, dogodki); ocena učinkovitosti je groba primerjava z benchmarkom | R1 ✅, R2 ✅ (Give up), R4 ✅, R5 ✅ (terminal), R6 ✅, S1, S2, S3 (AI seja) | 🟨 |
 | `/contests` | `src/lib/mock/contests.ts`: `mockGetContests` (live/upcoming/past + zgodovina uporabnika, datumi relativni na zdaj); prihajajoča tekmovanja brez težavnosti, oznak in sličice (T1); "View contest" vodi na `/contests/[id]` | T1, T2 | ⬜ |
 | `/contests/[id]` | `src/lib/mock/contests.ts`: `mockGetContest` (seznam + `DETAILS`: incident, ime repozitorija (D27), število preverjanj, nagrada, udeležba); problemi tekmovanj so obstoječi mock problemi, da "Enter contest" odpre delujoč zaslon reševanja | T1, T2 | ⬜ |
-| `/profile/[username]` | `src/lib/mock/profile.ts`: `mockGetProfile` (samo `max`, drugi → 404; 147 rešenih problemov, ciklično iz mock problemov; aktivnost 53 tednov = vsak tretji aktivni dan iz `mockActivity`; zgodovina tekmovanj iz `mockGetContests`); neskončno drsenje rešenih na odjemalcu | U1, U2, T2 | ⬜ |
-| `/settings` | `src/lib/mock/profile.ts`: `MOCK_SETTINGS`, `mockSaveSettings` (shrani samo v stanje obrazca - profil in stranska vrstica se ne posodobita); zavihka Practice preferences in Account prazna (D35) | U1 (D34) | ⬜ |
+| `/profile/[username]` | ~~`mockGetProfile`~~ → U1 ✅ + U2 ✅ 9. 10. 2026 (API, aktivnost in streak). Ostane: zgodovina tekmovanj prazna do T2. `src/lib/mock/profile.ts` ni več v uporabi (ni izbrisan) | T2 | 🟨 |
+| `/settings` | ~~`MOCK_SETTINGS`, `mockSaveSettings`~~ → U1 ✅ 9. 10. 2026 (`GET`/`PUT /me/profile`). Zavihka Practice preferences in Account ostaneta "coming soon" (D35) | D35 | 🟨 |
 | `/login` | ~~`mockLogin`, `mockLogout`~~ → `POST /auth/login`, `POST /auth/logout` (F2). Ostane mock: "Continue with GitHub" pokaže napako (D37) | F2 | ✅ 7. 10. 2026 |
 | `/signup` | ~~`mockSignup`~~ → `POST /auth/signup` (F2): Username (D38), geslo ≥ 8 (D39) | F2 | ✅ 7. 10. 2026 |
 | `/forgot-password` | `src/lib/mock/auth.ts`: `mockRequestPasswordReset` (uspe za vsak e-mail - stran ne razkrije, ali račun obstaja); pošiljanje pošte je odloženo (X5) | X5 (rezina še ne obstaja) | ⏸ |

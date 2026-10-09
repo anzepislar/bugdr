@@ -33,3 +33,56 @@ meRouter.put("/onboarding", async (req, res) => {
   );
   res.status(204).end();
 });
+
+// GET /me/profile → { username, settings: ProfileSettings } for /settings (D34). Empty optional fields are "".
+meRouter.get("/profile", async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT display_name, headline, github_username, goal_role, experience_level, languages, is_public
+     FROM user_profiles WHERE user_id = $1`,
+    [req.user.id],
+  );
+  const p = rows[0] ?? {};
+  res.json({
+    username: req.user.username,
+    settings: {
+      displayName: p.display_name ?? req.user.username,
+      headline: p.headline ?? "",
+      githubUsername: p.github_username ?? "",
+      goalRole: p.goal_role ?? null,
+      experienceLevel: p.experience_level ?? null,
+      languages: p.languages ?? [],
+      isPublic: p.is_public ?? true,
+    },
+  });
+});
+
+// GitHub's rule: letters, digits and single hyphens, not at the start or end, at most 39.
+const GITHUB_USERNAME = /^[A-Za-z0-9](?:-?[A-Za-z0-9])*$/;
+
+// PUT /me/profile: the whole /settings form. The difficulty field is experienceLevel (D36).
+meRouter.put("/profile", async (req, res) => {
+  const { displayName, headline = "", githubUsername = "", goalRole = null, experienceLevel, languages = [], isPublic } =
+    req.body ?? {};
+  const name = typeof displayName === "string" ? displayName.trim() : "";
+  const head = typeof headline === "string" ? headline.trim() : null;
+  const github = typeof githubUsername === "string" ? githubUsername.trim() : null;
+
+  const details = {};
+  if (!name || name.length > 50) details.displayName = "Enter a display name up to 50 characters";
+  if (head === null || head.length > 80) details.headline = "Up to 80 characters";
+  if (github === null || (github && (github.length > 39 || !GITHUB_USERNAME.test(github)))) details.githubUsername = "Not a valid GitHub username";
+  if (goalRole !== null && !GOAL_ROLES.includes(goalRole)) details.goalRole = "Unknown role";
+  if (!EXPERIENCE_LEVELS.includes(experienceLevel)) details.experienceLevel = "Choose your experience";
+  if (!Array.isArray(languages) || !languages.every((l) => LANGUAGES.includes(l))) details.languages = "Unknown language";
+  if (typeof isPublic !== "boolean") details.isPublic = "Must be true or false";
+  if (Object.keys(details).length) throw new HttpError(400, "VALIDATION_ERROR", "Check your profile", details);
+
+  await pool.query(
+    `INSERT INTO user_profiles (user_id, display_name, headline, github_username, goal_role, experience_level, languages, is_public)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT (user_id) DO UPDATE SET display_name = $2, headline = $3, github_username = $4, goal_role = $5,
+       experience_level = $6, languages = $7, is_public = $8`,
+    [req.user.id, name, head || null, github || null, goalRole, experienceLevel, [...new Set(languages)], isPublic],
+  );
+  res.status(204).end();
+});

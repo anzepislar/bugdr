@@ -29,6 +29,7 @@ export async function mockGetProfile(username: string): Promise<Profile | null> 
     headline: MOCK_SETTINGS.headline,
     languages: MOCK_SETTINGS.languages,
     isPublic: MOCK_SETTINGS.isPublic,
+    own: true,
     stats: {
       totalPoints: 12840,
       problemsSolved: 147,

@@ -7,15 +7,22 @@ import { useState } from "react";
 import { useLoginHref, useSignedIn } from "@/components/app/Session";
 import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
-import { STARTING_DIFFICULTY, type ExperienceLevel, type FeedProblem } from "@/lib/types/dashboard";
-import { CATEGORIES, DIFFICULTIES, DIFFICULTY_LABEL, type CategorySlug, type Difficulty } from "@/lib/types/problem";
+import { api } from "@/lib/api";
+import { STARTING_DIFFICULTY, type ExperienceLevel } from "@/lib/types/dashboard";
+import {
+  CATEGORIES,
+  DIFFICULTIES,
+  DIFFICULTY_LABEL,
+  type CategorySlug,
+  type Difficulty,
+  type ProblemListItem,
+} from "@/lib/types/problem";
 
 const SORTS = { best: "Best match", rating: "Highest rated", shortest: "Shortest" } as const;
 
 interface Filters {
   category: CategorySlug | "all";
   difficulty: Difficulty | "all";
-  hideSolved: boolean;
   sort: keyof typeof SORTS;
 }
 
@@ -27,9 +34,10 @@ export function RecommendedFeed({
   goalRole,
   experienceLevel,
 }: {
-  problems: FeedProblem[];
+  /** Never contains solved problems (D24). */
+  problems: ProblemListItem[];
   /** Missing for guests: the feed starts unfiltered. */
-  goalRole?: CategorySlug;
+  goalRole?: CategorySlug | null;
   experienceLevel?: ExperienceLevel;
 }) {
   const signedIn = useSignedIn();
@@ -38,32 +46,37 @@ export function RecommendedFeed({
   const defaults: Filters = {
     category: goalRole ?? "all",
     difficulty: experienceLevel ? STARTING_DIFFICULTY[experienceLevel] : "all",
-    hideSolved: true,
     sort: "best",
   };
   const [filters, setFilters] = useState<Filters>(defaults);
-  // ponytail: bookmarks are UI-only, there is no table for them yet (see 06, D23).
-  const [bookmarked, setBookmarked] = useState<Set<string>>(new Set());
+  // Bookmarks (D23): toggled at once, back on error. Starts from the server's `saved`.
+  const [bookmarked, setBookmarked] = useState(() => new Set(problems.filter((p) => p.saved).map((p) => p.slug)));
 
-  // ponytail: filtered client-side on the mock; U3 moves this into GET /dashboard query params.
+  // ponytail: filtered client-side like /problems; query params on GET /dashboard when the list outgrows that.
   const shown = problems.filter(
     (p) =>
       (filters.category === "all" || p.categorySlug === filters.category) &&
-      (filters.difficulty === "all" || p.difficulty === filters.difficulty) &&
-      !(filters.hideSolved && p.solved),
+      (filters.difficulty === "all" || p.difficulty === filters.difficulty),
   );
   if (filters.sort === "rating") shown.sort((a, b) => b.averageRating - a.averageRating);
   if (filters.sort === "shortest") shown.sort((a, b) => a.timeLimitMinutes - b.timeLimitMinutes);
 
   const patch = (p: Partial<Filters>) => setFilters((f) => ({ ...f, ...p }));
 
-  function toggleBookmark(slug: string) {
-    if (!signedIn) return router.push(loginHref);
+  function setSaved(slug: string, saved: boolean) {
     setBookmarked((prev) => {
       const next = new Set(prev);
-      if (!next.delete(slug)) next.add(slug);
+      if (saved) next.add(slug);
+      else next.delete(slug);
       return next;
     });
+  }
+
+  function toggleBookmark(slug: string) {
+    if (!signedIn) return router.push(loginHref);
+    const saved = bookmarked.has(slug);
+    setSaved(slug, !saved);
+    api(`/problems/${slug}/bookmark`, { method: saved ? "DELETE" : "PUT" }).catch(() => setSaved(slug, saved));
   }
 
   return (
@@ -114,15 +127,6 @@ export function RecommendedFeed({
             </option>
           ))}
         </select>
-        <label className="flex items-center gap-2 px-2 text-sm text-muted">
-          <input
-            type="checkbox"
-            checked={filters.hideSolved}
-            onChange={(e) => patch({ hideSolved: e.target.checked })}
-            className="h-4 w-4 accent-action"
-          />
-          Hide solved
-        </label>
         <button type="button" onClick={() => setFilters(defaults)} className="text-sm text-action hover:underline">
           Reset
         </button>
@@ -152,7 +156,6 @@ export function RecommendedFeed({
               <div className="flex flex-wrap items-center gap-3">
                 <DifficultyPill difficulty={p.difficulty} />
                 <span className="text-xs text-muted">{p.tags.join(" · ")}</span>
-                {p.solved ? <span className="text-xs font-medium text-passed">Solved</span> : null}
               </div>
               <h3 className="mt-2 font-semibold text-text">
                 <Link href={`/problems/${p.slug}`} className="hover:text-action">

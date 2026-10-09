@@ -1388,3 +1388,84 @@ uporabniki izbrisani. `mockGetComments` ni več v uporabi (ni izbrisan).
   ocene se izračunajo znova iz `problem_ratings` (O1, D57).
 - `02`: pravila komentarjev (odgovori, helpful, 2000 znakov, brisanje) in
   ocen. `06`: tabela sprememb sheme, besedilo O2 brez `helpful_count`.
+
+## 9. 10. 2026 — Seja 16: M4 priprava
+
+Odločitve uporabnika pred M4 (U1 profil, U2 graf aktivnosti, U3 dashboard):
+
+- **D34** rešena: `/settings` shrani vsa polja - prikazno ime, headline,
+  GitHub uporabniško ime, jeziki, stikalo "Public profile" (nova stolpca v
+  `user_profiles` v U1). Zaseben profil drugim pokaže samo `username`.
+- **D35** ostane odprta: zavihka Practice preferences in Account ostaneta
+  "coming soon", uporabnik se vrne k njima kmalu.
+- **D36** rešena: brez ločene "Starting difficulty" - ostane
+  `experience_level` ("Production experience").
+- **D24** rešena: feed na dashboardu rešenih problemov nikoli ne kaže,
+  stikalo "Hide solved" se v U3 odstrani.
+
+`06` posodobljen (tabela odločitev, sprememba sheme, besedilo U1 in U3).
+
+### Rezina U1 (profil in nastavitve)
+
+- Migracija 0010: `user_profiles` + `display_name`, `headline`,
+  `github_username`, `is_public` (D34).
+- Nov modul `users.routes.js`: `GET /users/:username` - statistika
+  (točke, nivo, rešeni iz poskusov, streak) in seznam rešenih; neznan ali
+  bannan → 404; zaseben profil drugim pokaže samo `username`; polje `own`.
+- `me.routes.js`: `GET /me/profile` in `PUT /me/profile` (cel obrazec s
+  preverjanjem; "Exploring my path" = `goalRole: null`).
+- Avtor komentarja kaže prikazno ime.
+- Frontend: `/profile/[username]` in `/settings` na API. Ker bi povezava
+  "My profile" sicer vodila na 404 (`max`), layout zdaj naloži pravega
+  uporabnika (`useMe()`): stranska vrstica, avatar, pozdrav in povezava na
+  profil na dashboardu. Po shranjevanju se stranska vrstica osveži.
+- Enostavneje od načrta: brez statistike po težavnosti/kategoriji in
+  povprečnega časa (zaslon je ne kaže); aktivnost do U2, tekmovanja do T2.
+
+Preverjeno: backend testi 87/87 (+6 U1); frontend lint, typecheck, build;
+Playwright Chromium z dvema uporabnikoma: shranjevanje nastavitev (tudi po
+osvežitvi), profil lastnika / drugega, zaseben profil (pasica), neznan
+uporabnik 404, stranska vrstica in dashboard s pravim imenom, gost brez
+"My profile"; brez vodoravnega drsenja pri 320-2560 px; testni uporabniki
+izbrisani. `src/lib/mock/profile.ts` ni več v uporabi (ni izbrisan).
+
+### Rezina U2 (graf aktivnosti in streak)
+
+- `GET /users/:username` vrne `activity`: dneve iz `user_daily_activity` od
+  ponedeljka pred 52 tedni (53 stolpcev mreže), datumi po UTC. Ločenega
+  `/activity` ni (enostavneje - en klic).
+- Streak na branje: če zadnja aktivnost ni bila danes ali včeraj, profil
+  pokaže 0; najdaljši streak ostane. Brez nočnega opravila.
+- Frontend brez sprememb - mreža na profilu zdaj kaže prave podatke.
+
+Preverjeno: backend testi 89/89 (+2 U2); Playwright Chromium: 21 dni
+aktivnosti → 15 obarvanih celic, "30 problems solved in the last year",
+streak 21 / najboljši 30; po zgrešenem dnevu streak 0, najboljši 30.
+Testni uporabnik izbrisan.
+
+### Rezina U3 (dashboard) - M4 zaključen
+
+- Nov `GET /dashboard`: feed = objavljeni nerešeni problemi (D19, D24) v
+  vrstnem redu `/problems`, statistika, aktivnost, nedokončan poskus (z
+  zadnjim zagonom preverjanj trenutnega poskusa) in zadnje 3 zmage. Gost
+  dobi samo feed.
+- Brez podvajanja poizvedb: seznam problemov (`listProblems`) in statistika
+  profila (`getStats`, `getActivity`, `getSolved`) sta izvlečena in
+  uporabljena na obeh mestih.
+- Frontend: dashboard bere API; stikalo "Hide solved" odstranjeno (D24);
+  zaznamki v feedu so zdaj pravi. Tekmovanja in vzorčna statistika za
+  goste ostanejo mock (T1).
+
+Preverjeno: backend testi 93/93 (+4 U3); frontend lint, typecheck, build;
+Playwright Chromium: rešen problem ni v feedu, privzeti filtri iz cilja in
+izkušenj, pasica "Pick up where you left off" s pravim problemom, zaznamek
+ostane po osvežitvi (in v bazi), gost vidi 12 problemov in zameglitev;
+brez vodoravnega drsenja pri 320-2560 px; brez napak v konzoli. Testni
+uporabnik izbrisan.
+
+### Usklajevanje dokumentov po M4
+
+- `00`: Current Status (M4, migracije 0001-0010, zasloni na API).
+- `01`: nova stolpca profila v `user_profiles` (0010).
+- `03`: streak na branje (U2), mreža 53 stolpcev, kaj profil zdaj kaže.
+- `06`: rezine U1-U3 ✅, register mockov, odločitve D24, D34, D36.

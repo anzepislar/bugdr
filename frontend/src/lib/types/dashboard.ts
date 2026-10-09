@@ -1,4 +1,4 @@
-import type { CategorySlug, Difficulty } from "@/lib/types/problem";
+import type { CategorySlug, Difficulty, ProblemListItem } from "@/lib/types/problem";
 
 export const EXPERIENCE_LEVELS = ["student", "junior", "mid", "senior"] as const;
 export type ExperienceLevel = (typeof EXPERIENCE_LEVELS)[number];
@@ -26,7 +26,8 @@ export type PlatformGoal = (typeof PLATFORM_GOALS)[number];
 export interface Me {
   username: string;
   displayName: string;
-  goalRole: CategorySlug;
+  /** null = "Exploring my path" (D41). */
+  goalRole: CategorySlug | null;
   experienceLevel: ExperienceLevel;
 }
 
@@ -50,20 +51,6 @@ export interface InProgressAttempt {
   checksPassed: number;
   checksTotal: number;
   startedAt: string;
-}
-
-export interface FeedProblem {
-  slug: string;
-  title: string;
-  shortDescription: string;
-  difficulty: Difficulty;
-  categorySlug: CategorySlug;
-  tags: string[];
-  timeLimitMinutes: number;
-  averageRating: number;
-  ratingCount: number;
-  thumbnailUrl: string | null;
-  solved: boolean;
 }
 
 export interface LevelInfo {
@@ -97,12 +84,12 @@ export interface RecentWin {
   timeTakenSeconds: number;
 }
 
-/** Result of GET /dashboard (slice U3). */
+/** Result of GET /dashboard (slice U3). Guests get the feed only (stats null). Live contests come with T1. */
 export interface Dashboard {
-  contests: ActiveContest[];
   inProgress: InProgressAttempt | null;
-  feed: FeedProblem[];
-  stats: DashboardStats;
+  /** Published problems the user has not solved (D19, D24), in the "recommended" order of GET /problems. */
+  feed: ProblemListItem[];
+  stats: DashboardStats | null;
   activity: ActivityDay[];
   recentWins: RecentWin[];
 }

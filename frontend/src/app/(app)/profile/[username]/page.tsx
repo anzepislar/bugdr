@@ -6,16 +6,19 @@ import { ContestHistory } from "@/components/contests/ContestHistory";
 import { Icon } from "@/components/Icon";
 import { ShareProfileButton } from "@/components/profile/ShareProfileButton";
 import { SolvedProblems } from "@/components/profile/SolvedProblems";
-import { MOCK_ME } from "@/lib/mock/dashboard";
-import { mockGetProfile } from "@/lib/mock/profile";
-import type { Profile } from "@/lib/types/profile";
+import { serverFetch } from "@/lib/serverApi";
+import type { PrivateProfile, Profile } from "@/lib/types/profile";
 
 const TABS = { overview: "Overview", solved: "Solved problems", contests: "Contest history" } as const;
 type Tab = keyof typeof TABS;
 
 // Rendered per request, so "Today" and the activity grid are as of this load.
 async function load(username: string) {
-  return { profile: await mockGetProfile(username), now: Date.now() };
+  const res = await serverFetch(`/users/${encodeURIComponent(username)}`);
+  if (res.status === 404) notFound();
+  if (!res.ok) throw new Error(`GET /users/${username} failed: ${res.status}`);
+  const { profile } = (await res.json()) as { profile: Profile | PrivateProfile };
+  return { profile, now: Date.now() };
 }
 
 export default async function ProfilePage({
@@ -27,10 +30,9 @@ export default async function ProfilePage({
 }) {
   const [{ username }, { tab: rawTab }] = await Promise.all([params, searchParams]);
   const { profile, now } = await load(username);
-  if (!profile) notFound();
 
   const tab: Tab = rawTab && rawTab in TABS ? (rawTab as Tab) : "overview";
-  const isMe = profile.username === MOCK_ME.username;
+  const isMe = profile.own;
   const base = `/profile/${profile.username}`;
 
   return (
@@ -44,7 +46,11 @@ export default async function ProfilePage({
         </span>
         <div className="min-w-0 flex-1">
           <h1 className="text-3xl font-semibold text-text">{profile.displayName}</h1>
-          <p className="mt-2 text-muted">{[profile.headline, profile.languages.join(", ")].filter(Boolean).join(" · ")}</p>
+          {"stats" in profile ? (
+            <p className="mt-2 text-muted">
+              {[profile.headline, profile.languages.join(", ")].filter(Boolean).join(" · ")}
+            </p>
+          ) : null}
         </div>
         {profile.isPublic || isMe ? (
           <div className="flex flex-wrap gap-4">
@@ -58,7 +64,7 @@ export default async function ProfilePage({
         ) : null}
       </div>
 
-      {!profile.isPublic && !isMe ? (
+      {!("stats" in profile) ? (
         <section
           aria-label="Profile is private"
           className="mt-8 flex items-start gap-4 rounded border border-border bg-surface p-5"

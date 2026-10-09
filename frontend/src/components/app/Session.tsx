@@ -6,15 +6,17 @@ import { createContext, useContext, type ReactNode } from "react";
 import { Icon } from "@/components/Icon";
 import { api } from "@/lib/api";
 import { loginHref } from "@/lib/session";
+import type { Me } from "@/lib/types/dashboard";
 
-// Whether a user is signed in, read from the session cookie by the (app) layout.
-const SessionContext = createContext(false);
+// The signed-in user (null = guest), loaded by the (app) layout.
+const SessionContext = createContext<Me | null>(null);
 
-export function SessionProvider({ signedIn, children }: { signedIn: boolean; children: ReactNode }) {
-  return <SessionContext.Provider value={signedIn}>{children}</SessionContext.Provider>;
+export function SessionProvider({ me, children }: { me: Me | null; children: ReactNode }) {
+  return <SessionContext.Provider value={me}>{children}</SessionContext.Provider>;
 }
 
-export const useSignedIn = () => useContext(SessionContext);
+export const useSignedIn = () => useContext(SessionContext) !== null;
+export const useMe = () => useContext(SessionContext);
 
 /** Login link that comes back to the current page. */
 export function useLoginHref() {

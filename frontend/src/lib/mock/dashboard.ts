@@ -1,6 +1,6 @@
-// Mock of the signed-in user and GET /dashboard. Replaced by slices F4 (Me),
-// U3, T1 and U2 (see md_files/06_backend_slices.md, "Register mockov").
-import type { ActivityDay, Dashboard, FeedProblem, Me } from "@/lib/types/dashboard";
+// Mock of the dashboard's live contests (replaced by T1) and the sample progress shown blurred to guests.
+// GET /dashboard (U3) has the rest (see md_files/06_backend_slices.md, "Register mockov").
+import type { ActiveContest, ActivityDay, DashboardStats, Me, RecentWin } from "@/lib/types/dashboard";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const MIN = 60_000;
@@ -14,113 +14,6 @@ export const MOCK_ME: Me = {
 };
 
 export const MOCK_ACTIVE_CONTEST_COUNT = 3;
-
-const FEED: FeedProblem[] = [
-  {
-    slug: "payment-retries-disappear",
-    title: "Payment retries disappear from the queue",
-    shortDescription: "A checkout worker accepts failed payments, but some jobs never run again.",
-    difficulty: "medium",
-    categorySlug: "backend",
-    tags: ["Node.js", "Redis"],
-    timeLimitMinutes: 40,
-    averageRating: 4.8,
-    ratingCount: 126,
-    thumbnailUrl: "/mock/thumb-pipeline.svg",
-    solved: false,
-  },
-  {
-    slug: "query-slower-every-day",
-    title: "The query that gets slower every day",
-    shortDescription: "The orders endpoint slows down as the customer database grows.",
-    difficulty: "medium",
-    categorySlug: "backend",
-    tags: ["PostgreSQL", "Express"],
-    timeLimitMinutes: 45,
-    averageRating: 4.9,
-    ratingCount: 84,
-    thumbnailUrl: "/mock/thumb-query.svg",
-    solved: false,
-  },
-  {
-    slug: "session-refuses-to-expire",
-    title: "A session that refuses to expire",
-    shortDescription: "Users stay signed in after their session has been revoked.",
-    difficulty: "medium",
-    categorySlug: "backend",
-    tags: ["TypeScript", "JWT"],
-    timeLimitMinutes: 35,
-    averageRating: 4.7,
-    ratingCount: 92,
-    thumbnailUrl: "/mock/thumb-session.svg",
-    solved: false,
-  },
-  {
-    slug: "inventory-out-of-sync",
-    title: "When inventory falls out of sync",
-    shortDescription: "Two warehouses report different stock after concurrent orders.",
-    difficulty: "medium",
-    categorySlug: "backend",
-    tags: ["Node.js", "PostgreSQL"],
-    timeLimitMinutes: 50,
-    averageRating: 4.6,
-    ratingCount: 58,
-    thumbnailUrl: null,
-    solved: false,
-  },
-  {
-    slug: "fixed-the-memory-leak",
-    title: "The memory leak in the image resizer",
-    shortDescription: "Memory grows with every upload until the worker is killed.",
-    difficulty: "medium",
-    categorySlug: "backend",
-    tags: ["Node.js", "Streams"],
-    timeLimitMinutes: 40,
-    averageRating: 4.5,
-    ratingCount: 211,
-    thumbnailUrl: null,
-    solved: true,
-  },
-  {
-    slug: "webhook-signature-mismatch",
-    title: "Webhook signatures that never match",
-    shortDescription: "Every incoming webhook fails verification after a framework upgrade.",
-    difficulty: "easy",
-    categorySlug: "backend",
-    tags: ["Express", "Crypto"],
-    timeLimitMinutes: 25,
-    averageRating: 4.4,
-    ratingCount: 140,
-    thumbnailUrl: null,
-    solved: false,
-  },
-  {
-    slug: "cart-total-flickers",
-    title: "The cart total that flickers",
-    shortDescription: "The checkout page shows the wrong total for a split second after every change.",
-    difficulty: "medium",
-    categorySlug: "frontend",
-    tags: ["React", "TypeScript"],
-    timeLimitMinutes: 40,
-    averageRating: 4.6,
-    ratingCount: 77,
-    thumbnailUrl: null,
-    solved: false,
-  },
-  {
-    slug: "deadlock-in-transfers",
-    title: "Transfers that lock each other out",
-    shortDescription: "Concurrent transfers between the same accounts hang until timeout.",
-    difficulty: "hard",
-    categorySlug: "database",
-    tags: ["PostgreSQL"],
-    timeLimitMinutes: 90,
-    averageRating: 4.9,
-    ratingCount: 41,
-    thumbnailUrl: null,
-    solved: false,
-  },
-];
 
 // Activity ending today (~4 months by default): an 18-day streak, a gap before it.
 export function mockActivity(now: number, days = 130): ActivityDay[] {
@@ -136,7 +29,15 @@ export function mockActivity(now: number, days = 130): ActivityDay[] {
   });
 }
 
-export async function mockGetDashboard(): Promise<Dashboard> {
+/** Live contests (T1) + sample progress for the guest blur (GET /dashboard sends guests none). */
+export async function mockGetDashboard(): Promise<{
+  contests: ActiveContest[];
+  sample: {
+    stats: DashboardStats;
+    activity: ActivityDay[];
+    recentWins: RecentWin[];
+  };
+}> {
   await delay(300);
   const now = Date.now();
   return {
@@ -169,37 +70,30 @@ export async function mockGetDashboard(): Promise<Dashboard> {
         endsAt: new Date(now + 26 * DAY).toISOString(),
       },
     ],
-    inProgress: {
-      problemSlug: "missing-webhook-events",
-      title: "The missing webhook events",
-      language: "Node.js",
-      checksPassed: 3,
-      checksTotal: 7,
-      startedAt: new Date(now - (18 * 60 + 42) * 1000).toISOString(),
-    },
-    feed: FEED,
-    stats: {
-      totalPoints: 12840,
-      problemsSolved: 147,
-      currentStreak: 18,
-      longestStreak: 24,
-      level: { name: "Staff", order: 5, minPoints: 7500 },
-      nextLevel: { name: "Principal", order: 6, minPoints: 15000 },
-    },
-    activity: mockActivity(now),
-    recentWins: [
-      {
-        problemSlug: "fixed-the-memory-leak",
-        title: "Fixed the memory leak",
-        solvedAt: new Date(now - 2 * 60 * MIN).toISOString(),
-        timeTakenSeconds: 32 * 60,
+    sample: {
+      stats: {
+        totalPoints: 12840,
+        problemsSolved: 147,
+        currentStreak: 18,
+        longestStreak: 24,
+        level: { name: "Staff", order: 5, minPoints: 7500 },
+        nextLevel: { name: "Principal", order: 6, minPoints: 15000 },
       },
-      {
-        problemSlug: "untangled-a-deadlock",
-        title: "Untangled a deadlock",
-        solvedAt: new Date(now - DAY).toISOString(),
-        timeTakenSeconds: 46 * 60,
-      },
-    ],
+      activity: mockActivity(now),
+      recentWins: [
+        {
+          problemSlug: "fixed-the-memory-leak",
+          title: "Fixed the memory leak",
+          solvedAt: new Date(now - 2 * 60 * MIN).toISOString(),
+          timeTakenSeconds: 32 * 60,
+        },
+        {
+          problemSlug: "untangled-a-deadlock",
+          title: "Untangled a deadlock",
+          solvedAt: new Date(now - DAY).toISOString(),
+          timeTakenSeconds: 46 * 60,
+        },
+      ],
+    },
   };
 }

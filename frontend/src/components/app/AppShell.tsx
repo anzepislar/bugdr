@@ -4,10 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { useLoginHref, useLogout, useSignedIn } from "@/components/app/Session";
+import { useLoginHref, useLogout, useMe } from "@/components/app/Session";
 import { Icon, type IconName } from "@/components/Icon";
-import { MOCK_ACTIVE_CONTEST_COUNT, MOCK_ME } from "@/lib/mock/dashboard";
-import { EXPERIENCE_LABEL } from "@/lib/types/dashboard";
+import { MOCK_ACTIVE_CONTEST_COUNT } from "@/lib/mock/dashboard";
+import { EXPERIENCE_LABEL, type Me } from "@/lib/types/dashboard";
 import { CATEGORIES } from "@/lib/types/problem";
 
 interface NavItem {
@@ -21,7 +21,6 @@ const NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/problems", label: "Problems", icon: "problems" },
   { href: "/contests", label: "Contests", icon: "trophy", badge: MOCK_ACTIVE_CONTEST_COUNT },
-  { href: `/profile/${MOCK_ME.username}`, label: "My profile", icon: "user" },
 ];
 
 // Admin pages get their own sidebar. Overview matches /admin only, the rest by prefix.
@@ -39,26 +38,29 @@ const ADMIN_CRUMB: [RegExp, string][] = [
   [/^\/admin\/contests/, "Contests"],
 ];
 
-const goalRoleName = CATEGORIES.find((c) => c.slug === MOCK_ME.goalRole)?.name ?? "";
-
-function Avatar({ className }: { className: string }) {
+function Avatar({ me, className }: { me: Me; className: string }) {
   return (
     <span
       aria-hidden
       className={`flex shrink-0 items-center justify-center rounded-full bg-action font-medium text-canvas ${className}`}
     >
-      {MOCK_ME.displayName[0]}
+      {me.displayName[0]}
     </span>
   );
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const signedIn = useSignedIn();
+  const me = useMe();
+  const signedIn = me !== null;
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const admin = pathname === "/admin" || pathname.startsWith("/admin/");
   // Guests see the public pages only (no profile).
-  const nav = admin ? ADMIN_NAV : signedIn ? NAV : NAV.slice(0, 3);
+  const nav = admin
+    ? ADMIN_NAV
+    : me
+      ? [...NAV, { href: `/profile/${me.username}`, label: "My profile", icon: "user" as const }]
+      : NAV;
   const loginLink = useLoginHref();
   const logout = useLogout();
   const isNavActive = (href: string) => (href === "/admin" ? pathname === href : isActive(href));
@@ -111,16 +113,16 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Icon name="arrowLeft" className="h-5 w-5" /> Back to app
           </Link>
-        ) : signedIn ? (
+        ) : me ? (
           <>
             <p className="mb-2 px-2 text-[11px] font-medium uppercase tracking-wide text-muted">Your path</p>
             <div className="px-2">
               <p className="flex items-center gap-3 text-sm font-semibold text-text">
                 <Icon name="problems" className="h-5 w-5 text-action" />
-                {goalRoleName}
+                {CATEGORIES.find((c) => c.slug === me.goalRole)?.name ?? "Exploring my path"}
               </p>
               <p className="mt-2 text-[11px] text-muted">
-                Production experience: {EXPERIENCE_LABEL[MOCK_ME.experienceLevel]}
+                Production experience: {EXPERIENCE_LABEL[me.experienceLevel]}
               </p>
             </div>
           </>
@@ -131,7 +133,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
 
         <div className="mt-auto flex flex-col gap-1">
-          {signedIn ? (
+          {me ? (
             <>
               <Link
                 href="/settings"
@@ -154,9 +156,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Icon name="help" /> Help &amp; feedback
               </a>
               <div className="mt-3 flex items-center gap-3 border-t border-border px-2 pt-4">
-                <Avatar className="h-9 w-9 text-sm" />
+                <Avatar me={me} className="h-9 w-9 text-sm" />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-text">{MOCK_ME.displayName}</p>
+                  <p className="truncate text-sm font-semibold text-text">{me.displayName}</p>
                   <p className="truncate text-xs text-muted">Personal workspace</p>
                 </div>
               </div>
@@ -213,9 +215,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Icon name="bell" />
             </button>
           )}
-          {signedIn ? (
-            <Link href={`/profile/${MOCK_ME.username}`} aria-label="My profile">
-              <Avatar className="h-9 w-9 text-sm" />
+          {me ? (
+            <Link href={`/profile/${me.username}`} aria-label="My profile">
+              <Avatar me={me} className="h-9 w-9 text-sm" />
             </Link>
           ) : (
             <Link

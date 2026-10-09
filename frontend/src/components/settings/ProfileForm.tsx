@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { ErrorMessage, FieldLabel, inputClass, primaryButton, Spinner } from "@/components/admin/problems/shared";
 import { Icon } from "@/components/Icon";
-import { mockSaveSettings } from "@/lib/mock/profile";
+import { api, ApiError } from "@/lib/api";
 import { EXPERIENCE_LABEL, EXPERIENCE_LEVELS, type ExperienceLevel } from "@/lib/types/dashboard";
 import { CATEGORIES, type CategorySlug } from "@/lib/types/problem";
 import { LANGUAGES, type ProfileSettings } from "@/lib/types/profile";
@@ -12,8 +13,10 @@ import { LANGUAGES, type ProfileSettings } from "@/lib/types/profile";
 const fieldClass = `${inputClass} py-2.5`;
 
 export function ProfileForm({ initial, profileHref }: { initial: ProfileSettings; profileHref: string }) {
+  const router = useRouter();
   const [form, setForm] = useState(initial);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [error, setError] = useState("");
   const patch = (p: Partial<ProfileSettings>) => {
     setForm((f) => ({ ...f, ...p }));
     setStatus("idle");
@@ -29,9 +32,13 @@ export function ProfileForm({ initial, profileHref }: { initial: ProfileSettings
     e.preventDefault();
     setStatus("saving");
     try {
-      await mockSaveSettings({ ...form, displayName: form.displayName.trim(), headline: form.headline.trim() });
+      await api("/me/profile", { method: "PUT", body: JSON.stringify(form) });
       setStatus("saved");
-    } catch {
+      router.refresh(); // the sidebar shows the new name and path
+    } catch (err) {
+      // A 400 names the fields; the browser checks the same rules first, so this is rare.
+      const details = err instanceof ApiError && err.status === 400 ? (err.details as Record<string, string>) : null;
+      setError(details ? Object.values(details).join(". ") : "Your changes could not be saved. Try again.");
       setStatus("error");
     }
   }
@@ -92,10 +99,11 @@ export function ProfileForm({ initial, profileHref }: { initial: ProfileSettings
               <FieldLabel htmlFor="goalRole">Role</FieldLabel>
               <select
                 id="goalRole"
-                value={form.goalRole}
-                onChange={(e) => patch({ goalRole: e.target.value as CategorySlug })}
+                value={form.goalRole ?? ""}
+                onChange={(e) => patch({ goalRole: (e.target.value || null) as CategorySlug | null })}
                 className={fieldClass}
               >
+                <option value="">Exploring my path</option>
                 {CATEGORIES.map((c) => (
                   <option key={c.slug} value={c.slug}>
                     {c.name}
@@ -161,7 +169,7 @@ export function ProfileForm({ initial, profileHref }: { initial: ProfileSettings
             ) : null}
           </p>
         </div>
-        {status === "error" ? <ErrorMessage>Your changes could not be saved. Try again.</ErrorMessage> : null}
+        {status === "error" ? <ErrorMessage>{error}</ErrorMessage> : null}
       </div>
 
       <aside className="w-full shrink-0 rounded border border-border bg-surface p-6 lg:ml-auto lg:w-80 xl:w-96">

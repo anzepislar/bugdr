@@ -7,8 +7,15 @@ export const problemsRouter = Router();
 
 // ponytail: the whole published list in one response, the client filters and pages it (no pagination in v1, 06).
 // Add query filters + limit/offset when the list outgrows ~1000 problems.
-// Order = "recommended": the user's goal role first (D19), then best rated.
 problemsRouter.get("/", optionalAuth, async (req, res) => {
+  res.json({ problems: await listProblems(req.user?.id ?? null) });
+});
+
+/**
+ * ProblemListItem[] of every published problem for `userId` (null = guest: status null, saved false), also the
+ * dashboard feed (U3). Order = "recommended": the user's goal role first (D19), then best rated.
+ */
+export async function listProblems(userId) {
   const { rows } = await pool.query(
     `SELECT p.slug, p.title, p.short_description, p.difficulty, c.slug AS category_slug,
        coalesce((SELECT array_agg(t.tag ORDER BY t.tag) FROM problem_tags t WHERE t.problem_id = p.id), '{}') AS tags,
@@ -21,25 +28,23 @@ problemsRouter.get("/", optionalAuth, async (req, res) => {
      LEFT JOIN user_profiles up ON up.user_id = $1
      WHERE p.is_published
      ORDER BY coalesce(c.slug = up.goal_role, false) DESC, p.average_rating DESC, p.title`,
-    [req.user?.id ?? null],
+    [userId],
   );
-  res.json({
-    problems: rows.map((r) => ({
-      slug: r.slug,
-      title: r.title,
-      shortDescription: r.short_description,
-      difficulty: r.difficulty,
-      categorySlug: r.category_slug,
-      tags: r.tags,
-      timeLimitMinutes: r.time_limit_minutes,
-      averageRating: r.average_rating,
-      ratingCount: r.rating_count,
-      thumbnailUrl: r.thumbnail_url,
-      status: r.status,
-      saved: r.saved,
-    })),
-  });
-});
+  return rows.map((r) => ({
+    slug: r.slug,
+    title: r.title,
+    shortDescription: r.short_description,
+    difficulty: r.difficulty,
+    categorySlug: r.category_slug,
+    tags: r.tags,
+    timeLimitMinutes: r.time_limit_minutes,
+    averageRating: r.average_rating,
+    ratingCount: r.rating_count,
+    thumbnailUrl: r.thumbnail_url,
+    status: r.status,
+    saved: r.saved,
+  }));
+}
 
 // Never sends file contents, check commands, expected output, hidden or solution files (06 "Konvencije").
 problemsRouter.get("/:slug", optionalAuth, async (req, res) => {

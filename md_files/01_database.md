@@ -70,8 +70,9 @@ CREATE UNIQUE INDEX users_username_lower_key ON users (lower(username));
 `is_admin` is how admin access works today; admins are planned to stop being user accounts (D48 in `06_backend_slices.md`).
 
 ### user_profiles
-Stores onboarding answers. One row per user, created by the first `PUT /me/onboarding`.
-Created in `migrations/0003_user_profiles.sql`.
+Stores onboarding answers and the profile fields from `/settings` (D34). One row per user, created by the first
+`PUT /me/onboarding` (or `PUT /me/profile`). Created in `migrations/0003_user_profiles.sql`, profile fields in
+`migrations/0010_profile_fields.sql` (U1).
 
 ```sql
 CREATE TABLE user_profiles (
@@ -82,7 +83,11 @@ CREATE TABLE user_profiles (
   platform_goal         VARCHAR(20),   -- 'get_hired', 'improve_skills', 'both'
   languages             TEXT[] NOT NULL DEFAULT '{}',  -- from onboarding step 4 (fixed list)
   onboarding_completed  BOOLEAN DEFAULT FALSE,
-  created_at            TIMESTAMP DEFAULT NOW()
+  created_at            TIMESTAMP DEFAULT NOW(),
+  display_name          VARCHAR(50),   -- NULL = show the username
+  headline              VARCHAR(80),
+  github_username       VARCHAR(39),   -- GitHub's rule, not verified
+  is_public             BOOLEAN NOT NULL DEFAULT TRUE  -- FALSE: others see only the username
 );
 ```
 

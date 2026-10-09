@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Locked, useSignedIn } from "@/components/app/Session";
+import { Locked, useMe } from "@/components/app/Session";
 import { ProgressPanel } from "@/components/dashboard/ProgressPanel";
 import { RecommendedFeed } from "@/components/dashboard/RecommendedFeed";
 import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
+import { api } from "@/lib/api";
 import { countdown } from "@/lib/format";
-import { MOCK_ME, mockGetDashboard } from "@/lib/mock/dashboard";
+import { mockGetDashboard } from "@/lib/mock/dashboard";
 import type { ActiveContest, Dashboard, InProgressAttempt } from "@/lib/types/dashboard";
+
+type MockDashboard = Awaited<ReturnType<typeof mockGetDashboard>>;
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -28,19 +31,28 @@ function elapsed(startedAt: string, now: number): string {
 }
 
 export default function DashboardPage() {
-  // Data only exists client-side (like the real fetch will), so time-based text never mismatches on hydration.
-  const [state, setState] = useState<{ data: Dashboard; now: number } | null>(null);
-  const signedIn = useSignedIn();
+  // Data only exists client-side, so time-based text never mismatches on hydration.
+  const [state, setState] = useState<{ data: Dashboard; mock: MockDashboard; now: number } | "error" | null>(null);
+  const me = useMe();
+  const signedIn = me !== null;
 
   useEffect(() => {
-    mockGetDashboard().then((data) => setState({ data, now: Date.now() }));
+    Promise.all([api<Dashboard>("/dashboard"), mockGetDashboard()]).then(
+      ([data, mock]) => setState({ data, mock, now: Date.now() }),
+      () => setState("error"),
+    );
   }, []);
 
+  if (state === "error") {
+    return <p className="px-8 py-10 text-sm text-failed">The dashboard could not be loaded. Refresh to try again.</p>;
+  }
   if (!state) {
     return <p className="px-8 py-10 text-sm text-muted">Loading dashboard…</p>;
   }
 
-  const { data, now } = state;
+  const { data, mock, now } = state;
+  // ponytail: live contests stay on the mock until T1.
+  const contests = mock.contests;
   const date = new Date(now);
 
   return (
@@ -48,7 +60,7 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h1 className="text-3xl font-semibold text-text">
-            {signedIn ? `${greeting(date)}, ${MOCK_ME.displayName}` : "Debug real code. Get real results."}
+            {signedIn ? `${greeting(date)}, ${me?.displayName}` : "Debug real code. Get real results."}
           </h1>
           <p className="mt-2 text-muted">
             {signedIn ? "A little progress. A stronger engineer." : "Fix real production bugs and prove your skills."}
@@ -62,15 +74,15 @@ export default function DashboardPage() {
       <section aria-labelledby="contests-heading" className="mt-8">
         <div className="flex items-center justify-between">
           <h2 id="contests-heading" className="text-xl font-semibold text-text">
-            Live contests <span className="text-sm font-normal text-muted">{data.contests.length} active</span>
+            Live contests <span className="text-sm font-normal text-muted">{contests.length} active</span>
           </h2>
           <Link href="/contests" className="flex items-center gap-3 text-sm text-action hover:underline">
             View all contests <Icon name="arrowRight" />
           </Link>
         </div>
-        {data.contests.length > 0 ? (
+        {contests.length > 0 ? (
           <ul className="mt-4 grid gap-3 md:grid-cols-3">
-            {data.contests.map((c) => (
+            {contests.map((c) => (
               <ContestCard key={c.id} contest={c} now={now} />
             ))}
           </ul>
@@ -82,27 +94,23 @@ export default function DashboardPage() {
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_324px] xl:items-start">
         <div className="flex min-w-0 flex-col gap-6">
           {signedIn && data.inProgress ? <ResumeBanner attempt={data.inProgress} now={now} /> : null}
-          {signedIn ? (
-            <RecommendedFeed problems={data.feed} goalRole={MOCK_ME.goalRole} experienceLevel={MOCK_ME.experienceLevel} />
-          ) : (
-            <RecommendedFeed problems={data.feed.map((p) => ({ ...p, solved: false }))} />
-          )}
+          <RecommendedFeed problems={data.feed} goalRole={me?.goalRole} experienceLevel={me?.experienceLevel} />
         </div>
-        {signedIn ? (
+        {data.stats ? (
           <ProgressPanel
             stats={data.stats}
             activity={data.activity}
             recentWins={data.recentWins}
             now={now}
-            profileHref={`/profile/${MOCK_ME.username}`}
+            profileHref={`/profile/${me?.username}`}
           />
         ) : (
-          // ponytail: sample stats under the blur; GET /dashboard (U3) sends none to guests.
+          // Sample stats under the blur: GET /dashboard sends guests none.
           <Locked label="your progress, level and streak">
             <ProgressPanel
-              stats={data.stats}
-              activity={data.activity}
-              recentWins={data.recentWins}
+              stats={mock.sample.stats}
+              activity={mock.sample.activity}
+              recentWins={mock.sample.recentWins}
               now={now}
               profileHref="/login"
             />
