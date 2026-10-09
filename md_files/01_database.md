@@ -449,7 +449,9 @@ CREATE TABLE user_daily_activity (
 ## Contests
 
 ### contests
-Admin creates these. Daily, weekly, monthly.
+Admin creates these. Daily, weekly, monthly. Built in T1 (migration 0011).
+The status is never stored (D43): no dates = draft, `starts_at > now()` = upcoming/scheduled,
+`ends_at <= now()` = ended, otherwise active. Drafts are never public.
 
 ```sql
 CREATE TABLE contests (
@@ -457,44 +459,55 @@ CREATE TABLE contests (
   title                VARCHAR(255) NOT NULL,
   description          TEXT,
   type                 VARCHAR(10) NOT NULL CHECK (type IN ('daily', 'weekly', 'monthly')),
-  starts_at            TIMESTAMP NOT NULL,
-  ends_at              TIMESTAMP NOT NULL,
-  reward_type          VARCHAR(20),          -- 'subscription', 'merch', 'points'
+  starts_at            TIMESTAMP,            -- NULL = draft (D43)
+  ends_at              TIMESTAMP,
+  reward_type          VARCHAR(20) CHECK (reward_type IN ('subscription', 'merch', 'points')),
   reward_description   VARCHAR(255),         -- '1 year free subscription' or 'Bugdr hoodie'
+  archived_at          TIMESTAMP,            -- NULL = not archived (04 "Archive", used from A6)
   created_by           UUID REFERENCES users(id),
-  created_at           TIMESTAMP DEFAULT NOW()
+  created_at           TIMESTAMP DEFAULT NOW(),
+  CHECK ((starts_at IS NULL) = (ends_at IS NULL)),
+  CHECK (ends_at > starts_at)
 );
 ```
 
 ### contest_problems
-Problems assigned to a contest.
+Problems assigned to a contest (at least one, D33; the contest page shows the first by `created_at`, D59).
+While its contest has not ended, a problem is off `/problems` and the dashboard feed; while the contest is
+upcoming, the problem cannot be opened at all (D17).
 
 ```sql
 CREATE TABLE contest_problems (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  contest_id  UUID REFERENCES contests(id) ON DELETE CASCADE,
-  problem_id  UUID REFERENCES problems(id) ON DELETE CASCADE,
-  created_at  TIMESTAMP DEFAULT NOW()
+  contest_id  UUID NOT NULL REFERENCES contests(id) ON DELETE CASCADE,
+  problem_id  UUID NOT NULL REFERENCES problems(id) ON DELETE CASCADE,
+  created_at  TIMESTAMP DEFAULT NOW(),
+  UNIQUE (contest_id, problem_id)
 );
+CREATE INDEX contest_problems_problem ON contest_problems (problem_id);
 ```
 
 ### contest_entries
-One row per user per contest — tracks total score across all contest problems.
+One row per user per contest — tracks total score across all contest problems. Built in T2 (migration 0012).
+The row is created on the first start of a contest problem while the contest is live (D60, "Enter contest").
+A solve while the contest is live adds 1 to `problems_solved` and its points to `total_score` in the solve
+transaction (D18); a solve after `ends_at` does not count. No `rank` (D61: no contest ranking until A7).
 
 ```sql
 CREATE TABLE contest_entries (
-  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  contest_id   UUID REFERENCES contests(id) ON DELETE CASCADE,
-  user_id      UUID REFERENCES users(id) ON DELETE CASCADE,
-  total_score  INTEGER DEFAULT 0,  -- sum of points across all solved contest problems
-  problems_solved INTEGER DEFAULT 0,
-  rank         INTEGER,            -- calculated when contest ends
-  created_at   TIMESTAMP DEFAULT NOW(),
-  UNIQUE(contest_id, user_id)
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  contest_id       UUID NOT NULL REFERENCES contests(id) ON DELETE CASCADE,
+  user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  total_score      INTEGER NOT NULL DEFAULT 0,  -- sum of points of contest problems solved within the contest
+  problems_solved  INTEGER NOT NULL DEFAULT 0,
+  created_at       TIMESTAMP DEFAULT NOW(),
+  UNIQUE (contest_id, user_id)
 );
+CREATE INDEX contest_entries_user ON contest_entries (user_id);
 ```
 
 ### contest_attempt_links
+**Not built (T2):** the points of each solve are already in `user_problem_attempts`. Original design kept for reference:
 Links individual problem attempts to a contest entry.
 One row per problem solved within a contest.
 

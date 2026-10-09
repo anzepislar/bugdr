@@ -18,12 +18,12 @@ povezala na API.
 
 ```
 Zadnja posodobitev: 9. 10. 2026
-Backend: M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3)
+Backend: M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2)
 Frontend: 17 zaslonov na mocku - /login, /signup, /forgot-password, /onboarding, /dashboard,
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit
-Naslednja rezina: M5 T1 (M4 ✅ 9. 10. 2026; D35 ostane odprta); testi 93/93; D48 (admin) pred M6; M8 (AI seja) čaka D50-D52
+Naslednja rezina: M6 A1 (M5 ✅ 9. 10. 2026); testi 99/99; D48 (admin ni uporabniški račun) odloči pred M6; M8 (AI seja) čaka D50-D52
 ```
 
 Oznake: ⬜ ni začeto · 🟨 v delu · ✅ narejeno (z datumom) · ⏸ odloženo
@@ -95,11 +95,11 @@ dokler je uporabnik ne potrdi.
 | D29 | ~~Iskanje in razširitve v levi vrstici zaslona reševanja~~ → **rešeno 7. 10. 2026**: prenova zaslona reševanja (split pane) odstrani levo vrstico in drevo datotek; datoteke so zavihki nad urejevalnikom | R1 |
 | D30 | ~~"Helpful" in odgovori na komentarje~~ → **rešeno 8. 10. 2026** (uporabnik, priprava M3): **vse, kot je v UI** (izvedba O2: števec iz `comment_helpful` ob branju namesto stolpca, razvrščanje na odjemalcu) - `problem_comments.parent_id UUID NULL REFERENCES problem_comments(id) ON DELETE CASCADE` (odgovori samo ena raven: odgovor na odgovor → 400), tabela `comment_helpful (comment_id, user_id, created_at, PK(comment_id, user_id))` + `problem_comments.helpful_count INTEGER NOT NULL DEFAULT 0` (posodobljen v isti transakciji), `PUT/DELETE /comments/:id/helpful` (lastnega komentarja ni mogoče označiti → 403), `GET /problems/:slug/comments?sort=helpful\|newest` | O2 |
 | D31 | ~~Stran posameznega tekmovanja~~ → **rešeno 6. 10. 2026**: uporabnik je dal dizajn, pot `/contests/[id]` (id, ker `contests` nima sluga). En incident na tekmovanje kot v dizajnu, čeprav shema dovoli več problemov (`contest_problems`) | T1, T2 |
-| D33 | ~~En ali več problemov na tekmovanje~~ → **rešeno 7. 10. 2026** (uporabnik, prenova admin tekmovanj): **vsaj 1 problem, lahko več** (`contest_problems`). Javni `ContestDetail.problem` (`/contests/[id]`) je še en problem - T1 ga razširi v seznam | T1, A6 |
+| D33 | ~~En ali več problemov na tekmovanje~~ → **rešeno 7. 10. 2026** (uporabnik, prenova admin tekmovanj): **vsaj 1 problem, lahko več** (`contest_problems`). Javni `ContestDetail.problem` (`/contests/[id]`) ostane en problem (D59, 9. 10. 2026) | T1, A6 |
 | D34 | ~~Polja profila iz `/settings`~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M4): **vsa polja** - `user_profiles` + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, `is_public BOOLEAN NOT NULL DEFAULT TRUE` (`languages` že v F4); API `PUT /me/profile`. Zaseben profil drugim pokaže samo `username`. Jeziki ostanejo fiksen seznam (`LANGUAGES`) | U1 |
 | D35 | **ODPRTO** - zavihka "Practice preferences" in "Account" na `/settings` | Dizajn ju ima, vsebine ne. **Uporabnik 9. 10. 2026: ostaneta, kot sta ("coming soon"), vrnemo se kmalu** - ni del U1. Zdaj prazno stanje "coming soon". Predlog: Account = e-pošta, sprememba gesla, odjava; Practice preferences = `platform_goal` (F4) | U1, F2 |
 | D36 | ~~"Starting difficulty" na `/settings`~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M4): **ostane `experience_level`** - polje "Production experience" z opombo, da določa začetno težavnost (D19). Brez ločene nastavitve težavnosti | U1, U3 |
-| D32 | **ODPRTO** - "N/M checks passed" v zgodovini tekmovanj | Dizajn kaže preverjanja, `contest_entries` ima `problems_solved` in `total_score`. Zdaj mock vrne `checksPassed`/`checksTotal` (vsota čez probleme tekmovanja), "Completed" = vsa preverjanja uspešna. Predlog: prikaži `problems_solved` / število problemov in točke | T2 |
+| D32 | ~~"N/M checks passed" v zgodovini tekmovanj~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M5): vrstica zgodovine kaže **rešene probleme + točke** (npr. "1/1 solved · 375 pts") iz `contest_entries` (`problems_solved`, `total_score`) in števila problemov tekmovanja. `ContestHistoryEntry.checksPassed`/`checksTotal` → `problemsSolved`/`problemCount`/`score`; enako `participation` na `/contests/[id]` | T2 |
 | D37 | **ODPRTO** - "Continue with GitHub" na `/login` in `/signup` | Dizajn ima prijavo z GitHubom, stack ima samo JWT z geslom (F2). Zdaj gumb pokaže "not available yet". Predlog: v v1 skrit; OAuth kasneje kot svoja rezina (`users.github_id`) | F2 |
 | D38 | ~~"Full name" namesto `username` na `/signup`~~ → **rešeno 7. 10. 2026** (uporabnik): obrazec ima polje **Username** (3-50 znakov: črke, številke, `-`, `_`; unikaten brez razlike v velikosti črk), polno ime odpade do `display_name` (D34) | F2, U1 |
 | D39 | ~~Minimalna dolžina gesla~~ → **rešeno 7. 10. 2026** (uporabnik): **8 znakov** (zgornja meja 200 zaradi cene scrypta) | F2 |
@@ -122,6 +122,9 @@ dokler je uporabnik ne potrdi.
 | D55 | ~~Urejevalnik v R1~~ → **rešeno 8. 10. 2026** (uporabnik): R1 doda `@monaco-editor/react` namesto `CodeEditorMock`; spremembe v `localStorage` po poskusu (D14) | R1 |
 | D57 | ~~Izmišljene ocene v seedu~~ → **rešeno 8. 10. 2026** (uporabnik, priprava M3): **samo prave ocene** - `average_rating` in `rating_count` se ob vsaki oceni izračunata znova iz `problem_ratings` (`avg`/`count`) v isti transakciji; seed vseh 12 problemov začne z 0 ocenami (brez izmišljenih 4,9 (41)) | O1 |
 | D58 | ~~Urejanje in brisanje komentarjev~~ → **rešeno 8. 10. 2026** (uporabnik, priprava M3): **samo brisanje lastnega komentarja**, brez urejanja. Povezava "Delete" pri lastnem komentarju + `ConfirmDialog`; izbris komentarja izbriše tudi njegove odgovore (`ON DELETE CASCADE`) in oznake helpful. Prikazno ime avtorja = `username`, dokler U1 ne doda `display_name` (D34) | O2 |
+| D59 | ~~Več problemov na strani tekmovanja~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M5): **zaenkrat en problem** - `/contests/[id]` pokaže samo prvi problem tekmovanja (`ContestDetail.problem` ostane en objekt, D33 v shemi velja). Prikaz več problemov počaka na dizajn | T1 |
+| D60 | ~~Kdaj uporabnik sodeluje v tekmovanju~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M5): **ob "Enter contest"** - prvi start tekmovalnega problema, ko je tekmovanje aktivno, ustvari vrstico `contest_entries` (0 rešenih). Šteje v "N engineers participating"; brez vrstice = "You did not take part" / "Not started" | T2 |
+| D61 | ~~Lestvica tekmovanja~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M5): **v M5 je ni** - brez `GET /contests/:id/leaderboard` in brez `contest_entries.rank`. Razvrstitev (tudi zmagovalec za nagrado, `03`) pride z rezultati za admina (A7) | T2, A7 |
 
 ### Spremembe sheme glede na `01_database.md`
 
@@ -129,11 +132,11 @@ Posledica odločitev - narejene v migraciji rezine, ki tabelo ustvari:
 
 | Tabela | Sprememba | Odločitev | Rezina |
 | --- | --- | --- | --- |
-| `contest_entries` | − `attempt_id` | D18 | T2 |
+| `contest_entries` | − `attempt_id`, − `rank` (D61) | D18 | T2 ✅ |
 | `contests` / `contest_entries` | + oznaka "nagrada poslana" (`04`) - točna oblika ob rezini | - | A7 |
 | `problems` | + `bug_summary TEXT` (interna opomba AI analize, samo admin, nikoli k uporabniku) - zahteva zaslona Create Problem | - | A2 |
-| `contests` | `starts_at`/`ends_at` dovolita NULL (osnutek); stanje se ne shrani | D43 | A6 |
-| `contests` | + `archived_at TIMESTAMP` (NULL = ni arhivirano; arhiviranje končanih tekmovanj, `04`) | - | A6 |
+| `contests` | `starts_at`/`ends_at` dovolita NULL (osnutek); stanje se ne shrani | D43 | T1 ✅ |
+| `contests` | + `archived_at TIMESTAMP` (NULL = ni arhivirano; arhiviranje končanih tekmovanj, `04`) | - | T1 ✅ (uporablja A6) |
 | `users` | `username` brez `UNIQUE` v stolpcu; namesto tega `UNIQUE INDEX ON lower(username)` (unikaten ne glede na velikost črk, gre v URL) | F2 | F2 |
 | `user_profiles` | + `languages TEXT[] NOT NULL DEFAULT '{}'` (narejeno v F4); `goal_role` NULL = raziskujem | D42, D41 | F4 |
 | `user_profiles` | + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, (`languages` že v F4), `is_public BOOLEAN NOT NULL DEFAULT TRUE` | D34 | U1 |
@@ -144,7 +147,7 @@ seznam sprememb za tabele, ki še niso zgrajene. Narejeno v `01`: `users`
 (F2), `user_profiles` + `languages` (F4), `problem_categories`, `problems`, `problem_tags`,
 `problem_bookmarks`, `user_problem_attempts` (P1), `attempt_tries` (R2b), `check_results`, `point_transactions` (R4), `problem_codebase` (+ `hidden_files`, `solution_files`,
 `repository_name`), `problem_checks`, `problem_ratings`, `problem_comments`, `user_daily_activity` (P2); `problem_comments.parent_id`, `comment_helpful` (O2, migracija 0009 - brez `helpful_count`, šteje se ob branju);
-`problems.description` → `codebase_context` + `incident_report` (migracija 0006, 8. 10. 2026).
+`problems.description` → `codebase_context` + `incident_report` (migracija 0006, 8. 10. 2026); `contests` (NULL datumi, `archived_at`), `contest_problems` (T1, migracija 0011), `contest_entries` (T2, migracija 0012; `contest_attempt_links` ni zgrajena).
 
 ---
 
@@ -232,11 +235,11 @@ polnijo s seed skripto.
 - Seed (`seeds/`, ponovljiv z `ON CONFLICT DO NOTHING`): mock problemi iz `frontend/src/lib/mock/problems.ts` (isti slugi, sličice ostanejo v `public/mock/`).
 - API: `GET /problems?category=&difficulty=&tag=&q=&status=&saved=&sort=` → kartice `ProblemListItem` (`02` "Card contains") + za prijavljenega `status` (`solved`/`in_progress`/`null`) in `saved`. Neobvezna seja: gost dobi `status: null`, `saved: false` (iz F3), `status`/`saved` filtra za gosta ne veljata. `sort`: `recommended` (najprej kategorija iz `goal_role`, nato ocena - zdaj `MOCK_ME` v `ProblemBrowser.tsx`), `rating`, `shortest`. Samo `is_published`.
 - API: `PUT /problems/:slug/bookmark`, `DELETE /problems/:slug/bookmark` → 204 (`requireAuth`, idempotentno).
-- D17 (skriti problemi nekončanih tekmovanj): `contest_problems` še ne obstaja, zato filter doda rezina, ki tabelo ustvari (A6/T1).
+- D17 (skriti problemi nekončanih tekmovanj): ~~filter doda rezina, ki ustvari `contest_problems`~~ → narejeno v T1 (`LISTED` / `VISIBLE` v `problems.routes.js`).
 - Brez paginacije (konvencija v1): ~~strežnik filtrira in razvrsti~~ → narejeno drugače, glej Stanje (strežnik vrne cel seznam, odjemalec filtrira); odjemalec ohrani neskončno drsenje z rezanjem seznama (`limit` v `ProblemBrowser.tsx`).
 - Frontend: `/problems` - `mockGetProblems` → `GET /problems`, filtri v query, zaznamki prek API-ja.
 - Končano, ko: neobjavljen problem ni na seznamu; filtri se kombinirajo; `base_points` se ujema s težavnostjo (CHECK); gost nima `status`; zaznamek dvakrat = ena vrstica.
-- **Stanje:** `migrations/0004_problems.sql` (kategorije s seedom, `problems` s CHECK `(difficulty, base_points)`, `problem_tags` z `UNIQUE (problem_id, tag)`, `problem_bookmarks`, `user_problem_attempts`). `seeds/0001_problems.sql` = 12 mock problemov (isti slugi, sličice `/mock/…`, opis je samo kratek odstavek - P2). `backend/src/modules/problems/problems.routes.js`: `GET /problems` → `{ problems: ProblemListItem[] }` (+ `saved`), `PUT`/`DELETE /problems/:slug/bookmark` → 204 (neznan ali neobjavljen slug → 404 `PROBLEM_NOT_FOUND`). `optionalAuth` v `auth.service.js`: neveljaven, potekel ali bannan piškotek = gost. **Odstopa od načrta:** `GET /problems` nima query filtrov - vrne cel objavljen seznam v vrstnem redu "recommended" (najprej kategorija iz `goal_role`, nato ocena, nato naslov; `abandoned` = `status: null`), filtri, iskanje, `rating`/`shortest` in neskončno drsenje ostanejo na odjemalcu (`ProblemBrowser.tsx`, oznaka `ponytail:`). Filtri v query + `limit/offset`, ko seznam preraste ~1000 problemov. Frontend: `/problems` bere API, zaznamek se preklopi takoj in vrne nazaj ob napaki, števec "Saved problems" iz `saved`; `ProblemListItem.saved` dodan (mock problemi `saved: false`). Odprto: D17 filter (A6/T1); dashboard (U3) zaznamkov še ne bere.
+- **Stanje:** `migrations/0004_problems.sql` (kategorije s seedom, `problems` s CHECK `(difficulty, base_points)`, `problem_tags` z `UNIQUE (problem_id, tag)`, `problem_bookmarks`, `user_problem_attempts`). `seeds/0001_problems.sql` = 12 mock problemov (isti slugi, sličice `/mock/…`, opis je samo kratek odstavek - P2). `backend/src/modules/problems/problems.routes.js`: `GET /problems` → `{ problems: ProblemListItem[] }` (+ `saved`), `PUT`/`DELETE /problems/:slug/bookmark` → 204 (neznan ali neobjavljen slug → 404 `PROBLEM_NOT_FOUND`). `optionalAuth` v `auth.service.js`: neveljaven, potekel ali bannan piškotek = gost. **Odstopa od načrta:** `GET /problems` nima query filtrov - vrne cel objavljen seznam v vrstnem redu "recommended" (najprej kategorija iz `goal_role`, nato ocena, nato naslov; `abandoned` = `status: null`), filtri, iskanje, `rating`/`shortest` in neskončno drsenje ostanejo na odjemalcu (`ProblemBrowser.tsx`, oznaka `ponytail:`). Filtri v query + `limit/offset`, ko seznam preraste ~1000 problemov. Frontend: `/problems` bere API, zaznamek se preklopi takoj in vrne nazaj ob napaki, števec "Saved problems" iz `saved`; `ProblemListItem.saved` dodan (mock problemi `saved: false`). Odprto: ~~D17 filter~~ (T1 ✅); dashboard (U3) zaznamkov še ne bere.
 
 **P2 · Podrobnosti problema** `M` · odvisno od: P1 · ✅ 8. 10. 2026
 - Naredi (migracija, D49 - samo tabele): `problem_codebase` (+ `hidden_files`, `solution_files`, `repository_name` - D10, D11, D27), `problem_checks`, `problem_ratings`, `problem_comments`; `user_daily_activity`. Seed: koda, preverjanja in nekaj poskusov/ocen/komentarjev za mock probleme.
@@ -349,17 +352,20 @@ polnijo s seed skripto.
 
 ### M5 - Tekmovanja
 
-**T1 · Seznam tekmovanj** `S` · odvisno od: P1 · ⬜
+**T1 · Seznam tekmovanj** `S` · odvisno od: P1 · ✅ 9. 10. 2026
 - Naredi: `contests`, `contest_problems`.
 - API: `GET /contests` → dnevna/tedenska/mesečna, status izpeljan iz časa (`upcoming`/`active`/`ended`), nagrada; problemi samo za `active`/`ended`. Oblika odgovora je `ContestList` v `frontend/src/lib/types/contest.ts` (`live`/`upcoming`/`past`; težavnost = najvišja težavnost problemov, oznake in sličica iz problema).
-- API: `GET /contests/:id` → `ContestDetail` (incident, ime repozitorija - D27, število preverjanj, nagrada); za `upcoming` `problem = null`. En problem na tekmovanje (D33).
+- API: `GET /contests/:id` → `ContestDetail` (incident, ime repozitorija - D27, število preverjanj, nagrada); za `upcoming` `problem = null`. Shema dovoli več problemov (D33), stran pokaže prvega (D59).
+- Seed: razvojna tekmovanja (aktivno, prihajajoče, končano; datumi relativni na čas seeda), ker jih admin (A6) še ne ustvarja.
 - Frontend: `/contests`, `/contests/[id]`, del `/dashboard`.
 - Končano, ko: problemi prihajajočega tekmovanja niso razkriti.
+- **Stanje:** migracija 0011 (`contests` z NULL datumi za osnutek, `archived_at`, CHECK za datume; `contest_problems` z `UNIQUE (contest_id, problem_id)` in indeksom na `problem_id`), seed `0003_contests.sql` (5 tekmovanj s fiksnimi id-ji, datumi relativni na čas seeda; aktivno tedensko = `payment-retries-disappear`, edini izvedljiv problem). Nov modul `backend/src/modules/contests/contests.routes.js`: `GET /contests` (`optionalAuth` - zaradi značke v stranski vrstici tudi za goste; strani so še vedno za prijavo, D47) → `ContestList`, `history: []` do T2; `GET /contests/:id` (`requireAuth`) → `{ contest: ContestDetail }`, osnutek / neznan / neveljaven id → 404 `CONTEST_NOT_FOUND`. Težavnost = najtežji problem, oznake, sličica in problem strani iz prvega problema (D59); prihajajoče: brez težavnosti, oznak, sličice in problema. **D17:** `problems.routes.js` ima `LISTED` (problem tekmovanja, ki še ni končano, ni na `/problems` in v feedu) in `VISIBLE` (problem prihajajočega tekmovanja je 404 pri podrobnostih, startu, zaznamku, oceni in komentarjih); osnutki ne skrijejo ničesar. `GET /dashboard` vrne `contests` (aktivna, tudi gostom). `participantCount` = 0 in `participation: null` do T2. Frontend: `/contests`, `/contests/[id]` (`serverFetch`, 404 → `notFound()`), dashboard in značka "Contests" v stranski vrstici (`(app)/layout.tsx` prešteje aktivna tekmovanja, oznaka `ponytail:`) na API; tip `ActiveContest` odstranjen (dashboard uporablja `Contest`). **Odstopa od načrta:** javni seznam ne skrije arhiviranih (`archived_at` uporabi šele A6). Test `backend/test/t1.test.js` (4 testi).
 
-**T2 · Udeležba in rezultati** `M` · odvisno od: T1, R4 · ⬜
-- Naredi: `contest_entries` (brez `attempt_id`, D18); rešitev tekmovalnega problema znotraj časa posodobi vnos (v transakciji R4).
-- API: `GET /contests/:id/leaderboard`; `participation` v `GET /contests/:id` in `history` v `GET /contests` (`ContestHistoryEntry` - glej D32) iz `contest_entries` prijavljenega uporabnika.
+**T2 · Udeležba in rezultati** `M` · odvisno od: T1, R4 · ✅ 9. 10. 2026
+- Naredi: `contest_entries` (brez `attempt_id`, D18; brez `rank`, D61); vnos nastane ob prvem startu tekmovalnega problema med tekmovanjem (D60); rešitev tekmovalnega problema znotraj časa posodobi `problems_solved` + `total_score` (v transakciji R4). `contest_attempt_links` se ne naredi - točke problema so že v `user_problem_attempts`.
+- API: `participation` v `GET /contests/:id` in `history` v `GET /contests` + profil (`ContestHistoryEntry`: rešeni + točke, D32) iz `contest_entries` prijavljenega uporabnika; `participantCount` = število vnosov. Brez lestvice (D61).
 - Končano, ko: rešitev po `ends_at` ne šteje; en vnos na uporabnika na tekmovanje.
+- **Stanje:** migracija 0012 (`contest_entries` z `NOT NULL` števci, `UNIQUE (contest_id, user_id)`, indeks na `user_id`; brez `attempt_id`, `rank`; `contest_attempt_links` ni narejena). `POST /problems/:slug/start` ustvari vnos za vsako aktivno tekmovanje problema (`ON CONFLICT DO NOTHING`, D60) - izven atomarnega zapisa poskusa, a idempotentno. Transakcija rešitve (R4) doda rešitev in točke vnosu, če je tekmovanje ob rešitvi aktivno (upsert: tudi poskus, začet pred tekmovanjem, šteje). `participantCount` = število vnosov; `GET /contests/:id` → `participation` `{ problemsSolved, problemCount, score }` ali `null`; `history` v `GET /contests` in `contests` v profilu = `getContestHistory` (samo končana tekmovanja, najnovejša prva, D32). Frontend: tip `ContestResult`, vrstica zgodovine "1/1 solved · 375 pts" (`resultText` v `ContestHistory.tsx`), "Your participation" in gumb (Enter / Resume / View problem, "Completed" = vsi problemi rešeni). Neuporabljen `mock/contests.ts` prilagojen novi obliki (da se prevede). Test `backend/test/t2.test.js` (2 testa, eden z Dockerjem). Opaženo, ni popravljeno: "1 engineers participating" (ednina manjka na `/contests` in `/contests/[id]`).
 
 ### M6 - Admin (`04_admin.md`)
 
@@ -450,13 +456,13 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 
 | Zaslon | Mock (datoteka / konstanta) | Zamenja rezina | Stanje |
 | --- | --- | --- | --- |
-| `/dashboard` + stranska vrstica (`(app)/layout.tsx`) | U3 ✅ 9. 10. 2026: feed, statistika, aktivnost, nedokončan poskus in zadnje zmage iz `GET /dashboard`; uporabnik iz `useMe()` (U1). Ostane `src/lib/mock/dashboard.ts`: `mockGetDashboard` = samo aktivna tekmovanja + vzorčna statistika za goste (zameglitev), `MOCK_ACTIVE_CONTEST_COUNT` (stranska vrstica, admin) | T1 | 🟨 |
+| `/dashboard` + stranska vrstica (`(app)/layout.tsx`) | U3 ✅ + T1 ✅ 9. 10. 2026: feed, statistika, aktivnost, nedokončan poskus, zadnje zmage in aktivna tekmovanja iz `GET /dashboard`; uporabnik iz `useMe()` (U1); značka "Contests" = število aktivnih iz `GET /contests`. Ostane `src/lib/mock/dashboard.ts`: `mockGetDashboard` = samo vzorčna statistika za goste (zameglitev); `MOCK_ACTIVE_CONTEST_COUNT` samo še za admin pregled (A9) | - | ✅ 9. 10. 2026 |
 | `/problems` | ~~`mockGetProblems`~~ → `GET /problems` (P1), zaznamki → `PUT/DELETE /problems/:slug/bookmark` (D23); filtri/razvrščanje/drsenje ostanejo na odjemalcu. `mockGetProblems` še uporabljata mocka `profile.ts` in `adminContests.ts` | P1 | ✅ 8. 10. 2026 |
 | `/problems/[slug]` | ~~`mockGetProblem`~~ → `GET /problems/:slug` (P2, `serverFetch`); besedilo = `codebaseContext` + `incidentReport` (migracija 0006, seed iz `mock/problemBriefs.ts`). Ocena → `PUT /problems/:slug/rating` (O1), razprava → `GET/POST /problems/:slug/comments`, `DELETE /comments/:id`, `PUT/DELETE /comments/:id/helpful` (O2). `mockGetComments` ni več v uporabi | P2 ✅, O1 ✅, O2 ✅ | ✅ 8. 10. 2026 |
 | `/problems/[slug]/solve` | ~~`mockStartAttempt`, `CodeEditorMock`~~ → `POST /problems/:slug/start` + Monaco (R1 ✅); ~~`mockRunTests`~~ → `POST /attempts/:id/test` (R4 ✅); split pane: opis (`ProblemOverview`) levo, urejevalnik desno, spodaj Terminal + Test Results; vsaka datoteka je zavihek, izbirnik jezika je samo prikaz; "Submit" = zagon preverjanj. Desno AI klepet (`AiChatPanel`): `src/lib/mock/aiChat.ts` - `mockAskAi` (1,5 s, 4 vnaprej napisani odgovori za payment-retries, ciklično za vse probleme), `AI_TOOLS`, `BENCHMARKS` (povprečje pozivov/žetonov po težavnosti); seja v `src/hooks/useSessionTracker.ts` (samo React stanje: pozivi, žetoni ≈ znaki/4, zagoni testov, dogodki); ocena učinkovitosti je groba primerjava z benchmarkom | R1 ✅, R2 ✅ (Give up), R4 ✅, R5 ✅ (terminal), R6 ✅, S1, S2, S3 (AI seja) | 🟨 |
-| `/contests` | `src/lib/mock/contests.ts`: `mockGetContests` (live/upcoming/past + zgodovina uporabnika, datumi relativni na zdaj); prihajajoča tekmovanja brez težavnosti, oznak in sličice (T1); "View contest" vodi na `/contests/[id]` | T1, T2 | ⬜ |
-| `/contests/[id]` | `src/lib/mock/contests.ts`: `mockGetContest` (seznam + `DETAILS`: incident, ime repozitorija (D27), število preverjanj, nagrada, udeležba); problemi tekmovanj so obstoječi mock problemi, da "Enter contest" odpre delujoč zaslon reševanja | T1, T2 | ⬜ |
-| `/profile/[username]` | ~~`mockGetProfile`~~ → U1 ✅ + U2 ✅ 9. 10. 2026 (API, aktivnost in streak). Ostane: zgodovina tekmovanj prazna do T2. `src/lib/mock/profile.ts` ni več v uporabi (ni izbrisan) | T2 | 🟨 |
+| `/contests` | ~~`mockGetContests`~~ → `GET /contests` (T1 ✅, T2 ✅ 9. 10. 2026: udeleženci in zgodovina). `src/lib/mock/contests.ts` ni več v uporabi na zaslonih (uvaža ga samo neuporabljen `mock/profile.ts`; ni izbrisan) | T1, T2 | ✅ 9. 10. 2026 |
+| `/contests/[id]` | ~~`mockGetContest`~~ → `GET /contests/:id` (T1 ✅, T2 ✅ 9. 10. 2026); incident = `incident_report` prvega problema; udeležba in udeleženci iz `contest_entries` | T1, T2 | ✅ 9. 10. 2026 |
+| `/profile/[username]` | ~~`mockGetProfile`~~ → U1 ✅ + U2 ✅ + T2 ✅ 9. 10. 2026 (API, aktivnost, streak, zgodovina tekmovanj). `src/lib/mock/profile.ts` ni več v uporabi (ni izbrisan) | - | ✅ 9. 10. 2026 |
 | `/settings` | ~~`MOCK_SETTINGS`, `mockSaveSettings`~~ → U1 ✅ 9. 10. 2026 (`GET`/`PUT /me/profile`). Zavihka Practice preferences in Account ostaneta "coming soon" (D35) | D35 | 🟨 |
 | `/login` | ~~`mockLogin`, `mockLogout`~~ → `POST /auth/login`, `POST /auth/logout` (F2). Ostane mock: "Continue with GitHub" pokaže napako (D37) | F2 | ✅ 7. 10. 2026 |
 | `/signup` | ~~`mockSignup`~~ → `POST /auth/signup` (F2): Username (D38), geslo ≥ 8 (D39) | F2 | ✅ 7. 10. 2026 |

@@ -192,6 +192,7 @@ contest_total = sum of points earned across all solved contest problems
 - User C solves 2: 100 + 500 = 600 pts → rank 3
 
 Ranks are calculated and written to `contest_entries.rank` when the contest ends (`ends_at` passes).
+**Not built yet (D61):** no ranking or `rank` column in M5 - it comes with admin contest results (A7).
 
 **Rewards go to rank 1 only** — monthly contests, see `04_admin.md`.
 

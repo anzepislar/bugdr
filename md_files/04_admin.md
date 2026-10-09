@@ -110,7 +110,7 @@ Schema impact: `contests.starts_at` / `ends_at` must allow NULL (drafts).
 - Export to CSV (for sending rewards)
 
 **Archive:** ended contests can be archived to hide them from the list.
-Not in the schema yet - needs `contests.archived_at TIMESTAMP` (null = not archived).
+`contests.archived_at TIMESTAMP` (null = not archived) exists since T1 (migration 0011); archiving itself comes with A6.
 
 ---
 

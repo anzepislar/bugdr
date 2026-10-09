@@ -1469,3 +1469,67 @@ uporabnik izbrisan.
 - `01`: nova stolpca profila v `user_profiles` (0010).
 - `03`: streak na branje (U2), mreža 53 stolpcev, kaj profil zdaj kaže.
 - `06`: rezine U1-U3 ✅, register mockov, odločitve D24, D34, D36.
+
+## 9. 10. 2026 — Seja 17: M5 priprava
+
+Odločitve uporabnika pred M5 (T1 seznam tekmovanj, T2 udeležba in rezultati):
+
+- **D32** rešena: zgodovina tekmovanj (na `/contests` in v profilu) kaže
+  rešene probleme + točke (npr. "1/1 solved · 375 pts"), ne preverjanj.
+- **D59** (nova) rešena: `/contests/[id]` zaenkrat pokaže samo en (prvi)
+  problem tekmovanja; več problemov počaka na dizajn.
+- **D60** (nova) rešena: uporabnik sodeluje od "Enter contest" (prvi start
+  tekmovalnega problema med tekmovanjem ustvari `contest_entries`).
+- **D61** (nova) rešena: v M5 ni lestvice tekmovanja; razvrstitev in
+  zmagovalec pridejo z A7.
+
+Privzeto (brez vprašanja): razvojna tekmovanja v seedu, ker admin (A6) še
+ne obstaja; `contest_attempt_links` se ne naredi.
+
+`06` posodobljen (odločitve, besedilo T1 in T2, Stanje).
+
+### Rezina T1 (seznam tekmovanj)
+
+- Migracija 0011: `contests` (datumi NULL = osnutek, D43; `archived_at` za
+  A6) in `contest_problems` (en problem enkrat na tekmovanje).
+- Seed `0003_contests.sql`: 2 aktivni, 1 prihajajoče, 2 končani tekmovanji
+  (fiksni id-ji, datumi glede na čas seeda). Aktivno tedensko ima
+  `payment-retries-disappear`, da "Enter contest" odpre delujoče reševanje.
+- Nov modul `contests.routes.js`: `GET /contests` (tudi za goste, zaradi
+  značke) in `GET /contests/:id` (prijava). Prihajajoče tekmovanje ne
+  razkrije problema, težavnosti, oznak ali sličice; osnutek je 404.
+- D17 končno narejen: problem tekmovanja, ki še ni končano, ni na
+  `/problems` in v feedu; problem prihajajočega tekmovanja je 404 povsod
+  (podrobnosti, start, zaznamek, ocena, komentarji).
+- Frontend: `/contests`, `/contests/[id]`, aktivna tekmovanja na dashboardu
+  in značka v stranski vrstici so na API. Udeleženci, udeležba in
+  zgodovina pridejo s T2.
+
+Preverjeno: backend testi 97/97 (+4 T1, U3 test dopolnjen s `contests`);
+frontend lint, typecheck, build; Playwright Chromium: seznam (Live /
+Upcoming / Past), stran aktivnega tekmovanja z incidentom in "Enter
+contest" → zaslon reševanja, prihajajoče zaklenjeno brez slug-a v HTML,
+neznan id → 404, značka 2 (tudi gost), gost na `/contests` → prijava,
+`/problems` brez problemov aktivnih/prihajajočih tekmovanj (9 od 12);
+brez vodoravnega drsenja pri 320-2560 px. Testni uporabnik izbrisan.
+
+### Rezina T2 (udeležba in rezultati) - M5 zaključen
+
+- Migracija 0012: `contest_entries` (en vnos na uporabnika na tekmovanje,
+  brez `rank` - D61; `contest_attempt_links` ni potrebna).
+- "Enter contest" (start problema aktivnega tekmovanja) ustvari vnos (D60).
+- Rešitev med tekmovanjem v isti transakciji kot točke (R4) doda rešen
+  problem in točke vnosu; rešitev po koncu tekmovanja ne šteje.
+- `GET /contests`: pravo število udeležencev in zgodovina (končana
+  tekmovanja); `GET /contests/:id`: udeležba; profil: zgodovina tekmovanj.
+- Frontend: zgodovina kaže "1/1 solved · 375 pts" (D32), "Your
+  participation" "In progress / Completed / Not completed · …", gumb
+  Enter / Resume / View problem po udeležbi.
+
+Preverjeno: backend testi 99/99 (+2 T2, eden s pravimi preverjanji v
+Dockerju); frontend lint, typecheck, build; Playwright Chromium: "Not
+started" → klik "Enter contest" → "In progress · 0/1 solved · 0 pts" in
+1 udeleženec → rešitev (500 točk) → "Completed · 1/1 solved · 500 pts" in
+"View problem"; zgodovina na `/contests` in v profilu; brez vodoravnega
+drsenja pri 320-2560 px; brez napak v konzoli. Testni uporabnik izbrisan.
+Opaženo: "1 engineers participating" (ednina) - ni popravljeno.
