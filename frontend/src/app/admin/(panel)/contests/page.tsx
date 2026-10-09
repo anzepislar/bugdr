@@ -7,7 +7,7 @@ import { Icon } from "@/components/Icon";
 import { formatUtcDateTime } from "@/lib/format";
 import { getContestDates } from "@/lib/getContestDates";
 import { getContestStatus, type ContestStatus } from "@/lib/getContestStatus";
-import { mockGetAdminContests, mockRemoveContest, mockSetContestDates } from "@/lib/mock/adminContests";
+import { api, ApiError } from "@/lib/api";
 import { REWARD_TYPES, type AdminContest } from "@/lib/types/contest";
 
 // Tab order on the page.
@@ -37,31 +37,46 @@ export default function AdminContestsPage() {
   const [contests, setContests] = useState<AdminContest[] | null>(null);
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<ContestStatus>("active");
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () =>
+    api<{ contests: AdminContest[] }>("/admin/contests")
+      .then((r) => setContests(r.contests))
+      .catch(() => setError("Could not load the contests. Reload the page."));
 
   useEffect(() => {
-    mockGetAdminContests().then(setContests);
+    load();
   }, []);
 
-  async function run(action: Promise<void>) {
-    await action;
-    setContests(await mockGetAdminContests());
+  // Every action reloads the list; a refused one (e.g. a draft that cannot be scheduled yet) says why.
+  async function run(action: Promise<unknown>) {
+    setError(null);
+    try {
+      await action;
+    } catch (err) {
+      setError(err instanceof ApiError && err.status < 500 ? err.message : "That did not work. Try again.");
+    }
+    await load();
   }
+  const setDates = (c: AdminContest, startsAt: string | null, endsAt: string | null) =>
+    api(`/admin/contests/${c.id}/dates`, { method: "PUT", body: JSON.stringify({ startsAt, endsAt }) });
 
   const actions = {
     schedule(c: AdminContest) {
       const { starts_at, ends_at, preview } = getContestDates(c.type);
       if (window.confirm(`Schedule "${c.title}" for ${preview}?`)) {
-        run(mockSetContestDates(c.id, starts_at.toISOString(), ends_at.toISOString()));
+        run(setDates(c, starts_at.toISOString(), ends_at.toISOString()));
       }
     },
     cancel(c: AdminContest) {
-      if (window.confirm(`Cancel "${c.title}"? It goes back to drafts.`)) run(mockSetContestDates(c.id, null, null));
+      if (window.confirm(`Cancel "${c.title}"? It goes back to drafts.`)) run(setDates(c, null, null));
     },
     remove(c: AdminContest) {
-      if (window.confirm(`Delete the draft "${c.title}"?`)) run(mockRemoveContest(c.id));
+      if (window.confirm(`Delete the draft "${c.title}"?`)) run(api(`/admin/contests/${c.id}`, { method: "DELETE" }));
     },
     archive(c: AdminContest) {
-      if (window.confirm(`Archive "${c.title}"? It disappears from this list.`)) run(mockRemoveContest(c.id));
+      if (window.confirm(`Archive "${c.title}"? It disappears from this list.`))
+        run(api(`/admin/contests/${c.id}/archive`, { method: "POST" }));
     },
   };
 
@@ -113,6 +128,12 @@ export default function AdminContestsPage() {
           </button>
         ))}
       </div>
+
+      {error && (
+        <p role="alert" className="mt-6 rounded border border-failed/40 px-3 py-2 text-sm text-failed">
+          {error}
+        </p>
+      )}
 
       {!contests ? (
         <p className="mt-8 text-sm text-muted">Loading contests…</p>
@@ -200,58 +221,56 @@ function ContestRow({ contest: c, status, actions }: { contest: AdminContest; st
         {reward(c)}
       </td>
       <td className="px-3 py-3">
-        <div
-          className="relative"
-          onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget)) setMenuOpen(false);
-          }}
-        >
-          <button
-            type="button"
-            aria-label={`Actions for ${c.title}`}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((o) => !o)}
-            className="rounded p-1 text-muted hover:text-text"
+        {/* A running contest has no actions until results (A7). */}
+        {status !== "active" && (
+          <div
+            className="relative"
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget)) setMenuOpen(false);
+            }}
           >
-            <Icon name="more" className="h-5 w-5 stroke-[3]" />
-          </button>
-          {menuOpen && (
-            <div className="absolute right-0 z-10 mt-1 w-52 rounded border border-border bg-surface py-1 shadow-lg">
-              {(status === "draft" || status === "scheduled") && (
-                <Link href={`/admin/contests/${c.id}/edit`} className={`${item} text-text`}>
-                  Edit
-                </Link>
-              )}
-              {status === "draft" && (
-                <>
-                  <button type="button" onClick={act(actions.schedule)} disabled={!schedulable} className={`${item} text-text`}>
-                    Schedule
-                    {!schedulable && <span className="block text-xs text-muted">Add a description and a problem first</span>}
+            <button
+              type="button"
+              aria-label={`Actions for ${c.title}`}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((o) => !o)}
+              className="rounded p-1 text-muted hover:text-text"
+            >
+              <Icon name="more" className="h-5 w-5 stroke-[3]" />
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 z-10 mt-1 w-52 rounded border border-border bg-surface py-1 shadow-lg">
+                {(status === "draft" || status === "scheduled") && (
+                  <Link href={`/admin/contests/${c.id}/edit`} className={`${item} text-text`}>
+                    Edit
+                  </Link>
+                )}
+                {status === "draft" && (
+                  <>
+                    <button type="button" onClick={act(actions.schedule)} disabled={!schedulable} className={`${item} text-text`}>
+                      Schedule
+                      {!schedulable && <span className="block text-xs text-muted">Add a description and a problem first</span>}
+                    </button>
+                    <button type="button" onClick={act(actions.remove)} className={`${item} text-failed`}>
+                      Delete
+                    </button>
+                  </>
+                )}
+                {status === "scheduled" && (
+                  <button type="button" onClick={act(actions.cancel)} className={`${item} text-failed`}>
+                    Cancel
                   </button>
-                  <button type="button" onClick={act(actions.remove)} className={`${item} text-failed`}>
-                    Delete
+                )}
+                {/* Results come with A7; the public contest page needs a user account, which the admin is not (D48). */}
+                {status === "ended" && (
+                  <button type="button" onClick={act(actions.archive)} className={`${item} text-text`}>
+                    Archive
                   </button>
-                </>
-              )}
-              {status === "scheduled" && (
-                <button type="button" onClick={act(actions.cancel)} className={`${item} text-failed`}>
-                  Cancel
-                </button>
-              )}
-              {(status === "active" || status === "ended") && (
-                // ponytail: no admin results page yet (A7) - opens the public, read-only contest page.
-                <Link href={`/contests/${c.id}`} className={`${item} text-text`}>
-                  View results
-                </Link>
-              )}
-              {status === "ended" && (
-                <button type="button" onClick={act(actions.archive)} className={`${item} text-text`}>
-                  Archive
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </td>
     </tr>
   );

@@ -165,6 +165,38 @@ export async function runChecks({ files, hiddenFiles, setupCommands, checks }, u
   }
 }
 
+// A10 "Production test": every .js/.ts file must parse the way Node 24 runs it (TypeScript in strip-only mode, so e.g.
+// `enum` fails like it would at runtime). Parsing only - nothing runs. Prints one line per broken file.
+// ponytail: module.stripTypeScriptTypes is experimental in Node 24; swap for a real parse if it changes.
+const CHECK_SYNTAX = `
+const { stripTypeScriptTypes } = require("node:module"), fs = require("fs");
+const files = JSON.parse(require("fs").readFileSync(0, "utf8"));
+let broken = 0;
+for (const file of files) {
+  try { stripTypeScriptTypes(fs.readFileSync(file, "utf8")); }
+  catch (e) { broken++; console.log(file + ": " + e.message.split("\\n")[0]); }
+}
+process.exit(broken ? 1 : 0);`;
+
+/** A10: does the uploaded code load under Node? Returns { ok, output } - output lists the broken files. */
+export async function checkCodeLoads(files) {
+  const sources = Object.keys(files).filter((p) => /\.(c|m)?(j|t)s$/.test(p) && !p.endsWith(".d.ts"));
+  if (!sources.length) return { ok: false, output: "No .js or .ts files to run." };
+  const name = `bugdr-load-${randomUUID()}`;
+  try {
+    await startContainer(name, 120);
+    await writeFiles(name, files);
+    const run = await docker(["exec", "-i", name, "node", "--no-warnings", "-e", CHECK_SYNTAX], {
+      input: JSON.stringify(sources),
+      timeoutSeconds: 60,
+    });
+    if (run.timedOut) return { ok: false, output: "The check timed out after 60s." };
+    return { ok: run.code === 0, output: tail(run.output) };
+  } finally {
+    await docker(["rm", "-f", name], { timeoutSeconds: 30 }).catch(() => {});
+  }
+}
+
 // R5: one terminal container per open attempt, separate from the check runs. It holds the problem files and the
 // user's files - never the hidden checks (D10). Commands run one at a time, stream their output, stop after
 // TERMINAL.commandSeconds or when the client goes away. The container is removed after TERMINAL.idleSeconds without

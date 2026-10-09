@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { ContestWizard } from "@/components/admin/contests/ContestWizard";
 import { Icon } from "@/components/Icon";
 import { getContestStatus } from "@/lib/getContestStatus";
-import { mockGetAdminContest } from "@/lib/mock/adminContests";
+import { api } from "@/lib/api";
 import type { AdminContest } from "@/lib/types/contest";
 
 const toDate = (iso: string | null) => (iso ? new Date(iso) : null);
@@ -16,7 +16,9 @@ export default function EditContestPage() {
   const [contest, setContest] = useState<AdminContest | null | undefined>(undefined);
 
   useEffect(() => {
-    mockGetAdminContest(id).then(setContest);
+    api<{ contest: AdminContest }>(`/admin/contests/${id}`)
+      .then((r) => setContest(r.contest))
+      .catch(() => setContest(null)); // 404 (or archived) → "does not exist"
   }, [id]);
 
   const status = contest && getContestStatus({ starts_at: toDate(contest.startsAt), ends_at: toDate(contest.endsAt) });

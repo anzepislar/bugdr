@@ -5,7 +5,7 @@
 Admin is Bugdr's internal team — not users, not companies.
 Admin manages problems, contests, and platform settings.
 
-Access: `is_admin = TRUE` in `users` table (enforced since slice F3). Planned change: the admin will not be a user account - credentials set separately (D48 in `06_backend_slices.md`, open).
+Access: the admin is **not a user account** (D48, decided 9. 10. 2026). Email + password hash live only in `backend/.env` (`ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, made with `npm run hash-password`); login at `/admin/login` sets a separate admin session cookie (8 h). Built in slice A1; `users.is_admin` is gone (migration 0013).
 Route: `/admin` — fully protected, redirects non-admins.
 
 ---
@@ -14,36 +14,36 @@ Route: `/admin` — fully protected, redirects non-admins.
 
 ### 1. Problems Management (`/admin/problems`)
 
-**View all problems:**
-- Table with title, difficulty, category, status (published/draft), solve count, rating
-- Filter by difficulty, category, status
-- Search by title
+**View all problems (built, A2):**
+- Table with title, difficulty, role, status (published/draft), solves, rating; tabs All / Published / Drafts
+- Search by title (difficulty/category filters not built yet)
+- Drafts open "Edit", published problems "Manage" (View + Unpublish)
 
-**Create new problem:**
-- Title
-- Codebase context (what the system does) and incident report (logs, alerts, tickets) — `02_problems.md`
-- Difficulty selector
-- Category selector
-- Tags input
-- Time limit (minutes)
-- Source (github / claude_generated) + source URL
+**Create new problem (`/admin/problems/new`, built A2 + A10, 3 steps):**
+1. Analysis: upload a ZIP (max 10 MB; node_modules, .git, lock and binary files are left out) → Duplicate Check
+   (same files already added?) → Production Test (no npm packages, every .js/.ts file loads under Node 24) →
+   AI Analysis (Claude Sonnet 5.5, server only). The analysis creates the draft with the code right away (D22).
+2. Review: title, short description, codebase context + incident report (`02_problems.md` rules), tags, difficulty
+   (AI suggestion marked), role, acceptance checks (3+). Time limit = low end of the recommended range (D45).
+3. Publish: Save as Draft, Run checks, Publish Problem.
+- Source (github / claude_generated) + source URL: not built
+- Planned: the analysis also with an OpenAI key (slice A9.1)
 
-**Problem codebase editor:**
-- File tree on left
-- Code editor (Monaco) for each file
-- Add/remove files
-- Set language + framework
-- Setup commands + run command
+**Problem code (A3, decided 9. 10. 2026):**
+- The code is never edited in the admin - the whole codebase is replaced by uploading a new ZIP
+  (duplicate check + production test run again; text, checks and hidden tests stay)
+- The edit page shows the repository name and the file list
 
-**Problem checks editor:**
-- Add checks one by one
-- Set order (drag to reorder)
-- Check type selector
-- Command input
-- Expected output (optional)
-- Must pass toggle
+**Problem checks (Review step / edit page):**
+- Add, edit, delete checks; order = position in the list (no drag yet)
+- Check type selector, command input, must pass toggle (expected output not in the UI)
 
-**Publish / Unpublish toggle**
+**Check run + publish (built A4 + A5, D20):**
+- Run checks: every check runs in Docker against the buggy code and must FAIL (a check that passes does not
+  catch the bug). A passing run only counts for the version it ran on - any save or code replacement clears it.
+- Publish Problem always runs the checks again and publishes only if all fail. Needs a role, at least 3 checks,
+  the code and hidden test files.
+- Unpublish: back to an editable draft; not while the problem is in a contest that has not ended.
 
 ---
 
@@ -188,8 +188,8 @@ Before publishing a problem, admin should verify:
 - [ ] Codebase context explains what the system does clearly — reads like a real job scenario
 - [ ] Incident report shows only symptoms (logs, alerts, user complaints) — never the cause
 - [ ] No "expected behavior" anywhere, and no comments in `files` hinting at the bug location
-- [ ] All checks are working correctly (test locally before publishing)
-- [ ] At least 3 checks that actually validate the fix
+- [ ] All checks are working correctly (enforced: Publish runs them and every one must fail on the buggy code)
+- [ ] At least 3 checks that actually validate the fix (enforced: Publish refuses fewer than 3)
 - [ ] Time limit is fair for the difficulty level
 - [ ] Codebase is clean — no sensitive data, no real company names
 - [ ] Tags are accurate and useful for search

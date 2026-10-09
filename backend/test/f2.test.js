@@ -31,8 +31,8 @@ test("signup creates the user, user_stats and a browser-session cookie", async (
   assert.equal(res.status, 201);
   const { user } = await res.json();
   assert.deepEqual(
-    { email: user.email, username: user.username, isAdmin: user.isAdmin },
-    { email: "ada@example.com", username: "Ada_L", isAdmin: false },
+    { email: user.email, username: user.username },
+    { email: "ada@example.com", username: "Ada_L" },
   );
   const cookie = res.headers.get("set-cookie");
   assert.match(cookie, /^bugdr_session=.+; Path=\/; HttpOnly; SameSite=Lax$/); // no Max-Age = ends with the browser

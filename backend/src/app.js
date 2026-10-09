@@ -1,6 +1,7 @@
 import express from "express";
 import { pool } from "./db.js";
 import { HttpError } from "./errors.js";
+import { adminRouter } from "./modules/admin/admin.routes.js";
 import { attemptsRouter } from "./modules/attempts/attempts.routes.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { contestsRouter } from "./modules/contests/contests.routes.js";
@@ -16,6 +17,7 @@ app.use(express.json({ limit: "3mb" }));
 
 export const api = express.Router();
 app.use("/api/v1", api);
+api.use("/admin", adminRouter);
 api.use("/attempts", attemptsRouter);
 api.use("/auth", authRouter);
 api.use("/contests", contestsRouter);

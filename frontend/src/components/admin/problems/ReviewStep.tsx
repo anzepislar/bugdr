@@ -6,30 +6,54 @@ import {
   CHECK_TYPES,
   DIFFICULTIES,
   DIFFICULTY_LABEL,
+  toSlug,
   type Check,
   type CheckType,
-  type ProblemAnalysis,
+  type Difficulty,
   type ProblemForm,
 } from "@/lib/types/problem";
-import { DIFFICULTY_PEER_CHECKED, FieldLabel, cardClass, inputClass, primaryButton, secondaryButton } from "./shared";
+import {
+  DIFFICULTY_PEER_CHECKED,
+  FieldLabel,
+  Spinner,
+  cardClass,
+  inputClass,
+  primaryButton,
+  secondaryButton,
+} from "./shared";
 
 export const MIN_CHECKS = 3; // 04_admin.md "At least 3 checks"
 export const SHORT_DESCRIPTION_MAX = 300; // problems.short_description VARCHAR(300)
+export const TITLE_MAX = 255; // problems.title VARCHAR(255)
+
+/** Everything the Review form needs before it can be saved. */
+export const isReviewComplete = (form: ProblemForm, checks: Check[]) =>
+  toSlug(form.title) !== "" &&
+  form.shortDescription.trim() !== "" &&
+  form.codebaseContext.trim() !== "" &&
+  form.incidentReport.trim() !== "" &&
+  form.categorySlug !== null &&
+  checks.length >= MIN_CHECKS &&
+  checks.every((c) => c.description.trim() !== "" && c.checkCommand.trim() !== "");
 
 const optionClass =
   "block rounded border border-border px-3 py-2.5 text-sm font-medium text-muted hover:text-text peer-focus-visible:ring-2 peer-focus-visible:ring-action";
 
 interface Props {
-  analysis: ProblemAnalysis;
+  bugSummary: string;
+  suggestedDifficulty: Difficulty | null;
   form: ProblemForm;
   onFormChange: (patch: Partial<ProblemForm>) => void;
   checks: Check[];
   onChecksChange: (checks: Check[]) => void;
   canContinue: boolean;
   onContinue: () => void;
+  continueLabel?: string;
+  busy?: boolean;
 }
 
-export function ReviewStep({ analysis, form, onFormChange, checks, onChecksChange, canContinue, onContinue }: Props) {
+export function ReviewStep(props: Props) {
+  const { bugSummary, suggestedDifficulty, form, onFormChange, checks, onChecksChange, canContinue, onContinue } = props;
   function updateCheck(id: string, patch: Partial<Check>) {
     onChecksChange(checks.map((c) => (c.id === id ? { ...c, ...patch } : c)));
   }
@@ -56,9 +80,21 @@ export function ReviewStep({ analysis, form, onFormChange, checks, onChecksChang
             AI Analysis <span className="normal-case tracking-normal">(Internal only)</span>
           </p>
           <p className="mt-2 text-sm leading-relaxed text-text">
-            <span className="font-semibold">Bug identified:</span> {analysis.bugSummary}
+            <span className="font-semibold">Bug identified:</span> {bugSummary}
           </p>
         </section>
+
+        <div>
+          <FieldLabel htmlFor="title">Title</FieldLabel>
+          <input
+            id="title"
+            value={form.title}
+            maxLength={TITLE_MAX}
+            onChange={(e) => onFormChange({ title: e.target.value })}
+            className={inputClass}
+          />
+          <p className="mt-1.5 truncate text-xs text-muted">URL: /problems/{toSlug(form.title) || "…"}</p>
+        </div>
 
         <div>
           <FieldLabel htmlFor="short-description">Short description</FieldLabel>
@@ -78,15 +114,29 @@ export function ReviewStep({ analysis, form, onFormChange, checks, onChecksChang
         </div>
 
         <div>
-          <FieldLabel htmlFor="full-description">Full description</FieldLabel>
+          <FieldLabel htmlFor="codebase-context">Codebase context</FieldLabel>
           <textarea
-            id="full-description"
-            rows={6}
-            value={form.fullDescription}
-            onChange={(e) => onFormChange({ fullDescription: e.target.value })}
+            id="codebase-context"
+            rows={5}
+            value={form.codebaseContext}
+            onChange={(e) => onFormChange({ codebaseContext: e.target.value })}
             className={`${inputClass} resize-y leading-relaxed`}
           />
-          <p className="mt-1.5 text-xs text-muted">Written as if the user just joined a company</p>
+          <p className="mt-1.5 text-xs text-muted">What the system does, as if the user just joined the team</p>
+        </div>
+
+        <div>
+          <FieldLabel htmlFor="incident-report">Incident report</FieldLabel>
+          <textarea
+            id="incident-report"
+            rows={6}
+            value={form.incidentReport}
+            onChange={(e) => onFormChange({ incidentReport: e.target.value })}
+            className={`${inputClass} resize-y leading-relaxed`}
+          />
+          <p className="mt-1.5 text-xs text-muted">
+            Symptoms, logs, user complaints. Never the cause, the expected behaviour or the file
+          </p>
         </div>
 
         <div>
@@ -110,7 +160,7 @@ export function ReviewStep({ analysis, form, onFormChange, checks, onChecksChang
                 />
                 <span className={`${optionClass} ${DIFFICULTY_PEER_CHECKED[difficulty]}`}>
                   {DIFFICULTY_LABEL[difficulty]}
-                  {difficulty === analysis.suggestedDifficulty && (
+                  {difficulty === suggestedDifficulty && (
                     <span className="ml-1 text-xs font-normal text-muted">(AI suggested)</span>
                   )}
                 </span>
@@ -163,12 +213,19 @@ export function ReviewStep({ analysis, form, onFormChange, checks, onChecksChang
         </section>
 
         <div>
-          <button type="button" onClick={onContinue} disabled={!canContinue} className={`${primaryButton} w-full py-3`}>
-            Continue to Publish
+          <button
+            type="button"
+            onClick={onContinue}
+            disabled={!canContinue || props.busy}
+            className={`${primaryButton} w-full py-3`}
+          >
+            {props.busy && <Spinner />}
+            {props.continueLabel ?? "Continue to Publish"}
           </button>
           {!canContinue && (
             <p className="mt-2 text-xs text-muted">
-              Needs both descriptions, a role and at least {MIN_CHECKS} checks with a description and command.
+              Needs a title, all three descriptions, a role and at least {MIN_CHECKS} checks with a description and
+              command.
             </p>
           )}
         </div>

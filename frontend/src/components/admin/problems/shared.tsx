@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Icon } from "@/components/Icon";
+import { ApiError } from "@/lib/api";
 import { DIFFICULTY_LABEL, type Difficulty } from "@/lib/types/problem";
 
 export const cardClass = "rounded border border-border bg-surface p-5";
@@ -132,4 +133,33 @@ export function StepIndicator({
       })}
     </ol>
   );
+}
+
+const FIELD_LABEL: Record<string, string> = {
+  title: "Title",
+  shortDescription: "Short description",
+  codebaseContext: "Codebase context",
+  incidentReport: "Incident report",
+  categorySlug: "Role",
+  tags: "Tags",
+  checks: "Checks",
+  hiddenFiles: "Hidden files",
+  // Contests (A6)
+  type: "Type",
+  description: "Description",
+  startsAt: "Start",
+  endsAt: "Close",
+  problemSlugs: "Problems",
+  rewardType: "Reward",
+  rewardDescription: "Reward description",
+};
+
+/** Message for a failed admin save (problem A2, contest A6): per-field details of a 400, else the server's message. */
+export function saveErrorMessage(err: unknown): string {
+  if (err instanceof ApiError && err.details)
+    return Object.entries(err.details as Record<string, string>)
+      .map(([field, message]) => `${FIELD_LABEL[field] ?? field}: ${message}`)
+      .join(" · ");
+  if (err instanceof ApiError && err.status !== 500) return err.message;
+  return "Saving failed. Try again.";
 }

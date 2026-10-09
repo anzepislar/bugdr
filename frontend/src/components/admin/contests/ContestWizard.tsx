@@ -10,14 +10,21 @@ import {
   cardClass,
   inputClass,
   primaryButton,
+  saveErrorMessage,
   secondaryButton,
 } from "@/components/admin/problems/shared";
 import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon, type IconName } from "@/components/Icon";
 import { formatUtcDateTime } from "@/lib/format";
 import { getContestDates } from "@/lib/getContestDates";
-import { mockGetContestProblemOptions, mockSaveContest } from "@/lib/mock/adminContests";
-import { REWARD_TYPES, type AdminContest, type ContestProblemOption, type RewardType } from "@/lib/types/contest";
+import { api } from "@/lib/api";
+import {
+  REWARD_TYPES,
+  type AdminContest,
+  type AdminContestDraft,
+  type ContestProblemOption,
+  type RewardType,
+} from "@/lib/types/contest";
 import type { ContestType } from "@/lib/types/dashboard";
 import { CATEGORIES } from "@/lib/types/problem";
 
@@ -91,8 +98,7 @@ export function ContestWizard({ initial, onReset }: Props) {
     setSaving(schedule ? "schedule" : "draft");
     setError(null);
     try {
-      await mockSaveContest(
-        {
+      const draft: AdminContestDraft = {
           title: title.trim(),
           type,
           description: description.trim(),
@@ -101,12 +107,15 @@ export function ContestWizard({ initial, onReset }: Props) {
           problemSlugs: problems.map((p) => p.slug),
           rewardType,
           rewardDescription: rewardType ? rewardDescription.trim() : null,
-        },
-        initial?.id,
-      );
+      };
+      // POST creates, PUT replaces an existing draft or scheduled contest (A6).
+      await api(initial ? `/admin/contests/${initial.id}` : "/admin/contests", {
+        method: initial ? "PUT" : "POST",
+        body: JSON.stringify(draft),
+      });
       setSaved(schedule ? "schedule" : "draft");
     } catch (e) {
-      setError(e instanceof Error && e.message ? e.message : "Saving failed. Try again.");
+      setError(saveErrorMessage(e));
     } finally {
       setSaving(null);
     }
@@ -371,7 +380,9 @@ function ProblemPicker({
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    mockGetContestProblemOptions().then(setOptions);
+    api<{ problems: ContestProblemOption[] }>("/admin/contests/problem-options")
+      .then((r) => setOptions(r.problems))
+      .catch(() => setOptions([]));
   }, []);
 
   const query = q.trim().toLowerCase();

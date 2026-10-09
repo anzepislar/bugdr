@@ -64,7 +64,6 @@ export const toUser = (row) => ({
   email: row.email,
   username: row.username,
   avatarUrl: row.avatar_url,
-  isAdmin: row.is_admin,
   onboardingCompleted: row.onboarding_completed ?? false,
 });
 
@@ -72,7 +71,7 @@ export const bannedError = () => new HttpError(403, "BANNED", "This account has 
 
 /**
  * Loads the signed-in user from the database on every request (D5) into req.user, else 401.
- * A ban or admin change applies on the next request, without logging in again.
+ * A ban applies on the next request, without logging in again.
  */
 export async function requireAuth(req, res, next) {
   let userId;
@@ -100,11 +99,36 @@ export async function optionalAuth(req, res, next) {
   next();
 }
 
-/** requireAuth + is_admin, else 403. */
-export const requireAdmin = [
-  requireAuth,
-  (req, res, next) => {
-    if (!req.user.isAdmin) throw new HttpError(403, "FORBIDDEN", "Admins only");
-    next();
-  },
-];
+export const ADMIN_COOKIE = "bugdr_admin"; // same name as frontend/src/lib/session.ts
+const ADMIN_HOURS = 8;
+
+// The password hash is part of the key: a user token never passes as an admin one,
+// and changing ADMIN_PASSWORD_HASH logs out every admin session.
+const adminKey = () => `${config.jwtSecret}:admin:${config.adminPasswordHash}`;
+
+/** Admin session (D48): its own cookie, independent of the user session. */
+export function setAdminSession(res) {
+  const token = jwt.sign({}, adminKey(), { subject: "admin", expiresIn: `${ADMIN_HOURS}h`, algorithm: "HS256" });
+  res.cookie(ADMIN_COOKIE, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: config.production,
+    path: "/",
+    maxAge: ADMIN_HOURS * 3600 * 1000,
+  });
+}
+
+export function clearAdminSession(res) {
+  res.clearCookie(ADMIN_COOKIE, { httpOnly: true, sameSite: "lax", secure: config.production, path: "/" });
+}
+
+/** Valid admin session cookie, else 401. No database lookup: the admin lives in .env (D48). */
+export function requireAdmin(req, res, next) {
+  try {
+    if (!config.adminPasswordHash) throw new Error("admin login is off");
+    jwt.verify(readCookie(req, ADMIN_COOKIE) ?? "", adminKey(), { algorithms: ["HS256"], subject: "admin" });
+  } catch {
+    throw new HttpError(401, "UNAUTHENTICATED", "Admin login required");
+  }
+  next();
+}

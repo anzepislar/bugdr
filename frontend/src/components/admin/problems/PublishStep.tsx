@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Icon } from "@/components/Icon";
 import type { Difficulty, SavedProblem } from "@/lib/types/problem";
 import { DifficultyBadge, ErrorMessage, Spinner, cardClass, primaryButton, secondaryButton } from "./shared";
@@ -11,12 +12,14 @@ interface Props {
   roleName: string;
   tags: string[];
   checksCount: number;
-  saving: "draft" | "publish" | null;
+  saving: boolean;
   saved: SavedProblem | null;
   error: string | null;
-  onSave: (publish: boolean) => void;
+  onSave: () => void;
   onBack: () => void;
   onReset: () => void;
+  /** A4: the check run, shown between the summary and the buttons. */
+  checkRun?: ReactNode;
 }
 
 export function PublishStep(props: Props) {
@@ -28,10 +31,19 @@ export function PublishStep(props: Props) {
         <span className="flex h-12 w-12 items-center justify-center rounded-full bg-passed/15 text-passed">
           <Icon name="check" className="h-6 w-6" />
         </span>
-        <h2 className="mt-4 text-xl font-semibold">{saved.isPublished ? "Problem published" : "Problem saved"}</h2>
+        <h2 className="mt-4 text-xl font-semibold">{saved.isPublished ? "Problem published" : "Draft saved"}</h2>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link href={`/problems/${saved.slug}`} className={secondaryButton}>
-            View problem
+          {saved.isPublished ? (
+            <Link href={`/problems/${saved.slug}`} className={secondaryButton}>
+              View problem
+            </Link>
+          ) : (
+            <Link href={`/admin/problems/${saved.id}/edit`} className={secondaryButton}>
+              Edit draft
+            </Link>
+          )}
+          <Link href="/admin/problems" className={secondaryButton}>
+            All problems
           </Link>
           <button type="button" onClick={props.onReset} className={primaryButton}>
             Add another problem
@@ -66,23 +78,23 @@ export function PublishStep(props: Props) {
         </p>
       </section>
 
+      {props.checkRun && <div className="mt-6">{props.checkRun}</div>}
+
       {error && <ErrorMessage>{error}</ErrorMessage>}
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <button type="button" onClick={props.onBack} disabled={saving !== null} className="mr-auto text-sm text-muted hover:text-text disabled:opacity-40">
+        <button type="button" onClick={props.onBack} disabled={saving} className="mr-auto text-sm text-muted hover:text-text disabled:opacity-40">
           ← Back to review
         </button>
         <button
           type="button"
-          onClick={() => props.onSave(false)}
-          disabled={saving !== null}
+          onClick={props.onSave}
+          disabled={saving}
           className={`${secondaryButton} bg-surface`}
         >
-          {saving === "draft" && <Spinner />} Save as Draft
+          {saving && <Spinner />} Save as Draft
         </button>
-        <button type="button" onClick={() => props.onSave(true)} disabled={saving !== null} className={`${primaryButton} font-semibold`}>
-          {saving === "publish" && <Spinner />} Publish Problem
-        </button>
+        {/* Publish lives in the check run panel (A5): it runs the checks first. */}
       </div>
     </div>
   );

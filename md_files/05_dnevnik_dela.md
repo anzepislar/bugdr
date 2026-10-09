@@ -1533,3 +1533,194 @@ started" → klik "Enter contest" → "In progress · 0/1 solved · 0 pts" in
 "View problem"; zgodovina na `/contests` in v profilu; brez vodoravnega
 drsenja pri 320-2560 px; brez napak v konzoli. Testni uporabnik izbrisan.
 Opaženo: "1 engineers participating" (ednina) - ni popravljeno.
+
+## 9. 10. 2026 — Seja 18: M6 priprava
+
+Odločitve uporabnika pred M6 (admin):
+
+- **D48** rešena: admin ni uporabniški račun. Ločena prijava `/admin/login`,
+  samo e-pošta + geslo (brez drugega faktorja); poverilnice v
+  `backend/.env` (`ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH` iz
+  `npm run hash-password`); ločen piškotek admin seje (8 h); `users.is_admin`
+  odpade. `/admin` dobi svojo postavitev (samo admin povezave + "Log out").
+  Z1 (`create-admin`) odpade, ostane samo zaklep seeda v produkciji.
+- **D46** rešena po predlogu: aktivni = odprl problem (UTC dan), rešitve iz
+  `solved_at`, trend glede na prejšnje obdobje, grafi fiksni.
+- **D45** rešena: Review dobi polje Title (slug iz naslova); časovna omejitev
+  ostane samodejna po težavnosti.
+- **D50** rešena: Review ima "Codebase context" + "Incident report"; poziv
+  A10 prilagodim jaz.
+- **D20** rešena: objava samo, če **vsa** preverjanja padejo na pokvarjeni
+  kodi; brez nalaganja rešitve.
+- **D21/D22** rešeni: analiza takoj ustvari osnutek; ZIP do 10 MB, brez
+  `node_modules`/`.git`/binarnih; ključ Claude samo na strežniku.
+
+Privzeto (brez vprašanja): preverjanje dvojnikov = SHA-256 razpakiranih
+datotek; produkcijski test = zagon v Dockerju (R3).
+
+`06` posodobljen (odločitve, A1, A4, A5, A10, Z1, Stanje); `04` (dostop
+admina); CLAUDE.md (pot `/admin/login`, Current Status).
+
+### Rezina A1 (admin prijava in ogrodje)
+
+- Backend: modul `admin.routes.js` - `POST /admin/login`, `POST /admin/logout`,
+  `GET /admin/me`. Poverilnice iz `.env` (`ADMIN_EMAIL`,
+  `ADMIN_PASSWORD_HASH`); brez njih 503 `ADMIN_DISABLED`. Piškotek
+  `bugdr_admin` (8 h), JWT podpisan z `JWT_SECRET` + hash gesla - uporabniški
+  in admin žeton se nikoli ne zamenjata, nov hash odjavi vse admin seje.
+  `requireAdmin` brez baze. Po 10 neuspelih prijavah v 15 min → 429
+  (globalno; na IP z Z2).
+- `npm run hash-password`: geslo dvakrat, skrito, vsaj 12 znakov, izpiše
+  vrstico za `.env`. Neveljaven hash ustavi zagon backenda.
+- Migracija 0013 odstrani `users.is_admin`; `/auth/me` nima več `isAdmin`.
+- Frontend: admin strani preseljene v `app/admin/(panel)/` (URL-ji enaki) s
+  svojo postavitvijo `AdminShell` (Overview / Add problem / Contests, e-pošta,
+  Log out); admin del odstranjen iz `AppShell`. Nova stran `/admin/login`.
+  Proxy: `/admin/*` brez admin seje → `/admin/login?next=…`.
+
+Preverjeno: backend testi 101/101 (+3 A1, admin test iz F3 odstranjen);
+frontend lint, typecheck, build; Playwright Chromium (testni admin samo v
+spremenljivkah okolja, ne v `.env`): gost → `/admin/login?next=…`, napačno
+geslo → napaka, prijava → nazaj na `/admin/contests`, admin piškotek ne odpre
+`/settings` in na dashboardu je gost, odjava → `/admin` spet zahteva prijavo;
+`/admin/login`, `/admin`, `/admin/contests`, `/admin/problems/new` brez
+vodoravnega drsenja pri 320-2560 px; brez napak v konzoli.
+
+### Rezina A2 (admin problemi: seznam, shranjevanje osnutka, urejanje)
+
+Odločitve uporabnika: koda (ZIP) pride šele z A10 - A2 shrani besedilo,
+preverjanja in skrite datoteke; "Publish" je do A5 onemogočen z opombo;
+preprosta stran `/admin/problems`.
+
+- Backend: `modules/admin/problems.routes.js` - `GET /admin/problems`,
+  `GET /admin/problems/:id`, `POST /admin/problems`, `PUT /admin/problems/:id`.
+  Slug iz naslova (409 `SLUG_TAKEN`), `base_points` iz težavnosti, vedno
+  osnutek, objavljen problem ni urejljiv (409). Migracija 0014
+  `problems.bug_summary`. Število rešitev iz poskusov (`solve_count` se ne
+  posodablja).
+- Frontend: Review dobi Title (D45) in dve polji opisa (D50); Save as Draft
+  na API; Publish onemogočen; nova `/admin/problems` in
+  `/admin/problems/[id]/edit`; stranska vrstica Problems.
+
+Preverjeno: backend testi 106/106 (+5 A2); frontend lint, typecheck, build;
+Playwright Chromium: seznam (12 objavljenih), Add Problem → naslov
+predizpolnjen, dve polji, Publish onemogočen, Save as Draft → Edit draft →
+sprememba naslova shranjena → isti naslov znova = "Title: Another problem
+already uses this title"; zavihek Drafts 1; brez vodoravnega drsenja pri
+320-2560 px; brez napak v konzoli. Testni osnutki izbrisani.
+
+### Rezina A10 (nalaganje ZIP + AI analiza)
+
+Odločitve uporabnika: produkcijski test = koda se naloži pod Node 24 in nima
+npm paketov; model Claude Sonnet 5.5 (cenejši), nova odvisnost
+`@anthropic-ai/sdk`.
+
+- Backend: `POST /admin/problems/analyze` - surov ZIP (do 10 MB), lasten
+  bralnik ZIP z `node:zlib` (`zip.js`), NDJSON tok po stopnjah Duplicate
+  Check → Production Test → AI Analysis, nato osnutek s kodo (D22).
+  Dvojniki po SHA-256 (migracija 0015 `content_hash`). Produkcijski test v
+  Docker kontejnerju razčleni vse .js/.ts datoteke
+  (`module.stripTypeScriptTypes`); `node --check` za TypeScript ni zanesljiv
+  (pokvarjena .ts datoteka je prešla). Claude: structured outputs, effort high,
+  `fallbacks: "default"`; ključ samo na strežniku.
+- Frontend: `UploadStep` bere tok namesto treh mockov; Save shrani v osnutek
+  iz analize (`PUT`). Mocki analize odstranjeni.
+- Sistemski poziv napisan na novo po pravilih iz `02` - izvirno besedilo iz
+  specifikacije ni shranjeno.
+
+Preverjeno: backend testi 111/111 (+5 A10, Claude zamenjan z lažno analizo;
+pravi klic ni preizkušen, ker `ANTHROPIC_API_KEY` še ni nastavljen);
+frontend lint, typecheck, build; Playwright Chromium (backend z lažno
+analizo): `../` pot → napaka na prvi stopnji, npm paketi → Production Test
+pade, Analysis preskočena; pravi ZIP → Review predizpolnjen (brez
+`node_modules`) → Save → Edit draft; isti ZIP znova → "already added as";
+brez vodoravnega drsenja pri 320-2560 px; brez napak v konzoli. Testni osnutek
+in začasna datoteka strežnika izbrisana.
+
+### Rezina A3 (zamenjava kode)
+
+Odločitve uporabnika: kode se v adminu ne ureja (brez urejevalnika, drevesa,
+ukazov, ogrodja) - samo cel ZIP se naloži znova; ob tem ostanejo naslov,
+opisi, preverjanja in skrite datoteke (brez nove AI analize); dvojnik se
+primerja z naloženim ZIP-om.
+
+- Backend: `PUT /admin/problems/:id/codebase` - isti tok kot A10 brez
+  analize (Duplicate Check brez lastnega problema → Production Test), nato
+  zamenjava kode in hasha; samo osnutki. Skupni pomočniki za oba toka.
+  `GET /admin/problems/:id` vrne ime repozitorija in poti.
+- Frontend: `UploadStep` sprejme url, metodo in stopnje; urejanje osnutka ima
+  razdelek Code s seznamom datotek in "Replace code".
+
+Preverjeno: backend testi 112/112 (+1 A3); frontend lint, typecheck, build;
+Playwright Chromium (backend z lažno analizo): osnutek iz ZIP-a → Code
+"shop · 2 files" → zamenjava z npm paketi pade na Production Test →
+zamenjava z novim ZIP-om → "shop2 · 3 files", besedilo ostane, tudi po
+osvežitvi; brez vodoravnega drsenja pri 320-2560 px; brez napak v konzoli.
+Testni osnutki in začasna datoteka izbrisani.
+
+### Rezina A4 (poskusni zagon preverjanj)
+
+Odločitev uporabnika: gumb "Run checks" (korak Publish in urejanje osnutka),
+v A5 pa Publish zagon ponovi samodejno.
+
+- Backend: `POST /admin/problems/:id/dry-run` - preverjanja na pokvarjeni
+  kodi v Dockerju (R3 runner, brez uporabnikovih datotek), vsa morajo pasti
+  (D20); NDJSON tok kot R6. Uspešen zagon velja za različico
+  (`dry_run_passed_for = updated_at`, migracija 0016); vsak save in zamenjava
+  kode ga razveljavita.
+- Frontend: `DryRunPanel` (rezultat po preverjanju, izhod padlih
+  preverjanj); pred zagonom se shrani obrazec; nespremenjen obrazec se ne
+  shrani znova (sicer bi "Save as Draft" razveljavil uspešen zagon).
+
+Preverjeno: backend testi 115/115 (+3 A4, Docker); frontend lint,
+typecheck, build; Playwright Chromium (lažna analiza s pravimi testi): 3
+preverjanja "catches the bug", 1 "misses" → izbris → "All 3 checks fail"
+→ Save as Draft → urejanje kaže veljaven zagon → sprememba naslova ga
+počisti (tudi po osvežitvi) → nov zagon se zapiše; brez vodoravnega
+drsenja pri 320-2560 px; brez napak v konzoli. Testni osnutki in začasna
+datoteka izbrisani.
+
+### Rezina A5 (objava in umik)
+
+- Backend: `POST /admin/problems/:id/publish` znova zažene preverjanja (isti
+  tok kot A4) in objavi samo, če vsa padejo in se osnutek ni spremenil;
+  prej zahteva vlogo, vsaj 3 preverjanja, kodo in skrite teste.
+  `POST /admin/problems/:id/unpublish` vrne problem med osnutke; ne med
+  tekmovanjem, ki še ni končano. Brisanja ni (`04`).
+- Frontend: Publish v kartici Check run; objavljen problem je na strani
+  urejanja zaklenjen z "View problem" in "Unpublish"; seznam "Manage".
+
+Preverjeno: backend testi 118/118 (+3 A5); frontend lint, typecheck,
+build; Playwright Chromium, cel potek (lažna analiza s pravimi testi):
+upload → Publish zavrnjen (1 preverjanje ne ujame napake) → izbris →
+Publish → "Problem published" → javna stran; uporabnik ga vidi v
+`/problems` (API), start, Test s pokvarjeno kodo = vsa padejo, s
+popravkom = rešeno; admin Manage → Unpublish → uporabniku 404, osnutek spet
+urejljiv; seznam pri 320 px brez drsenja; brez napak v konzoli. (Stran
+`/problems` po rešitvi problema ne pokaže, ker je privzet filter
+"Unsolved" - pričakovano.) Testni problem, uporabnik in začasna datoteka
+izbrisani.
+
+### Nova rezina A9.1 (načrt)
+
+Uporabnik: analiza ob nalaganju naj deluje tudi z OpenAI ključem. Dodana kot
+rezina A9.1 v `06` (za zdaj samo v načrtu; odprta vprašanja: namesto ali
+poleg Claude, model, odvisnost `openai`, ali velja tudi za M8).
+
+### Rezina A6 (admin tekmovanja na API)
+
+- Backend: `modules/admin/contests.routes.js` - seznam (brez arhiviranih),
+  izbira objavljenih problemov, ustvarjanje, urejanje (osnutki in
+  načrtovana), načrtovanje / preklic s seznama, brisanje osnutkov,
+  arhiviranje končanih. Pravila D44 na strežniku; osnutek potrebuje samo
+  naslov in vrsto. Stanje vedno iz datumov (D43).
+- Frontend: seznam, čarovnik in urejanje na API. "View results" odstranjen
+  (admin ni uporabnik, D48; rezultati z A7); aktivna tekmovanja brez menija.
+
+Preverjeno: backend testi 122/122 (+4 A6); frontend lint, typecheck,
+build; Playwright Chromium: seed tekmovanja (2 aktivni, 1 načrtovano, 2
+končani), čarovnik → načrtovano (javno vidno) in osnutek (javno ne),
+načrtovanje s seznama → preklic → brisanje, urejanje načrtovanega,
+arhiviranje končanega; brez vodoravnega drsenja pri 320-2560 px; brez napak
+v konzoli. Testno tekmovanje izbrisano, arhiv seed tekmovanja razveljavljen.
+

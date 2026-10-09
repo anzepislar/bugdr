@@ -18,12 +18,13 @@ povezala na API.
 
 ```
 Zadnja posodobitev: 9. 10. 2026
-Backend: M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2)
-Frontend: 17 zaslonov na mocku - /login, /signup, /forgot-password, /onboarding, /dashboard,
+Backend: M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2), M6 🟨 (A1, A2, A10, A3, A4, A5, A6)
+Frontend: 20 zaslonov (večina na API) - /login, /signup, /forgot-password, /onboarding, /dashboard,
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
-          /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit
-Naslednja rezina: M6 A1 (M5 ✅ 9. 10. 2026); testi 99/99; D48 (admin ni uporabniški račun) odloči pred M6; M8 (AI seja) čaka D50-D52
+          /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit,
+          /admin/login, /admin/problems, /admin/problems/[id]/edit
+Naslednja rezina: M6 A7 - rezultati tekmovanj + CSV (A1-A6, A10 ✅ 9. 10. 2026; A9.1 OpenAI dodana v načrt; za pravo analizo `ANTHROPIC_API_KEY` v `backend/.env`; odločitve M6 D20, D21, D22, D45, D46, D48, D50 rešene); testi 122/122; M8 (AI seja) čaka D51-D52
 ```
 
 Oznake: ⬜ ni začeto · 🟨 v delu · ✅ narejeno (z datumom) · ⏸ odloženo
@@ -83,9 +84,9 @@ dokler je uporabnik ne potrdi.
 | D17 | Tekmovalni problemi na `/problems` | **Skriti, dokler tekmovanje ne konča**, nato javni. `problems.is_contest_problem` se ne uporablja - izpelje se iz `contest_problems` | P1, T1 |
 | D18 | Rezultat tekmovanja | `contest_entries.score` = vsota točk rešenih tekmovalnih problemov **znotraj časa tekmovanja**; vez = krajši skupni čas. `contest_entries.attempt_id` se ne uporablja | T2 |
 | D19 | Personaliziran feed | Nerešeni objavljeni problemi kategorije iz `goal_role`, težavnost glede na `experience_level`, nato najbolje ocenjeni | U3 |
-| D20 | **ODPRTO** - pravilo validacije ob objavi | Zaslon Create Problem (po navodilu uporabnika) zahteva, da **vsa** preverjanja padejo na pokvarjeni kodi, sicer objava ni mogoča. To je v napetosti z D11 (preverjanja morajo tudi **uspeti** na rešitvi, ki je wizard ne zbira) in izloči legitimna negativna preverjanja (npr. "potekel žeton → 401" uspe že na pokvarjeni kodi). Predlog: objava = vsaj eno preverjanje pade na pokvarjeni kodi + vsa uspejo na rešitvi; preverjanje, ki uspe na pokvarjeni kodi, je opozorilo, ne blokada. Zahteva korak za nalaganje rešitve (drugi ZIP) | A10, A4, A5 |
-| D21 | **ODPRTO** - Claude analiza | Klic samo v backendu (ključ `ANTHROPIC_API_KEY` nikoli v frontendu), model iz konfiguracije, omejitev velikosti ZIP-a in števila/velikosti datotek, izpusti `node_modules`, `.git`, binarne datoteke; strogo preverjanje JSON odgovora (oblika `ProblemAnalysis`), ob neveljavnem odgovoru 502 `ANALYSIS_INVALID` | A10 |
-| D22 | **ODPRTO** - kje živi razpakiran ZIP med analizo in shranjevanjem | Predlog: analiza takoj ustvari osnutek problema (`is_published = false`) in shrani datoteke v `problem_codebase`; odgovor vrne `problemId`, "Save as Draft"/"Publish" sta nato `PATCH` istega osnutka. Brez začasnih map na disku | A10, A2 |
+| D20 | ~~Pravilo validacije ob objavi~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M6): **vsa preverjanja morajo pasti na pokvarjeni kodi**, sicer objava ni mogoča. Brez nalaganja rešitve (drugi ZIP) - dry-run teče samo na izvirni kodi; `solution_files` (D11) admin ne polni (ostane za seed). Znana omejitev: ne dokaže rešljivosti in izloči negativna preverjanja ("potekel žeton → 401") | A10, A4, A5 |
+| D21 | ~~Claude analiza~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M6, skupaj z D22): klic samo v backendu (`ANTHROPIC_API_KEY` v `backend/.env`, nikoli v frontendu ali odgovoru), model iz konfiguracije, ZIP največ 10 MB, izpusti `node_modules`, `.git` in binarne datoteke; strogo preverjanje JSON odgovora (oblika `ProblemAnalysis`), ob neveljavnem odgovoru 502 `ANALYSIS_INVALID` | A10 |
+| D22 | ~~Kje živi razpakiran ZIP~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M6): analiza takoj ustvari osnutek problema (`is_published = false`) in shrani datoteke v `problem_codebase`; odgovor vrne `problemId`, "Save as Draft"/"Publish" sta `PATCH` istega osnutka. Zaprt zavihek ne izgubi dela. Brez začasnih map na disku | A10, A2 |
 | D23 | ~~Zaznamki (bookmark) na kartici problema~~ → **rešeno 8. 10. 2026** (uporabnik): tabela `problem_bookmarks (user_id, problem_id, created_at, PK(user_id, problem_id))` + `PUT/DELETE /problems/:slug/bookmark` v P1; kartica dobi `saved` | U3, P1 |
 | D24 | ~~Feed na dashboardu: filtri in rešeni problemi~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M4): rešeni problemi so **vedno skriti** (D19), stikalo "Hide solved" se odstrani. Filtri kategorija, težavnost in razvrščanje ostanejo | U3 |
 | D25 | **ODPRTO** - ikona obvestil v zgornji vrstici | Dizajn ima zvonec, shema in dokumenti nimajo obvestil. Predlog: v v1 ikona brez funkcije ali skrita; obvestila kasneje kot svoja rezina | - |
@@ -107,13 +108,13 @@ dokler je uporabnik ne potrdi.
 | D41 | ~~"Exploring my path" na onboardingu~~ → **rešeno 7. 10. 2026** (uporabnik, F4): `goal_role = NULL` = raziskujem; UI vrednost `"exploring"` se ob oddaji pretvori v `null`. D19 feed brez filtra kategorije | F4, U3 |
 | D43 | ~~Osnutki tekmovanj~~ → **rešeno 7. 10. 2026** (uporabnik): stanje se **nikoli ne shrani**, vedno se izpelje iz datumov (`getContestStatus`): `starts_at IS NULL` = osnutek, `starts_at > now()` = načrtovano, `starts_at <= now() <= ends_at` = aktivno, `ends_at < now()` = končano. Brez `is_published`. Preklic načrtovanega = `starts_at`/`ends_at` nazaj na NULL. Javni `GET /contests` vrne samo tekmovanja z `starts_at IS NOT NULL` | A6, T1 |
 | D44 | ~~Pravila ob objavi tekmovanja~~ → **rešeno 7. 10. 2026** (uporabnik): čarovnik v 4 korakih (`04`). Načrtovanje zahteva naslov, opis, vrsto, ≥ 1 problem, veljavne datume (konec po začetku, začetek v prihodnosti); Hard/Get a job je samo priporočilo. Datumi se izračunajo iz vrste (`getContestDates`, UTC) ali ročno ("Custom dates"). Nagrada: `reward_type` (subscription/merch/points) ali brez, opis obvezen ob izbrani vrsti. Odprto ostaja samo: ali se tekmovanja iste vrste smejo prekrivati | A6 |
-| D45 | **ODPRTO** - Add Problem v 3 korakih (Analysis / Review / Publish) | Po navodilu uporabnika (7. 10. 2026) poteka **nima** polja za naslov, časovno omejitev, sličico in koraka Validate (dry-run, D11/D20). Zdaj mock: naslov = kratek opis (slug iz njega je dolg), časovna omejitev = spodnja meja priporočila za težavnost (`TIME_LIMIT_RANGE`). Kratek opis do 300 znakov (`problems.short_description VARCHAR(300)`), D16 `summary VARCHAR(200)` ostaja v nasprotju. Predlog: vrni polje Title v Review; dry-run naj teče v backendu ob objavi (A4/A5 zavrne objavo brez uspešnega dry-runa). Nova koraka cevovoda: preverjanje dvojnikov (predlog: zgoščena vrednost razpakiranih datotek) in produkcijski test (zagon kode v Dockerju) | A10, A2, A4, A5 |
-| D46 | **ODPRTO** - časovna okna statistike | `/admin` računa "Active users" in "Solves" za Today / 7 / 30 dni / ves čas s trendom glede na prejšnje enako obdobje. Predlog: aktivnost iz `user_daily_activity`, rešitve iz `user_problem_attempts.solved_at`, "Today" po UTC. Grafi so fiksna okna (30 / 14 dni), ne sledijo izbiri | A9 |
+| D45 | ~~Add Problem v 3 korakih~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M6): korak Review dobi **polje Title** (AI ga predizpolni, slug iz naslova). Časovna omejitev ostane samodejna = spodnja meja `TIME_LIMIT_RANGE` za težavnost (brez polja). Brez sličice in brez koraka Validate - dry-run teče v backendu ob objavi (A4/A5, pravilo D20). Privzeto (brez vprašanja): preverjanje dvojnikov = zgoščena vrednost razpakiranih datotek (SHA-256), produkcijski test = zagon kode v Dockerju (R3) | A10, A2, A4, A5 |
+| D46 | ~~Časovna okna statistike~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M6): po predlogu - "Active users" = odprl problem tisti dan (`user_daily_activity`, isto kot niz), "Solves" iz `user_problem_attempts.solved_at`, "Today" po UTC, trend glede na prejšnje enako dolgo obdobje; grafi so fiksna okna (30 / 14 dni) | A9 |
 | D47 | ~~Gostje na `/contests`, `/contests/[id]` in `/profile/[username]`~~ → **rešeno 7. 10. 2026** (uporabnik, F3): **zahtevana prijava** - vse tri poti so v `src/proxy.ts`, gost gre na `/login?next=…`. Profili zato niso deljivi zunaj aplikacije | F3, T1, U1 |
 | D42 | ~~Jeziki na onboardingu~~ → **rešeno 7. 10. 2026** (uporabnik, F4): shranijo se že v F4 - `user_profiles.languages TEXT[] NOT NULL DEFAULT '{}'`, samo vrednosti iz fiksnega seznama `LANGUAGES` (podvojeni odstranjeni). `/settings` jih uporabi v U1 (D34) | F4, U1 |
 | D49 | ~~Tabele, ki jih M1 potrebuje iz kasnejših rezin~~ → **rešeno 8. 10. 2026** (uporabnik): **tabele zgodaj, logika kasneje**. M1 ustvari `user_problem_attempts`, `problem_codebase`, `problem_checks` (R1), `problem_ratings` (O1), `problem_comments` (O2) - samo `CREATE TABLE` po `01` + spremembe iz tabele spodaj; endpointi in pravila ostanejo v svojih rezinah. Seed jih napolni, da se stanja rešen / v delu preverijo na pravih podatkih | P1, P2, R1, O1, O2 |
-| D48 | **ODPRTO** - admin ni uporabnik (uporabnik 7. 10. 2026) | Admin **ne bo navaden račun** z `users.is_admin`; poverilnice se nastavijo drugače - uporabnik bo dal e-pošto, geslo in morda še kaj za večjo varnost. Predlog: poverilnice v `backend/.env` (ne v klepetu, ne v repozitoriju): `ADMIN_EMAIL` + `ADMIN_PASSWORD_HASH` (scrypt, ustvari ga ukaz `npm run hash-password`), drugi faktor TOTP (`ADMIN_TOTP_SECRET`, stdlib HMAC), ločen piškotek admin seje s krajšim trajanjem; `requireAdmin` preveri admin sejo namesto `users.is_admin`, proxy enako. Nadomesti Z1 (`create-admin`). Do odločitve F3 `requireAdmin` / proxy uporabljata `users.is_admin` | F3, Z1, A1-A10 |
-| D50 | **ODPRTO** - Add Problem po razdelitvi opisa (8. 10. 2026) | Problem nima več `description`, ampak `codebase_context` + `incident_report` (`02`, migracija 0006). Zaslon Add Problem ima še eno polje "Full description", sistemski poziv A10 pa vrača `full_description`. Predlog: dve polji na koraku Review; poziv vrne `codebase_context` in `incident_report` (pravila iz `02`: brez vzroka, brez pričakovanega vedenja). Ker je poziv "dobesedno iz specifikacije", ga spremeni uporabnik |
+| D48 | ~~Admin ni uporabnik~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M6): **ločena prijava `/admin/login`, samo e-pošta + geslo** (brez drugega faktorja). Poverilnice samo v `backend/.env`: `ADMIN_EMAIL` + `ADMIN_PASSWORD_HASH` (scrypt, ukaz `npm run hash-password`). Ločen httpOnly piškotek admin seje (8 h), neodvisen od uporabniške seje; `requireAdmin` in proxy preverita admin sejo, `users.is_admin` odpade. Admin ne rešuje in ne komentira. `/admin` dobi **svojo postavitev** (stranska vrstica samo z admin povezavami + "Log out", brez avatarja in nivoja). Nadomesti Z1 (`create-admin`). Omejitev poskusov prijave pride z Z2 | F3, Z1, A1-A10 |
+| D50 | ~~Add Problem po razdelitvi opisa~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M6): Review ima **dve polji** "Codebase context" in "Incident report" (namesto "Full description"), oba predizpolni AI. Sistemski poziv A10 spremenim jaz: vrne `codebase_context` + `incident_report` po pravilih iz `02` (nikoli vzrok, pričakovano vedenje ali datoteka) | A10, A2 |
 | D51 | **ODPRTO** - podrobnosti ocene učinkovitosti (`03`, 8. 10. 2026) | Odprto: (a) kaj je "iteracija" (par poziv-odgovor ali zagon testov med pozivi?); (b) delež urejanj zahteva razlikovanje AI vs. ročnih sprememb - mogoče samo za vgrajeni klepet (gumb "Apply"), zunanja orodja štejejo kot ročna (`02`); (c) kako uteži preslikati v 0,5-2,0 (linearno glede na benchmark težavnosti?); (d) omejitev pozivov/žetonov na poskus in kdo plača Claude API; (e) ali se izbrano orodje (GPT-4, Gemini) le zabeleži, ker vgrajeni klepet kliče samo Claude |
 | D52 | **ODPRTO** - lestvica `/leaderboard` (`00`, 8. 10. 2026) | "Global ranking by efficiency score": povprečje `efficiency_score` vseh rešitev ali skupne točke (te že vsebujejo učinkovitost)? Najmanjše število rešitev za uvrstitev, časovno okno (vse / mesec), javna za goste? Zaslona še ni |
 | D53 | ~~Izvedljivi problemi za M2~~ → **rešeno 8. 10. 2026** (uporabnik): najprej **en** pravi problem - `payment-retries-disappear` dobi skrite teste (`hidden_files`), rešitev (`solution_files`) in preverjanja, ki tečejo brez npm paketov. Ostalih 11 seed problemov ostane samo za prikaz: Test vrne jasno "checks not available yet", dokler jih ne doda admin (A2-A5) | R3, R4 |
@@ -134,9 +135,10 @@ Posledica odločitev - narejene v migraciji rezine, ki tabelo ustvari:
 | --- | --- | --- | --- |
 | `contest_entries` | − `attempt_id`, − `rank` (D61) | D18 | T2 ✅ |
 | `contests` / `contest_entries` | + oznaka "nagrada poslana" (`04`) - točna oblika ob rezini | - | A7 |
-| `problems` | + `bug_summary TEXT` (interna opomba AI analize, samo admin, nikoli k uporabniku) - zahteva zaslona Create Problem | - | A2 |
+| `problems` | + `bug_summary TEXT NOT NULL DEFAULT ''` (interna opomba AI analize, samo admin, nikoli k uporabniku; migracija 0014) | - | A2 ✅ |
 | `contests` | `starts_at`/`ends_at` dovolita NULL (osnutek); stanje se ne shrani | D43 | T1 ✅ |
 | `contests` | + `archived_at TIMESTAMP` (NULL = ni arhivirano; arhiviranje končanih tekmovanj, `04`) | - | T1 ✅ (uporablja A6) |
+| `users` | − `is_admin` (migracija 0013) - admin je v `.env` | D48 | A1 ✅ |
 | `users` | `username` brez `UNIQUE` v stolpcu; namesto tega `UNIQUE INDEX ON lower(username)` (unikaten ne glede na velikost črk, gre v URL) | F2 | F2 |
 | `user_profiles` | + `languages TEXT[] NOT NULL DEFAULT '{}'` (narejeno v F4); `goal_role` NULL = raziskujem | D42, D41 | F4 |
 | `user_profiles` | + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, (`languages` že v F4), `is_public BOOLEAN NOT NULL DEFAULT TRUE` | D34 | U1 |
@@ -179,9 +181,9 @@ seznam sprememb za tabele, ki še niso zgrajene. Narejeno v `01`: `users`
 | M3 Skupnost | O1 → O2 | Ocene in komentarji, zaklenjeni do rešitve |
 | M4 Profil in dashboard | U1 → U2 → U3 | Profil s statistiko in grafom, personaliziran dashboard |
 | M5 Tekmovanja | T1 → T2 | Seznam tekmovanj, rezultati |
-| M6 Admin | A1 → A2 → A10 → A3 → A4 → A5 → A6-A9 | Upravljanje problemov, tekmovanj, uporabnikov, statistika |
+| M6 Admin | A1 → A2 → A10 → A3 → A4 → A5 → A6-A9 → A9.1 | Upravljanje problemov, tekmovanj, uporabnikov, statistika |
 | M8 AI seja | S1 → S2 → S3 → S4, S5 | Vgrajeni AI klepet, zajem seje, ocena učinkovitosti v točkah, lestvica, AI analitika |
-| M7 Produkcija | Z1 → Z2 | Prvi admin, varna namestitev |
+| M7 Produkcija | Z1 → Z2 | Seed zaklenjen v produkciji, varna namestitev |
 
 M3-M6 so med seboj neodvisni (razen naštetih odvisnosti). Admin za probleme
 (A2-A5) je praktično potreben pred resničnimi problemi - do takrat se problemi
@@ -369,38 +371,54 @@ polnijo s seed skripto.
 
 ### M6 - Admin (`04_admin.md`)
 
-**A1 · Admin ogrodje** `S` · odvisno od: F3 · ⬜
-- Vse `/api/v1/admin/*` za `requireAdmin`. Frontend `/admin` postavitev.
+**A1 · Admin prijava in ogrodje** `S` · odvisno od: F3 · ✅ 9. 10. 2026
+- D48: `backend/.env` `ADMIN_EMAIL` + `ADMIN_PASSWORD_HASH`; `npm run hash-password` (scrypt kot F2, vpraša za geslo, izpiše hash). API: `POST /admin/login`, `POST /admin/logout`, `GET /admin/me`. Ločen httpOnly piškotek admin seje (JWT z vlogo admin, 8 h).
+- `requireAdmin` preveri admin piškotek (ne `users.is_admin`); vse `/api/v1/admin/*` za njim. Migracija odstrani `users.is_admin` (+ `isAdmin` iz `/me`).
+- Frontend: nova stran `/admin/login`; admin strani se iz `(app)` preselijo v svojo postavitev (URL-ji ostanejo enaki) - stranska vrstica Overview / Problems / Contests / Users + "Log out". Proxy: `/admin/*` brez admin seje → `/admin/login?next=…`.
+- Končano, ko: napačna e-pošta ali geslo → 401 z enakim sporočilom; uporabniški piškotek na `/admin/*` → 401; admin piškotek ne odpre uporabniških API-jev; brez `ADMIN_*` v `.env` je admin prijava izklopljena (503).
+- Narejeno: modul `modules/admin/admin.routes.js` (nove admin rezine dodajo poti na ta router za `requireAdmin`); piškotek `bugdr_admin`, ključ JWT = `JWT_SECRET` + hash gesla (nov hash v `.env` odjavi vse admin seje); po 10 neuspelih prijavah v 15 min → 429 (en globalen števec - na IP pride z Z2); neveljaven `ADMIN_PASSWORD_HASH` ustavi zagon. Migracija 0013. Frontend: `app/admin/(panel)/` + `AdminShell` (admin del odstranjen iz `AppShell`), `app/admin/login`.
 
-**A2 · Problemi: seznam in osnovni podatki** `M` · odvisno od: A1, P1 · ⬜
+**A2 · Problemi: seznam in osnovni podatki** `M` · odvisno od: A1, P1 · ✅ 9. 10. 2026
 - API: `GET /admin/problems?…` (tudi osnutki), `POST /admin/problems`, `PATCH /admin/problems/:id` (naslov, `codebase_context`, `incident_report`, težavnost, kategorija, tagi, časovna omejitev, vir).
 - Telo shranjevanja z zaslona Create Problem je `AdminProblemDraft` (`frontend/src/lib/types/problem.ts`): `title`, `slug`, `shortDescription` (→ `summary`), `fullDescription` (→ ~~`description`~~ - po migraciji 0006 dve polji, D50), `difficulty`, `categorySlug`, `timeLimitMinutes`, `tags`, `checks`, `hiddenFiles`, `bugSummary`, `isPublished`. Po D22 postane `PATCH` osnutka, ki ga je ustvarila A10.
 - Frontend: `mockSaveProblem` v `src/lib/mock/adminProblems.ts` → API.
 - Končano, ko: slug unikaten (409); `base_points` sledi težavnosti.
+- **Narejeno (uporabnik 9. 10. 2026: koda pride šele z A10; Publish onemogočen do A5; preprosta stran `/admin/problems`):** `GET /admin/problems` (vsi, tudi osnutki; rešitve štete iz `user_problem_attempts`, ker `problems.solve_count` nihče ne posodablja), `GET /admin/problems/:id`, `POST /admin/problems`, `PUT /admin/problems/:id` (namesto `PATCH`: obrazec vedno pošlje vsa polja). Slug iz naslova na strežniku; vedno `is_published = FALSE`; objavljen problem → 409 `PROBLEM_PUBLISHED`; tagi, preverjanja (vrstni red = položaj) in skrite datoteke se zamenjajo v isti transakciji; osnutek dobi `problem_codebase` s praznimi `files` in `language = 'typescript'` (A10 ga napolni). Migracija 0014 `problems.bug_summary`. `AdminProblemDraft` = `title`, `shortDescription`, `codebaseContext`, `incidentReport`, `difficulty`, `categorySlug`, `timeLimitMinutes` (D45: spodnja meja za težavnost), `tags`, `checks`, `hiddenFiles`, `bugSummary`.
+- Frontend: Review ima Title (D45) ter Codebase context + Incident report (D50); "Save as Draft" → API, "Publish Problem" onemogočen z opombo; nova stran `/admin/problems` (iskanje, zavihki All / Published / Drafts, tabela) in `/admin/problems/[id]/edit` (isti obrazec Review, samo osnutki). Stranska vrstica: Problems namesto Add problem.
 
-**A10 · Nalaganje ZIP + AI analiza** `M` · odvisno od: A2, D20-D22 · ⬜
+**A10 · Nalaganje ZIP + AI analiza** `M` · odvisno od: A2, D20-D22 · ✅ 9. 10. 2026
 - API: `POST /admin/problems/analyze` (ZIP, `requireAdmin`) → razpakira na strežniku (brez poti izven korena, omejitve iz D21), prebere kodne datoteke, pošlje jih Claude API s sistemskim pozivom iz uporabnikove specifikacije zaslona (spodaj), preveri JSON in vrne `ProblemAnalysis` (camelCase; Claude vrača snake_case - preslikava na API meji).
-- Sistemski poziv (dobesedno iz specifikacije, 6. 10. 2026): vrne `bug_summary`, `short_description`, `full_description` (D50: → `codebase_context` + `incident_report`), `suggested_difficulty`, `difficulty_reasoning`, `checks[]` (`check_order`, `description`, `check_type`, `check_command`, `must_pass`), `hidden_files`, `tags`; pravila: 3-5 preverjanj, preverjanja morajo pasti na pokvarjeni kodi, skrite datoteke = testi, opis ne sme namigovati na napako, samo JSON.
-- Naslov in časovno omejitev vpiše admin (AI ju ne predlaga).
+- Sistemski poziv (dobesedno iz specifikacije, 6. 10. 2026): vrne `bug_summary`, `short_description`, `full_description` (D50 rešena: poziv vrne `codebase_context` + `incident_report`, spremenim ga jaz), `suggested_difficulty`, `difficulty_reasoning`, `checks[]` (`check_order`, `description`, `check_type`, `check_command`, `must_pass`), `hidden_files`, `tags`; pravila: 3-5 preverjanj, preverjanja morajo pasti na pokvarjeni kodi, skrite datoteke = testi, opis ne sme namigovati na napako, samo JSON.
+- Naslov AI predlaga, admin ga uredi na Review (D45); časovna omejitev = spodnja meja `TIME_LIMIT_RANGE` za težavnost. Analiza takoj ustvari osnutek (D22), preverjanje dvojnikov (SHA-256 razpakiranih datotek → 409) in produkcijski test (zagon v Dockerju) tečeta pred analizo.
 - Frontend: `mockAnalyzeProblem` → API.
 - Končano, ko: ne-ZIP / prevelik ZIP → 400; ZIP s potjo `../` zavrnjen; neveljaven JSON od Claude → 502 `ANALYSIS_INVALID`; ne-admin → 403; ključ API ni nikoli v odgovoru ali frontendu.
+- **Narejeno (uporabnik 9. 10. 2026: produkcijski test = koda se naloži brez npm paketov; model Claude Sonnet 5.5):** `POST /admin/problems/analyze?name=<ime.zip>` s surovim ZIP-om (`application/zip`, do 10 MB; večji → 413, ne-ZIP / nevarna pot → 400 `INVALID_ZIP` pred začetkom toka). Lasten bralnik ZIP (`modules/admin/zip.js`, `node:zlib`, brez odvisnosti; brez ZIP64 in šifriranja): izpusti `node_modules`, `.git`, `__MACOSX`, lock datoteke in binarne datoteke, odstrani eno skupno korensko mapo, meje runnerja (`validateFiles`). Odgovor je NDJSON tok po stopnjah `duplicate` → `production` → `analysis` (`running`/`passed`/`failed` + sporočilo), nato `{ type: "done", problemId, analysis }`. Dvojnik = SHA-256 poti + vsebine (`problem_codebase.content_hash UNIQUE`, migracija 0015). Produkcijski test: `package.json` brez `dependencies`/`devDependencies` (D53) + vsaka .js/.ts datoteka se razčleni z `module.stripTypeScriptTypes` v Docker kontejnerju (`checkCodeLoads` v runnerju; nič se ne izvede). Analiza: `@anthropic-ai/sdk` (nova odvisnost), `claude-sonnet-5-5` (`ANTHROPIC_MODEL`), effort high, structured outputs (JSON shema; `hidden_files` kot seznam `{path, content}`), `fallbacks: "default"`; odgovor gre skozi isto preverjanje kot `PUT` (`parseDraft`) - neuporaben → stopnja `analysis` pade, osnutek se ne ustvari. Osnutek (D22): brez vloge, `time_limit` po D45, koda + skrite datoteke + preverjanja; zaseden slug dobi naključno pripono. Sistemski poziv napisan po pravilih iz `02` (izvirnik "dobesedno iz specifikacije" ni shranjen nikjer).
+- Frontend: `UploadStep` bere tok (`apiStream`), Review shrani s `PUT /admin/problems/:id` v osnutek iz analize. `POST /admin/problems` (A2) nima več klicatelja v UI.
 
-**A3 · Urejevalnik kode problema** `M` · odvisno od: A2 · ⬜
-- API: `PUT /admin/problems/:id/codebase` (datoteke, skrite datoteke, rešitev, jezik, ogrodje, ukazi).
+**A3 · Zamenjava kode problema** `S` · odvisno od: A2, A10 · ✅ 9. 10. 2026
+- ~~Urejevalnik kode (drevo datotek, Monaco, dodajanje/brisanje, jezik, ogrodje, ukazi, rešitev)~~ → **uporabnik 9. 10. 2026: kode se ne ureja, samo cel ZIP se naloži znova.** Zamenja samo kodo; naslov, opisi, preverjanja in skrite datoteke ostanejo (brez ponovne AI analize). Dvojnik se primerja z originalnim ZIP-om (hash zadnjega nalaganja).
+- API: `PUT /admin/problems/:id/codebase?name=<ime.zip>` (surov ZIP, samo osnutki: objavljen → 409) - isti NDJSON tok kot A10, stopnji Duplicate Check (brez lastnega problema) → Production Test, nato zamenjava `files`, `repository_structure`, `language`, `repository_name`, `content_hash`; konec `{ type: "done", paths, repositoryName }`. Skupni pomočniki z A10 (`uploadedZip`, `stageStream`, `checkDuplicate`, `checkProduction`). `GET /admin/problems/:id` vrne še `repositoryName` in `paths`.
+- Frontend: `UploadStep` je splošen (url, metoda, stopnje, napis gumba); `/admin/problems/[id]/edit` ima razdelek Code (ime repozitorija, število in seznam datotek, "Replace code").
 
-**A4 · Urejevalnik preverjanj + poskusni zagon** `M` · odvisno od: A3, R3 · ⬜
-- API: `PUT /admin/problems/:id/checks` (cel seznam naenkrat, vrstni red = položaj), `POST /admin/problems/:id/dry-run` → preverjanja na izvirni kodi (morajo pasti) in na rešitvi (morajo uspeti) - pravilo dokončno po D20. Rezultati po preverjanju sproti (zaslon kaže `Running` → rezultat za vsako posebej, kot R6).
-- Frontend: `mockRunCheck` → API (korak "Validate" na `/admin/problems/new`). Vsaka sprememba preverjanj razveljavi zadnji zagon - strežnik mora to zrcaliti (objava samo z dry-runom zadnje različice preverjanj).
+**A4 · Preverjanja + poskusni zagon** `M` · odvisno od: A3, R3 · ✅ 9. 10. 2026
+- ~~`PUT /admin/problems/:id/checks`~~ - preverjanja se shranijo s `PUT /admin/problems/:id` (A2, cel seznam, vrstni red = položaj).
+- API: `POST /admin/problems/:id/dry-run` → preverjanja v Dockerju na izvirni kodi (datoteke + skrite datoteke, brez uporabnikovih) z `runChecks` (R3); **vsa morajo pasti** (D20). NDJSON: `{ type: "checks", checks: [{ id, description }] }`, nato `running` / `result` (izhod samo pri padlem, R3) za vsako, `{ type: "done", ok }`; brez kode / brez preverjanj → 409. Uspešen zagon se zapiše kot `problems.dry_run_passed_for = updated_at` (migracija 0016) - velja samo, dokler se različica ne spremeni: vsak `PUT` osnutka in zamenjava kode (A3) premakneta `updated_at`, sprememba med zagonom se ne zapiše. `GET /admin/problems/:id` vrne `checksVerified`.
+- Frontend (uporabnik 9. 10. 2026: gumb + samodejno ob Publish v A5): `DryRunPanel` na koraku Publish in na strani urejanja - pred zagonom shrani obrazec (strežnik zažene shranjeno), rezultat po preverjanju ("Fails · catches the bug" / "Passes · misses the bug", izhod v `<details>`). Nespremenjen obrazec se ne shrani znova, zato uspešen zagon po "Save as Draft" ostane veljaven.
+- Znana omejitev D20: preverjanje, ki pade zaradi napake v testu (npr. manjkajoča skrita datoteka), šteje kot "catches the bug" - izhod je viden, presodi admin.
 
-**A5 · Objava** `S` · odvisno od: A4 · ⬜
-- API: `POST /admin/problems/:id/publish` / `unpublish`. Objava zavrnjena brez ≥ 3 preverjanj in uspešnega dry-runa (`04` "Quality Guidelines"). Brisanje rešenega problema ni mogoče - samo unpublish (`04` "Admin Rules").
+**A5 · Objava** `S` · odvisno od: A4 · ✅ 9. 10. 2026
+- API: `POST /admin/problems/:id/publish` / `unpublish`. Objava zavrnjena brez ≥ 3 preverjanj in uspešnega dry-runa (vsa padejo na izvirni kodi, D20) (`04` "Quality Guidelines"). Brisanje rešenega problema ni mogoče - samo unpublish (`04` "Admin Rules").
+- Narejeno: `POST /admin/problems/:id/publish` **vedno znova zažene preverjanja** (uporabnik, A4) - isti NDJSON tok kot dry-run, objavi samo, če vsa padejo in se osnutek med zagonom ni spremenil; konec `{ type: "done", ok, published, slug? }`. Pred tokom 409: že objavljen, brez vloge (`NO_ROLE`), < 3 preverjanja (`TOO_FEW_CHECKS`), brez kode, brez skritih testnih datotek (`NO_HIDDEN_FILES`, D53). `POST /admin/problems/:id/unpublish` → spet osnutek (urejljiv, nova objava = nov zagon); 409, če je problem v tekmovanju, ki še ni končano (`IN_CONTEST`). Brisanja ni. Urejanje preverjanj prej objavljenega problema izbriše shranjene `check_results` uporabnikov za ta preverjanja (`ON DELETE CASCADE`).
+- Frontend: gumb "Publish Problem" je v kartici Check run (korak Publish in urejanje), uspeh → "Problem published" + "View problem"; objavljen problem na strani urejanja: zaklenjen, "View problem" + "Unpublish" (`ConfirmDialog`). Seznam: "Manage" za objavljene.
 
-**A6 · Tekmovanja** `M` · odvisno od: A1, T1 · ⬜
+**A6 · Tekmovanja** `M` · odvisno od: A1, T1 · ✅ 9. 10. 2026
 - API: `GET /admin/contests`, `GET /admin/contests/:id`, `POST /admin/contests`, `PATCH /admin/contests/:id`, `DELETE /admin/contests/:id` (samo osnutki), arhiviranje (samo končana).
 - Odgovor je `AdminContest` (`frontend/src/lib/types/contest.ts`): `type`, `title`, `description`, `startsAt`/`endsAt` (NULL = osnutek), `problems[]` (`ContestProblemOption`: slug, naslov, težavnost, kategorija), `rewardType`, `rewardDescription`. **Brez polja stanja** - odjemalec in strežnik ga izpeljeta z `getContestStatus` (D43).
 - Telo shranjevanja je `AdminContestDraft`: kot zgoraj + `problemSlugs[]` (≥ 1, D33). "Save as Draft" pošlje `startsAt: null`; "Schedule Contest" samodejne (`getContestDates`) ali ročne datume. Strežnik preveri pravila iz D44.
 - Načrtovanje osnutka s seznama = `PATCH` z datumi iz `getContestDates(type)`; preklic = `PATCH` z `startsAt`/`endsAt` = NULL. Urejanje samo za osnutke in načrtovana tekmovanja.
 - Frontend: `mockGetAdminContests`, `mockGetAdminContest`, `mockSaveContest`, `mockSetContestDates`, `mockRemoveContest`, `mockGetContestProblemOptions` v `src/lib/mock/adminContests.ts` → API.
+- Narejeno (`modules/admin/contests.routes.js`): `GET /admin/contests` (brez arhiviranih), `GET /admin/contests/problem-options` (objavljeni problemi), `GET /admin/contests/:id`, `POST /admin/contests`, `PUT /admin/contests/:id` (cel osnutek namesto `PATCH`; samo osnutki in načrtovana, sicer 409 `CONTEST_STARTED`), `PUT /admin/contests/:id/dates` (načrtuj osnutek / prekliči načrtovano), `DELETE /admin/contests/:id` (samo osnutki), `POST /admin/contests/:id/archive` (samo končana). Osnutek zahteva samo naslov in vrsto; načrtovanje D44 (opis, ≥ 1 objavljen problem, oba datuma, konec po začetku, začetek v prihodnosti; nagrada z opisom). Datumi v UTC (`::timestamptz AT TIME ZONE 'UTC'`), vrstni red problemov = vrstni red izbire (javna stran pokaže prvega, D59).
+- Frontend: seznam, urejanje in čarovnik na API; napake strežnika se pokažejo nad seznamom / v čarovniku. "View results" odstranjen iz menija (javna stran tekmovanja zahteva uporabniški račun, D48; rezultati pridejo z A7), aktivna tekmovanja nimajo menija. `src/lib/mock/adminContests.ts` ni več v uporabi.
 
 **A7 · Rezultati tekmovanj + CSV** `S` · odvisno od: A6, T2 · ⬜
 - API: `GET /admin/contests/:id/results` (+ `?format=csv`), oznaka "nagrada poslana" (stolpec ni v shemi - dodaj ob rezini).
@@ -411,6 +429,11 @@ polnijo s seed skripto.
 **A9 · Statistika platforme** `S` · odvisno od: A1, R4 · ⬜
 - API: `GET /admin/stats?range=today|7d|30d|all` (`04` §4) → `AdminOverview` (`frontend/src/lib/types/adminStats.ts`): skupni uporabniki, aktivni uporabniki + trend, objavljeni problemi, rešitve + trend, aktivna tekmovanja, rast uporabnikov (30 dni, prijave in DAU), rešitve na dan (14 dni), rešitve po težavnosti in vlogi, porazdelitev trenutnih nizov, top 8 problemov, 8 problemov z največjim osipom (začeti / rešeni). Okna po D46.
 - Frontend: `mockGetAdminOverview` v `src/lib/mock/adminStats.ts` → API.
+
+**A9.1 · AI analiza z OpenAI ključem** `S` · odvisno od: A10 · ⬜ (dodano 9. 10. 2026, uporabnik: "we'll be making this work with openai api key")
+- Analiza ob nalaganju (A10, `modules/admin/analysis.service.js`) naj deluje tudi z `OPENAI_API_KEY`. Zdaj je vezana na Anthropic SDK (`@anthropic-ai/sdk`, model `claude-sonnet-5-5`, `output_config` JSON shema, effort, `fallbacks`).
+- Ostane enako: cevovod (Duplicate Check → Production Test → AI Analysis), preverjanje odgovora (`parseDraft`), ustvarjanje osnutka, sistemski poziv in JSON shema (`hidden_files` kot seznam).
+- Odpre se ob rezini (vprašaj uporabnika): (a) OpenAI **namesto** Claude ali **izbira** po ključu / `AI_PROVIDER`; (b) model in cena; (c) odvisnost `openai` + njegov način vsiljene JSON oblike; (d) ali to velja tudi za AI klepet na zaslonu reševanja (M8, stack v CLAUDE.md zdaj pravi "Claude API").
 
 ### M8 - AI seja (`02` "AI Session Capture", `03`, `04` "AI Session Analytics")
 
@@ -442,8 +465,8 @@ polnijo s seed skripto.
 
 ### M7 - Produkcija
 
-**Z1 · Prvi admin** `S` · odvisno od: F2 · ⬜
-- `npm run create-admin -- <email>`: naključno geslo, izpisano enkrat. `npm run seed` se v produkciji zavrne.
+**Z1 · Seed v produkciji** `S` · odvisno od: F2 · ⬜
+- ~~`npm run create-admin`~~ → admin je v `.env` (D48, A1). Ostane: `npm run seed` se v produkciji zavrne.
 
 **Z2 · Varnost namestitve** `S` · odvisno od: vse · ⬜
 - Omejitev poskusov prijave, varnostne glave, `Secure` piškotek, omejitev hkratnih Docker kontejnerjev na uporabnika in globalno.
@@ -469,9 +492,10 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | `/forgot-password` | `src/lib/mock/auth.ts`: `mockRequestPasswordReset` (uspe za vsak e-mail - stran ne razkrije, ali račun obstaja); pošiljanje pošte je odloženo (X5) | X5 (rezina še ne obstaja) | ⏸ |
 | `/onboarding` | ~~`mockSaveOnboarding`~~ → `PUT /me/onboarding` (F4); "exploring" → `null` (D41), jeziki se shranijo (D42); "Sign out" → `POST /auth/logout` (F2) | F4 | ✅ 7. 10. 2026 |
 | `/admin` (Overview) | `src/lib/mock/adminStats.ts`: `mockGetAdminOverview(range)` (realne številke, rast deterministična, datumi relativni na danes; aktivna tekmovanja = `MOCK_ACTIVE_CONTEST_COUNT`) | A9 | ⬜ |
-| `/admin/problems/new` (Add Problem) | `src/lib/mock/adminProblems.ts`: `mockCheckDuplicate` (1,5 s; pade za ime ZIP-a, ki je bilo že shranjeno v tej seji), `mockProductionTest` (2 s; pade za prazen ZIP), `mockAnalyzeProblem` (3 s), `mockSaveProblem`; `mockRunCheck` ni več v uporabi (korak Validate odstranjen, D45) | A10, A2/A5 | ⬜ |
-| `/admin/contests` | `src/lib/mock/adminContests.ts`: `mockGetAdminContests` (10 tekmovanj, datumi relativni na zdaj; aktivna/končana imajo id-je iz `mock/contests.ts`), `mockSetContestDates` (Schedule / Cancel), `mockRemoveContest` (Delete in Archive - arhiviranje vrstico samo odstrani); shramba v pomnilniku modula (velja do ponovnega nalaganja); zavihki Active/Scheduled/Drafts/Ended in iskanje na odjemalcu; "View results" odpre javno `/contests/[id]` (strani rezultatov še ni - A7) | A6, A7 | ⬜ |
-| `/admin/contests/new`, `/admin/contests/[id]/edit` | `src/lib/mock/adminContests.ts`: `mockGetContestProblemOptions` (vsi mock problemi štejejo kot objavljeni), `mockGetAdminContest`, `mockSaveContest` (doda/zamenja v shrambi modula); čarovnik `ContestWizard`, datumi iz `src/lib/getContestDates.ts` | A6 | ⬜ |
+| `/admin/problems/new` (Add Problem) | vse na API (A2, A10, A4, A5 ✅); ostane samo neuporabljen `mockRunCheck` v `src/lib/mock/adminProblems.ts` (za neuporabljen `ValidateStep`) | - | ✅ |
+| `/admin/problems`, `/admin/problems/[id]/edit` | na API od začetka (A2) | A2 | ✅ |
+| `/admin/contests` | na API (A6): seznam, Schedule / Cancel / Delete / Archive; zavihki in iskanje na odjemalcu; rezultati končanih pridejo z A7 | A6 ✅, A7 | 🟨 |
+| `/admin/contests/new`, `/admin/contests/[id]/edit` | na API (A6): čarovnik `ContestWizard`, izbira objavljenih problemov, datumi iz `src/lib/getContestDates.ts`; `src/lib/mock/adminContests.ts` ni več v uporabi | A6 | ✅ |
 
 ---
 
@@ -522,6 +546,7 @@ Odprto:
 | `/contests`, `/contests/[id]` | T1, T2 |
 | `/admin` | A9 |
 | `/admin/problems/new` | A10, A2, A4, A5 |
+| `/admin/problems`, `/admin/problems/[id]/edit` | A2, A3 (A5 za objavo / umik) |
 | `/admin/contests`, `/admin/contests/new`, `/admin/contests/[id]/edit` | A6 (A7 za rezultate) |
 | `/admin/analytics` (ni zgrajen) | S5 |
 | `/admin/*` | A1-A9 |

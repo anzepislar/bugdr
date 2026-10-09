@@ -74,17 +74,20 @@ bugdr/
 
 ```
 Phase: Backend slices (06_backend_slices.md) - frontend screens swap their mocks slice by slice
-Frontend: 17 screens built from Figma; login, signup, logout, onboarding, /problems, /problems/[slug] (incl. rating
-  and discussion), the solve page, /profile/[username], /settings (profile tab), /dashboard, the sidebar, /contests and
-  /contests/[id] use the real API; still on mock data: the solve page's AI chat and the admin screens
+Frontend: 20 screens; login, signup, logout, onboarding, /problems, /problems/[slug] (incl. rating and discussion),
+  the solve page, /profile/[username], /settings (profile tab), /dashboard, the sidebar, /contests, /contests/[id],
+  /admin/login, /admin/problems (+ new, edit) and /admin/contests (+ new, edit) use the real API; still on mock
+  data: the solve page's AI chat and the admin overview (/admin, stats = A9)
 Backend: Milestones M0 (F0-F4: skeleton, levels, auth, route protection, onboarding), M1 (P1-P2: problem list,
   bookmarks, problem detail, streak on view) and M2 (R1-R6: start, give up, try history, Docker check runner,
   solve + points, terminal, live results), M3 (O1-O2: ratings, comments) and M4 (U1-U3: profile + settings,
   activity grid + streak on read, dashboard) and M5 (T1-T2: contest list + detail, entries, participation,
-  history) done; next M6 (admin); AI session = M8 (S1-S5)
-Database: PostgreSQL 17 in Docker; migrations 0001-0012 (levels, users, profiles, problems, problem detail,
+  history) done; M6 (admin) in progress: A1 admin login (not a user account, D48), A2 problem list + drafts,
+  A10 ZIP upload + Claude analysis, A3 code replacement, A4 check run, A5 publish/unpublish, A6 contests done;
+  next A7 (contest results), A8 (users), A9 (stats), A9.1 (analysis with an OpenAI key); AI session = M8 (S1-S5)
+Database: PostgreSQL 17 in Docker; migrations 0001-0016 (levels, users, profiles, problems, problem detail,
   problem brief, attempt tries, check results + points ledger, comment replies + helpful, profile fields, contests,
-  contest entries);
+  contest entries, drop users.is_admin, bug summary, codebase hash, dry-run version);
   `npm run seed` = 12 dev problems with code and checks, no made-up ratings (D57); only payment-retries-disappear
   is runnable so far; + 5 dev contests (dates relative to the seed run)
 Detailed status: CLAUDE.md "Current Status" and 06_backend_slices.md "Stanje"

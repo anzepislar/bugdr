@@ -59,7 +59,6 @@ CREATE TABLE users (
   password_hash   VARCHAR(255) NOT NULL,
   username        VARCHAR(50) NOT NULL,
   avatar_url      VARCHAR(500),
-  is_admin        BOOLEAN DEFAULT FALSE,
   is_banned       BOOLEAN DEFAULT FALSE,
   created_at      TIMESTAMP DEFAULT NOW(),
   last_active_at  TIMESTAMP DEFAULT NOW()   -- refreshed at most once a minute
@@ -67,7 +66,7 @@ CREATE TABLE users (
 CREATE UNIQUE INDEX users_username_lower_key ON users (lower(username));
 ```
 
-`is_admin` is how admin access works today; admins are planned to stop being user accounts (D48 in `06_backend_slices.md`).
+No `is_admin`: the admin is not a user account (D48). Its email and password hash live in `backend/.env`; migration 0013 dropped the column (A1).
 
 ### user_profiles
 Stores onboarding answers and the profile fields from `/settings` (D34). One row per user, created by the first
@@ -154,7 +153,9 @@ CREATE TABLE problems (
   is_published        BOOLEAN DEFAULT FALSE,
   average_rating      DECIMAL(3,2) DEFAULT 0,
   rating_count        INTEGER DEFAULT 0,
-  solve_count         INTEGER DEFAULT 0,
+  solve_count         INTEGER DEFAULT 0,  -- not maintained yet; the admin list counts solved attempts
+  bug_summary         TEXT NOT NULL DEFAULT '',  -- AI analysis note about the bug, admin only (A2, 0014)
+  dry_run_passed_for  TIMESTAMP,         -- A4: updated_at of the version whose checks all failed on the buggy code (0016)
   created_by          UUID REFERENCES users(id),
   created_at          TIMESTAMP DEFAULT NOW(),
   updated_at          TIMESTAMP DEFAULT NOW(),
@@ -207,6 +208,7 @@ CREATE TABLE problem_codebase (
   run_command           TEXT,            -- command to start the app
   hidden_files          JSONB NOT NULL DEFAULT '{}', -- test files never sent to browser, written into container AFTER user files
   solution_files        JSONB,           -- correct fix — checks must FAIL on buggy code and PASS on this before publishing
+  content_hash          CHAR(64) UNIQUE,  -- SHA-256 of an uploaded codebase (A10 duplicate check), NULL for seeds
   created_at            TIMESTAMP DEFAULT NOW()
 );
 ```

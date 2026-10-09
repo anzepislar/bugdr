@@ -1,12 +1,8 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { api, app } from "../src/app.js";
+import { app } from "../src/app.js";
 import { pool } from "../src/db.js";
 import { migrate } from "../src/migrate.js";
-import { requireAdmin } from "../src/modules/auth/auth.service.js";
-
-// No admin endpoint exists yet (M6), so add a stand-in behind requireAdmin to the real API router.
-api.get("/admin/ping", requireAdmin, (req, res) => res.json({ ok: true }));
 
 const server = app.listen(0);
 const base = `http://localhost:${server.address().port}/api/v1`;
@@ -31,20 +27,10 @@ after(async () => {
   await pool.end();
 });
 
-test("admin route: guest 401, non-admin 403, admin 200 without logging in again", async () => {
-  assert.deepEqual(await code(await req("/admin/ping")), [401, "UNAUTHENTICATED"]);
-  assert.deepEqual(await code(await req("/admin/ping", cookie)), [403, "FORBIDDEN"]);
-  await pool.query("UPDATE users SET is_admin = TRUE WHERE id = $1", [userId]);
-  assert.equal((await req("/admin/ping", cookie)).status, 200);
-  await pool.query("UPDATE users SET is_admin = FALSE WHERE id = $1", [userId]);
-  assert.equal((await req("/admin/ping", cookie)).status, 403);
-});
-
 test("a ban applies immediately on the existing session and blocks login", async () => {
   assert.equal((await req("/auth/me", cookie)).status, 200);
   await pool.query("UPDATE users SET is_banned = TRUE WHERE id = $1", [userId]);
   assert.deepEqual(await code(await req("/auth/me", cookie)), [403, "BANNED"]);
-  assert.deepEqual(await code(await req("/admin/ping", cookie)), [403, "BANNED"]);
   const login = await req("/auth/login", null, { email: "bob@example.com", password: "password1" });
   assert.deepEqual(await code(login), [403, "BANNED"]);
   assert.equal(login.headers.get("set-cookie"), null);

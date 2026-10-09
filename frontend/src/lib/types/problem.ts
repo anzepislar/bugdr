@@ -49,14 +49,45 @@ export interface Check {
 /** Result of POST /admin/problems/analyze (Claude output, camelCased by the API). */
 export interface ProblemAnalysis {
   bugSummary: string;
+  title: string;
   shortDescription: string;
-  fullDescription: string;
+  codebaseContext: string;
+  incidentReport: string;
   suggestedDifficulty: Difficulty;
   difficultyReasoning: string;
   checks: Check[];
   hiddenFiles: Record<string, string>;
   tags: string[];
 }
+
+export type UploadStage = "duplicate" | "production" | "analysis";
+/** A stage line of the upload streams (A10 analyze, A3 code replacement). */
+export interface UploadStageEvent {
+  type: "stage";
+  stage: UploadStage;
+  status: "running" | "passed" | "failed";
+  message?: string;
+}
+/** Last line of POST /admin/problems/analyze (A10). */
+export interface AnalyzeDone {
+  type: "done";
+  problemId: string;
+  analysis: ProblemAnalysis;
+}
+/** Last line of PUT /admin/problems/:id/codebase (A3). */
+export interface CodeReplaced {
+  type: "done";
+  paths: string[];
+  repositoryName: string | null;
+}
+
+/** One line of POST /admin/problems/:id/dry-run (A4). `output` only for a check that failed (R3). */
+export type DryRunEvent =
+  | { type: "checks"; checks: { id: string; description: string }[] }
+  | { type: "running"; checkId: string }
+  | { type: "result"; checkId: string; passed: boolean; output?: string }
+  | { type: "done"; ok: boolean; published?: boolean; slug?: string; message?: string } // published: A5 only
+  | { type: "error"; message: string };
 
 /** One check run against the buggy codebase. `passed` = the check passed on the buggy code. */
 export interface CheckValidationResult {
@@ -69,7 +100,8 @@ export interface CheckValidationResult {
 export interface ProblemForm {
   title: string;
   shortDescription: string;
-  fullDescription: string;
+  codebaseContext: string;
+  incidentReport: string;
   tags: string[];
   difficulty: Difficulty;
   categorySlug: CategorySlug | null;
@@ -77,12 +109,12 @@ export interface ProblemForm {
   thumbnail: File | null;
 }
 
-/** Payload of the save request (draft or publish). */
+/** Body of POST /admin/problems and PUT /admin/problems/:id (A2). The server builds the slug from the title. */
 export interface AdminProblemDraft {
   title: string;
-  slug: string;
   shortDescription: string;
-  fullDescription: string;
+  codebaseContext: string;
+  incidentReport: string;
   difficulty: Difficulty;
   categorySlug: CategorySlug;
   timeLimitMinutes: number;
@@ -90,9 +122,33 @@ export interface AdminProblemDraft {
   checks: Check[];
   hiddenFiles: Record<string, string>;
   bugSummary: string;
-  codebaseFileName: string;
-  thumbnailFileName: string | null;
+}
+
+/** GET /admin/problems/:id - a draft (or published problem) as the edit form needs it. */
+export interface AdminProblem extends Omit<AdminProblemDraft, "categorySlug"> {
+  id: string;
+  slug: string;
   isPublished: boolean;
+  categorySlug: CategorySlug | null;
+  /** A3: the code is shown as its file list only and changes by uploading a new ZIP. */
+  repositoryName: string | null;
+  paths: string[];
+  /** A4: the last check run passed (every check failed on the buggy code) and nothing changed since. */
+  checksVerified: boolean;
+}
+
+/** One row of GET /admin/problems (drafts included). */
+export interface AdminProblemListItem {
+  id: string;
+  slug: string;
+  title: string;
+  difficulty: Difficulty;
+  categorySlug: CategorySlug | null;
+  isPublished: boolean;
+  solveCount: number;
+  averageRating: number;
+  ratingCount: number;
+  createdAt: string;
 }
 
 export interface SavedProblem {
@@ -180,4 +236,29 @@ export interface ProblemComment {
   /** The viewer wrote it: can delete it (D58), can't mark it helpful (D30). */
   own: boolean;
   replies: ProblemComment[];
+}
+
+/**
+ * Save body from the Review form. The time limit follows the difficulty (D45: low end of the recommended range);
+ * check order = position in the list.
+ */
+export function toAdminProblemDraft(
+  form: ProblemForm & { categorySlug: CategorySlug },
+  checks: Check[],
+  hiddenFiles: Record<string, string>,
+  bugSummary: string,
+): AdminProblemDraft {
+  return {
+    title: form.title.trim(),
+    shortDescription: form.shortDescription.trim(),
+    codebaseContext: form.codebaseContext.trim(),
+    incidentReport: form.incidentReport.trim(),
+    difficulty: form.difficulty,
+    categorySlug: form.categorySlug,
+    timeLimitMinutes: TIME_LIMIT_RANGE[form.difficulty][0],
+    tags: form.tags,
+    checks: checks.map((c, i) => ({ ...c, checkOrder: i + 1 })),
+    hiddenFiles,
+    bugSummary,
+  };
 }
