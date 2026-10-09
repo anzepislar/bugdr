@@ -80,6 +80,19 @@ export interface AdminContest {
   problems: ContestProblemOption[];
   rewardType: RewardType | null;
   rewardDescription: string | null;
+  /** When the admin marked the winner's reward as sent (A7); null = not sent. */
+  rewardSentAt: string | null;
+}
+
+/** One engineer in GET /admin/contests/:id/results (slice A7), best first. Full ties share a rank. */
+export interface AdminContestResult {
+  rank: number;
+  username: string;
+  email: string;
+  problemsSolved: number;
+  score: number;
+  /** Sum of the solve times of the contest problems solved while the contest ran. */
+  solveTimeSeconds: number;
 }
 
 /** Body of POST /admin/contests and PATCH /admin/contests/:id (slice A6). At least one problem. */

@@ -177,7 +177,7 @@ export function DifficultyDonut({ data }: { data: Record<Difficulty, number> }) 
           <li key={r.key} className="flex items-center gap-2">
             <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: DIFFICULTY_COLOR[r.key] }} />
             <span className="truncate text-muted">{r.name}</span>
-            <span className="ml-auto tabular-nums text-text">{Math.round((r.value / total) * 100)}%</span>
+            <span className="ml-auto tabular-nums text-text">{total ? Math.round((r.value / total) * 100) : 0}%</span>
           </li>
         ))}
       </ul>

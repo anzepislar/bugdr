@@ -22,4 +22,8 @@ export const config = {
   // A10: Claude analysis of uploaded problems (server only, D21). Model chosen by the user: Sonnet 5.5.
   anthropicApiKey: env.ANTHROPIC_API_KEY ?? "",
   analysisModel: env.ANTHROPIC_MODEL ?? "claude-sonnet-5-5",
+  // A9.1: or OpenAI (model chosen by the user: gpt-4o). With both keys, AI_PROVIDER=openai|anthropic decides.
+  openaiApiKey: env.OPENAI_API_KEY ?? "",
+  openaiModel: env.OPENAI_MODEL ?? "gpt-4o",
+  aiProvider: env.AI_PROVIDER ?? "",
 };

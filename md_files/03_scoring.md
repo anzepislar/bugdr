@@ -191,8 +191,8 @@ contest_total = sum of points earned across all solved contest problems
 - User B solves all 3: 100 + 250 + 500 = 850 pts → rank 2
 - User C solves 2: 100 + 500 = 600 pts → rank 3
 
-Ranks are calculated and written to `contest_entries.rank` when the contest ends (`ends_at` passes).
-**Not built yet (D61):** no ranking or `rank` column in M5 - it comes with admin contest results (A7).
+Solve time = sum of `time_taken_seconds` of the contest problems solved while the contest ran. Engineers tied on all
+three share a rank. The rank is computed on read (`GET /admin/contests/:id/results`, A7) - there is no `rank` column.
 
 **Rewards go to rank 1 only** — monthly contests, see `04_admin.md`.
 

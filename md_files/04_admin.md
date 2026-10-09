@@ -104,10 +104,10 @@ Schema impact: `contests.starts_at` / `ends_at` must allow NULL (drafts).
    - **Schedule Contest** - saved with the automatic or custom dates
      (status Scheduled)
 
-**View contest results:**
-- Leaderboard for ended contests
-- Rank, username, score, solve time
+**View contest results** (A7, "View results" expands the row in the list - no separate page):
+- Ranking for active (so far) and ended contests: rank, username + email, solved, score, solve time
 - Export to CSV (for sending rewards)
+- Ended contest with a reward: "Mark reward as sent" (can be undone)
 
 **Archive:** ended contests can be archived to hide them from the list.
 `contests.archived_at TIMESTAMP` (null = not archived) exists since T1 (migration 0011); archiving itself comes with A6.
@@ -124,11 +124,18 @@ Schema impact: `contests.starts_at` / `ends_at` must allow NULL (drafts).
 - Profile info
 - Stats
 - All attempts (solved, abandoned, in progress), each with its tries (`attempt_tries`: start, end, outcome, duration)
-- Ban / unban toggle
+- Ban / unban toggle (with a confirmation). A ban applies on the user's next request and hides the public profile.
+
+Built in A8: list `/admin/users` (server-side search), detail page `/admin/users/[id]`, "Users" in the admin sidebar.
 
 ---
 
-### 4. Platform Stats (`/admin/stats`)
+### 4. Platform Stats (`/admin`, the Overview page)
+
+Built in A9 as `GET /admin/stats?range=today|7d|30d|all` (time windows per D46, `06_backend_slices.md`): total users,
+active users and solves for the range with a trend, published problems, active contests, user growth (30 days),
+solves per day (14 days), solves by difficulty and role, current streaks, top 8 problems and 8 with the biggest
+drop-off. The original list below is what it was based on.
 
 **Overview:**
 - Total users

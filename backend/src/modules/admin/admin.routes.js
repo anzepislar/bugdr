@@ -4,6 +4,8 @@ import { HttpError } from "../../errors.js";
 import { clearAdminSession, hashPassword, requireAdmin, setAdminSession, verifyPassword } from "../auth/auth.service.js";
 import { adminContestsRouter } from "./contests.routes.js";
 import { adminProblemsRouter } from "./problems.routes.js";
+import { adminStatsRouter } from "./stats.routes.js";
+import { adminUsersRouter } from "./users.routes.js";
 
 // Every admin endpoint goes on this router behind requireAdmin; only login and logout are open.
 export const adminRouter = Router();
@@ -51,3 +53,5 @@ adminRouter.get("/me", requireAdmin, (req, res) => {
 
 adminRouter.use("/problems", requireAdmin, adminProblemsRouter);
 adminRouter.use("/contests", requireAdmin, adminContestsRouter);
+adminRouter.use("/users", requireAdmin, adminUsersRouter);
+adminRouter.use("/stats", requireAdmin, adminStatsRouter);

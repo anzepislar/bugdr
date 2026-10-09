@@ -24,7 +24,7 @@ Frontend: 20 zaslonov (večina na API) - /login, /signup, /forgot-password, /onb
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit,
           /admin/login, /admin/problems, /admin/problems/[id]/edit
-Naslednja rezina: M6 A7 - rezultati tekmovanj + CSV (A1-A6, A10 ✅ 9. 10. 2026; A9.1 OpenAI dodana v načrt; za pravo analizo `ANTHROPIC_API_KEY` v `backend/.env`; odločitve M6 D20, D21, D22, D45, D46, D48, D50 rešene); testi 122/122; M8 (AI seja) čaka D51-D52
+Naslednja rezina: M6 ✅ (A1-A10 + A9.1 ✅ 9. 10. 2026); naprej M7 Z1/Z2 ali M8 (čaka D51-D52); za pravo analizo `ANTHROPIC_API_KEY` v `backend/.env`; odločitve M6 D20, D21, D22, D45, D46, D48, D50 rešene); testi 134/134; M8 (AI seja) čaka D51-D52
 ```
 
 Oznake: ⬜ ni začeto · 🟨 v delu · ✅ narejeno (z datumom) · ⏸ odloženo
@@ -134,7 +134,7 @@ Posledica odločitev - narejene v migraciji rezine, ki tabelo ustvari:
 | Tabela | Sprememba | Odločitev | Rezina |
 | --- | --- | --- | --- |
 | `contest_entries` | − `attempt_id`, − `rank` (D61) | D18 | T2 ✅ |
-| `contests` / `contest_entries` | + oznaka "nagrada poslana" (`04`) - točna oblika ob rezini | - | A7 |
+| `contests` | + `reward_sent_at TIMESTAMP` (NULL = ni poslana, migracija 0017); `contest_entries.rank` se ne naredi - razvrstitev ob branju | - | A7 ✅ |
 | `problems` | + `bug_summary TEXT NOT NULL DEFAULT ''` (interna opomba AI analize, samo admin, nikoli k uporabniku; migracija 0014) | - | A2 ✅ |
 | `contests` | `starts_at`/`ends_at` dovolita NULL (osnutek); stanje se ne shrani | D43 | T1 ✅ |
 | `contests` | + `archived_at TIMESTAMP` (NULL = ni arhivirano; arhiviranje končanih tekmovanj, `04`) | - | T1 ✅ (uporablja A6) |
@@ -420,20 +420,28 @@ polnijo s seed skripto.
 - Narejeno (`modules/admin/contests.routes.js`): `GET /admin/contests` (brez arhiviranih), `GET /admin/contests/problem-options` (objavljeni problemi), `GET /admin/contests/:id`, `POST /admin/contests`, `PUT /admin/contests/:id` (cel osnutek namesto `PATCH`; samo osnutki in načrtovana, sicer 409 `CONTEST_STARTED`), `PUT /admin/contests/:id/dates` (načrtuj osnutek / prekliči načrtovano), `DELETE /admin/contests/:id` (samo osnutki), `POST /admin/contests/:id/archive` (samo končana). Osnutek zahteva samo naslov in vrsto; načrtovanje D44 (opis, ≥ 1 objavljen problem, oba datuma, konec po začetku, začetek v prihodnosti; nagrada z opisom). Datumi v UTC (`::timestamptz AT TIME ZONE 'UTC'`), vrstni red problemov = vrstni red izbire (javna stran pokaže prvega, D59).
 - Frontend: seznam, urejanje in čarovnik na API; napake strežnika se pokažejo nad seznamom / v čarovniku. "View results" odstranjen iz menija (javna stran tekmovanja zahteva uporabniški račun, D48; rezultati pridejo z A7), aktivna tekmovanja nimajo menija. `src/lib/mock/adminContests.ts` ni več v uporabi.
 
-**A7 · Rezultati tekmovanj + CSV** `S` · odvisno od: A6, T2 · ⬜
+**A7 · Rezultati tekmovanj + CSV** `S` · odvisno od: A6, T2 · ✅ 9. 10. 2026
 - API: `GET /admin/contests/:id/results` (+ `?format=csv`), oznaka "nagrada poslana" (stolpec ni v shemi - dodaj ob rezini).
+- Narejeno (uporabnik 9. 10. 2026: rezultati **na seznamu**, brez nove poti): `GET /admin/contests/:id/results` → `{ results: AdminContestResult[] }` (`rank`, `username`, `email`, `problemsSolved`, `score`, `solveTimeSeconds`) za aktivna in končana (osnutek / načrtovano → 409 `NOT_STARTED`). Razvrstitev po `03`: rešeni ↓, točke ↓, skupni čas reševanja ↑ (vsota `time_taken_seconds` problemov tekmovanja, rešenih med tekmovanjem); `rank()` - popolnoma izenačeni si delijo mesto. **Izračun ob branju** namesto `contest_entries.rank` (po koncu se nič ne spremeni). `?format=csv` = priponka z glavo, vse celice v narekovajih, vodilni `= + - @` dobi `'` (formule v preglednici). `PUT /admin/contests/:id/reward-sent` `{ sent }` → samo končano tekmovanje z nagrado (sicer 409 `NO_REWARD_TO_SEND`); migracija 0017 `contests.reward_sent_at`; `AdminContest.rewardSentAt`.
+- Frontend: `/admin/contests` - "View results" v meniju aktivnih (zdaj imajo meni) in končanih razširi vrstico s tabelo (Rank, Engineer + e-pošta, Solved, Score, Solve time), "Export CSV" in pri končanem z nagrado "Mark reward as sent" / "not sent"; stolpec Reward doda "· sent". Vrstica rezultatov se razteza samo čez vidne stolpce (`useVisibleColumns`, `matchMedia`) - sicer tabela `table-fixed` pri 320 px stisne naslov. Test `backend/test/a7.test.js` (3 testi).
 
-**A8 · Uporabniki** `S` · odvisno od: A1 · ⬜
+**A8 · Uporabniki** `S` · odvisno od: A1 · ✅ 9. 10. 2026
 - API: `GET /admin/users?q=`, `GET /admin/users/:id` (profil, statistika, poskusi), `POST /admin/users/:id/ban` / `unban`. Admin se ne more banati sam.
+- Narejeno (uporabnik 9. 10. 2026: **seznam + stran podrobnosti**, novi poti `/admin/users`, `/admin/users/[id]`, "Users" v stranski vrstici): `modules/admin/users.routes.js`. `GET /admin/users?q=` → `AdminUserListItem[]` (`frontend/src/lib/types/adminUser.ts`: username, e-pošta, nivo iz točk, `joinedAt`, `lastActiveAt`, `isBanned`), najnovejši prvi, iskanje `ILIKE` po uporabniškem imenu ali e-pošti (`%`/`_` dobesedno), brez strani (`ponytail:`). `GET /admin/users/:id` → `AdminUserDetail`: profil (`user_profiles`, NULL dokler ni izpolnjen), `stats` = `getStats` (U1), vsi poskusi z vsemi poskusi-tries (`attempt_tries`, R2b), najnovejši prvi; neznan / neveljaven id → 404 `USER_NOT_FOUND`. `POST /admin/users/:id/ban` / `unban` → 204. Ban že deluje prek `requireAuth` (F3): 403 `BANNED` ob naslednji zahtevi, javni profil 404. "Admin se ne more banati sam" odpade - admin ni uporabnik (D48).
+- Frontend: `/admin/users` (iskanje na strežniku po 250 ms premora, tabela User + e-pošta / Level / Joined / Last active / Status / View), `/admin/users/[id]` (statistika, poskusi s poskusi-tries, stranski panel z Ban / Unban + `ConfirmDialog` in podatki profila); `BanBadge` v `components/admin/`. Test `backend/test/a8.test.js` (3 testi).
 
-**A9 · Statistika platforme** `S` · odvisno od: A1, R4 · ⬜
+**A9 · Statistika platforme** `S` · odvisno od: A1, R4 · ✅ 9. 10. 2026
 - API: `GET /admin/stats?range=today|7d|30d|all` (`04` §4) → `AdminOverview` (`frontend/src/lib/types/adminStats.ts`): skupni uporabniki, aktivni uporabniki + trend, objavljeni problemi, rešitve + trend, aktivna tekmovanja, rast uporabnikov (30 dni, prijave in DAU), rešitve na dan (14 dni), rešitve po težavnosti in vlogi, porazdelitev trenutnih nizov, top 8 problemov, 8 problemov z največjim osipom (začeti / rešeni). Okna po D46.
 - Frontend: `mockGetAdminOverview` v `src/lib/mock/adminStats.ts` → API.
+- Narejeno: `modules/admin/stats.routes.js`, `GET /admin/stats?range=` (privzeto `7d`, neznan → 400). Po D46: UTC dnevi, `today` = današnji dan, `7d`/`30d` se končata danes, trend = prejšnje enako dolgo obdobje (`null` pri `all` in ko je prejšnje obdobje 0). Aktiven = `user_daily_activity.problems_opened > 0` (odpre se stran problema - sam `start` ne šteje); rešitve iz `solved_at`; aktivna tekmovanja iz datumov. Grafi: 30 / 14 dni (`generate_series`, dnevi brez podatkov = 0); težavnost vedno vse 4, vloge vseh 5 (tudi z 0); nizi na branju kot `getStats` (prekinjen niz ne šteje), vedra v SQL; top 8 po rešitvah; osip = 8 problemov z najnižjim deležem rešenih med začetimi. `problems.solve_count` se ne uporablja. Brez predpomnjenja.
+- Frontend: `/admin` na API (odgovor za zapuščen razpon se zavrže; napaka → sporočilo); krof pri 0 rešitvah kaže 0 % namesto `NaN%`; prazni tabeli Top / Needs Attention dobita vrstico "No solves yet." / "Nobody has started a problem yet.". `src/lib/mock/adminStats.ts` (in `MOCK_ACTIVE_CONTEST_COUNT` v `mock/dashboard.ts`) ni več v uporabi - ni izbrisan. Test `backend/test/a9.test.js` (3 testi).
 
-**A9.1 · AI analiza z OpenAI ključem** `S` · odvisno od: A10 · ⬜ (dodano 9. 10. 2026, uporabnik: "we'll be making this work with openai api key")
+**A9.1 · AI analiza z OpenAI ključem** `S` · odvisno od: A10 · ✅ 9. 10. 2026 (dodano 9. 10. 2026, uporabnik: "we'll be making this work with openai api key")
 - Analiza ob nalaganju (A10, `modules/admin/analysis.service.js`) naj deluje tudi z `OPENAI_API_KEY`. Zdaj je vezana na Anthropic SDK (`@anthropic-ai/sdk`, model `claude-sonnet-5-5`, `output_config` JSON shema, effort, `fallbacks`).
 - Ostane enako: cevovod (Duplicate Check → Production Test → AI Analysis), preverjanje odgovora (`parseDraft`), ustvarjanje osnutka, sistemski poziv in JSON shema (`hidden_files` kot seznam).
 - Odpre se ob rezini (vprašaj uporabnika): (a) OpenAI **namesto** Claude ali **izbira** po ključu / `AI_PROVIDER`; (b) model in cena; (c) odvisnost `openai` + njegov način vsiljene JSON oblike; (d) ali to velja tudi za AI klepet na zaslonu reševanja (M8, stack v CLAUDE.md zdaj pravi "Claude API").
+- Odločeno (uporabnik 9. 10. 2026): (a) **izbira po ključu** - nastavljen samo eden → ta; oba → `AI_PROVIDER=anthropic|openai` (privzeto anthropic); (b) privzet model **`gpt-4o`** (`OPENAI_MODEL`); (c) privzeto brez vprašanja: **brez nove odvisnosti** - `fetch` na Chat Completions z `response_format: json_schema, strict: true` (ista `SCHEMA` ustreza strogemu načinu); (d) **odloči se ob M8**.
+- Narejeno: `analysis.service.js` - `analyze` izbere ponudnika ob vsakem klicu (iz `config`, tudi spremembe med testi); `analyzeWithClaude` (nespremenjen A10) in `analyzeWithOpenAI` (zavrnitev / `finish_reason: length` / neveljaven JSON → 502 `ANALYSIS_INVALID`, 401 → 502 `ANALYSIS_FAILED`, 429 / 5xx → 503 `ANALYSIS_BUSY`, časovna omejitev 10 min). Brez ključa → 503 `ANALYSIS_DISABLED` "Set ANTHROPIC_API_KEY or OPENAI_API_KEY (and AI_PROVIDER=anthropic or openai) on the server". `config.js`: `openaiApiKey`, `openaiModel`, `aiProvider`; `.env.example` dopolnjen. Test `backend/test/a91.test.js` (3 testi, `fetch` nadomeščen - brez omrežja); A10 test posodobljen na novo sporočilo. **Ni preverjeno s pravim ključem** (ni ga v `.env`). Znana omejitev: `gpt-4o` ima nižjo mejo izhoda (16k žetonov) kot Claude (64k) - pri velikih skritih testih se analiza lahko odreže ("The analysis was cut off").
 
 ### M8 - AI seja (`02` "AI Session Capture", `03`, `04` "AI Session Analytics")
 
@@ -491,10 +499,11 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | `/signup` | ~~`mockSignup`~~ → `POST /auth/signup` (F2): Username (D38), geslo ≥ 8 (D39) | F2 | ✅ 7. 10. 2026 |
 | `/forgot-password` | `src/lib/mock/auth.ts`: `mockRequestPasswordReset` (uspe za vsak e-mail - stran ne razkrije, ali račun obstaja); pošiljanje pošte je odloženo (X5) | X5 (rezina še ne obstaja) | ⏸ |
 | `/onboarding` | ~~`mockSaveOnboarding`~~ → `PUT /me/onboarding` (F4); "exploring" → `null` (D41), jeziki se shranijo (D42); "Sign out" → `POST /auth/logout` (F2) | F4 | ✅ 7. 10. 2026 |
-| `/admin` (Overview) | `src/lib/mock/adminStats.ts`: `mockGetAdminOverview(range)` (realne številke, rast deterministična, datumi relativni na danes; aktivna tekmovanja = `MOCK_ACTIVE_CONTEST_COUNT`) | A9 | ⬜ |
+| `/admin` (Overview) | ~~`mockGetAdminOverview(range)`~~ → `GET /admin/stats?range=` (A9). `src/lib/mock/adminStats.ts` ni več v uporabi (ni izbrisan) | A9 ✅ | ✅ 9. 10. 2026 |
 | `/admin/problems/new` (Add Problem) | vse na API (A2, A10, A4, A5 ✅); ostane samo neuporabljen `mockRunCheck` v `src/lib/mock/adminProblems.ts` (za neuporabljen `ValidateStep`) | - | ✅ |
 | `/admin/problems`, `/admin/problems/[id]/edit` | na API od začetka (A2) | A2 | ✅ |
-| `/admin/contests` | na API (A6): seznam, Schedule / Cancel / Delete / Archive; zavihki in iskanje na odjemalcu; rezultati končanih pridejo z A7 | A6 ✅, A7 | 🟨 |
+| `/admin/users`, `/admin/users/[id]` | na API od začetka (A8) | A8 | ✅ |
+| `/admin/contests` | na API (A6): seznam, Schedule / Cancel / Delete / Archive; zavihki in iskanje na odjemalcu; rezultati, CSV in "nagrada poslana" v razširjeni vrstici (A7) | A6 ✅, A7 ✅ | ✅ |
 | `/admin/contests/new`, `/admin/contests/[id]/edit` | na API (A6): čarovnik `ContestWizard`, izbira objavljenih problemov, datumi iz `src/lib/getContestDates.ts`; `src/lib/mock/adminContests.ts` ni več v uporabi | A6 | ✅ |
 
 ---
@@ -511,7 +520,7 @@ Odprto:
 
 - **Točkovanje tekmovanj:** `03` "TBD" - za v1 velja D18 (enake točke kot redni problemi).
 - **`repository_structure`** je izpeljiv iz ključev `files` - verjetno odveč (odloči v R1). Zdaj (P2): JSON seznam poti, ki ga pokaže stran podrobnosti; seed ga zapiše iz ključev `files`.
-- **Nagrada poslana:** `04` "Admin marks reward as sent", stolpca ni (A7).
+- ~~**Nagrada poslana:**~~ → `contests.reward_sent_at` (A7).
 - **Incident `payment-retries-disappear` vs. koda (R3, 8. 10. 2026):** log kaže `attempt=1..3` z `delay=30000ms`, izvedljiva koda pa po prvem neuspehu ponovni poskus izgubi (log: `gateway timeout attempt=1`, `retry scheduled delay=30000ms`, nato nič). Besedilo incidenta (`problemBriefs.ts` + seed 0001) je treba uskladiti - odloči uporabnik.
 
 ---

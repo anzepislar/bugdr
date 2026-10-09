@@ -273,7 +273,7 @@ Every action in the editor is tracked during a solve session.
 - Total test runs before solving
 
 **AI tools supported:**
-Users can use any AI tool. The editor has a built-in AI chat panel (connected to Claude API). If they use an external tool and paste the result, that counts as a manual edit. If they use the built-in panel, every prompt is automatically captured.
+Users can use any AI tool. The editor has a built-in AI chat panel (connected to an AI API server-side; the provider is decided at M8 - the upload analysis already works with Claude or OpenAI, A9.1). If they use an external tool and paste the result, that counts as a manual edit. If they use the built-in panel, every prompt is automatically captured.
 
 **Why this matters:**
 - Fewer prompts + fewer tokens + fewer iterations = higher efficiency

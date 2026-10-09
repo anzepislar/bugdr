@@ -13,6 +13,7 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/admin", label: "Overview", icon: "dashboard" },
   { href: "/admin/problems", label: "Problems", icon: "problems" },
   { href: "/admin/contests", label: "Contests", icon: "trophy" },
+  { href: "/admin/users", label: "Users", icon: "user" },
 ];
 
 const CRUMB: [RegExp, string][] = [
@@ -23,6 +24,8 @@ const CRUMB: [RegExp, string][] = [
   [/^\/admin\/contests\/new$/, "New contest"],
   [/^\/admin\/contests\/[^/]+\/edit$/, "Edit contest"],
   [/^\/admin\/contests/, "Contests"],
+  [/^\/admin\/users\/[^/]+$/, "User"],
+  [/^\/admin\/users$/, "Users"],
 ];
 
 /** Full page load to /admin/login, so no cached admin page survives the logout (as useLogout does for users). */

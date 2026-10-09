@@ -214,7 +214,10 @@ test("analyze: an unusable or failed analysis creates no draft and never leaks t
   analysis.analyze = originalAnalyze;
   config.anthropicApiKey = "";
   const off = failure(await events(await upload(zip(other))));
-  assert.deepEqual([off.stage, off.message], ["analysis", "ANTHROPIC_API_KEY is not set on the server"]);
+  assert.deepEqual(
+    [off.stage, off.message],
+    ["analysis", "Set ANTHROPIC_API_KEY or OPENAI_API_KEY (and AI_PROVIDER=anthropic or openai) on the server"],
+  );
 
   // A rejected key: the message names the setting, never the value.
   config.anthropicApiKey = "sk-ant-test-not-a-real-key";

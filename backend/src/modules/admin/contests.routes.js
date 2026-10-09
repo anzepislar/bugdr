@@ -16,6 +16,7 @@ const str = (v) => (typeof v === "string" ? v.trim() : "");
 // AdminContest (frontend/src/lib/types/contest.ts) incl. the status, which only the server uses for its rules.
 const SELECT = `
   SELECT c.id, c.type, c.title, coalesce(c.description, '') AS description, c.reward_type, c.reward_description,
+    c.reward_sent_at AT TIME ZONE 'UTC' AS reward_sent_at,
     c.starts_at AT TIME ZONE 'UTC' AS starts_at, c.ends_at AT TIME ZONE 'UTC' AS ends_at,
     CASE WHEN c.starts_at IS NULL THEN 'draft' WHEN c.starts_at > now() THEN 'scheduled'
          WHEN c.ends_at < now() THEN 'ended' ELSE 'active' END AS status,
@@ -37,6 +38,7 @@ const toContest = (r) => ({
   problems: r.problems,
   rewardType: r.reward_type,
   rewardDescription: r.reward_description,
+  rewardSentAt: r.reward_sent_at?.toISOString() ?? null,
 });
 
 async function findContest(id) {
@@ -215,4 +217,54 @@ adminContestsRouter.post("/:id/archive", async (req, res) => {
   if (c.status !== "ended") throw new HttpError(409, "NOT_ENDED", "Only an ended contest can be archived");
   await pool.query("UPDATE contests SET archived_at = now() WHERE id = $1", [req.params.id]);
   res.status(204).end();
+});
+
+// A7: ranking of a live or ended contest (03 "Ranking within a contest"): most solved, then score, then the fastest
+// total solve time of the contest problems solved while it ran. Computed on read, no stored rank; full ties share one.
+adminContestsRouter.get("/:id/results", async (req, res) => {
+  const c = await findContest(req.params.id);
+  if (c.status === "draft" || c.status === "scheduled")
+    throw new HttpError(409, "NOT_STARTED", "This contest has not started yet, so it has no results");
+  const { rows } = await pool.query(
+    `SELECT rank() OVER (ORDER BY problems_solved DESC, total_score DESC, solve_time) AS rank, *
+     FROM (SELECT u.username, u.email, e.problems_solved, e.total_score,
+             coalesce((SELECT sum(a.time_taken_seconds) FROM user_problem_attempts a
+               JOIN contest_problems cp ON cp.problem_id = a.problem_id AND cp.contest_id = e.contest_id
+               WHERE a.user_id = e.user_id AND a.status = 'solved' AND a.solved_at >= ct.starts_at
+                 AND a.solved_at <= ct.ends_at), 0)::int AS solve_time
+           FROM contest_entries e JOIN users u ON u.id = e.user_id JOIN contests ct ON ct.id = e.contest_id
+           WHERE e.contest_id = $1) r
+     ORDER BY rank, username`,
+    [req.params.id],
+  );
+  const results = rows.map((r) => ({
+    rank: Number(r.rank),
+    username: r.username,
+    email: r.email,
+    problemsSolved: r.problems_solved,
+    score: r.total_score,
+    solveTimeSeconds: r.solve_time,
+  }));
+  if (req.query.format !== "csv") return res.json({ results });
+
+  // For sending rewards (04). Quoted cells; a leading = + - @ is defused so a spreadsheet does not run it.
+  const cell = (v) => `"${String(v).replace(/^[=+\-@]/, "'$&").replaceAll('"', '""')}"`;
+  const csv = [
+    ["rank", "username", "email", "problems_solved", "score", "solve_time_seconds"],
+    ...results.map((r) => [r.rank, r.username, r.email, r.problemsSolved, r.score, r.solveTimeSeconds]),
+  ].map((row) => row.map(cell).join(",")).join("\r\n");
+  res.type("text/csv").attachment(`contest-${req.params.id}-results.csv`).send(csv + "\r\n");
+});
+
+// A7: the winner's reward is sent (04 "Reward flow") - { sent: true } marks it, { sent: false } takes it back.
+adminContestsRouter.put("/:id/reward-sent", async (req, res) => {
+  const c = await findContest(req.params.id);
+  if (typeof req.body?.sent !== "boolean") throw new HttpError(400, "VALIDATION_ERROR", "sent must be true or false");
+  if (c.status !== "ended" || !c.reward_type)
+    throw new HttpError(409, "NO_REWARD_TO_SEND", "Only an ended contest with a reward can have it marked as sent");
+  await pool.query("UPDATE contests SET reward_sent_at = CASE WHEN $2 THEN now() END WHERE id = $1", [
+    req.params.id,
+    req.body.sent,
+  ]);
+  res.json({ contest: toContest(await findContest(req.params.id)) });
 });

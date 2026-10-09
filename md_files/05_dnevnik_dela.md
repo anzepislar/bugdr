@@ -1724,3 +1724,90 @@ načrtovanje s seznama → preklic → brisanje, urejanje načrtovanega,
 arhiviranje končanega; brez vodoravnega drsenja pri 320-2560 px; brez napak
 v konzoli. Testno tekmovanje izbrisano, arhiv seed tekmovanja razveljavljen.
 
+
+## 9. 10. 2026 — Seja 19: A7 rezultati tekmovanj, A8 uporabniki, A9 statistika, A9.1 OpenAI
+
+### Rezina A7 (rezultati tekmovanj + CSV + nagrada poslana)
+
+Odločitev uporabnika: rezultati se odprejo **v seznamu** `/admin/contests`
+(razširjena vrstica), brez nove poti.
+
+- Backend: `GET /admin/contests/:id/results` (+ `?format=csv`) za aktivna in
+  končana tekmovanja. Razvrstitev po `03` (rešeni, točke, skupni čas
+  reševanja med tekmovanjem), izračun ob branju - stolpca `rank` ni;
+  izenačeni si delijo mesto. CSV z zaščito pred formulami (`=`, `+`, `-`,
+  `@`). `PUT /admin/contests/:id/reward-sent` `{ sent }` samo za končano
+  tekmovanje z nagrado; migracija 0017 `contests.reward_sent_at`.
+- Frontend: "View results" za aktivna (prej brez menija) in končana;
+  tabela z e-pošto, "Export CSV", "Mark reward as sent" / "not sent";
+  stolpec Reward pokaže "· sent".
+
+Preverjeno: backend testi 125/125 (+3 A7); frontend lint, typecheck,
+build; Playwright Chromium (začasna uporabnika v končanem seed tekmovanju):
+rezultati, prenos CSV, nagrada poslana in nazaj, aktivno "Results so far";
+brez vodoravnega drsenja pri 320-2560 px; brez napak v konzoli. Pri 320 px
+je vrstica z `colSpan={7}` stisnila naslov na eno črko na vrstico (tabela
+`table-fixed`) - popravljeno: razteza se samo čez vidne stolpce.
+
+**Napaka med sejo:** prvi zagon `node --test test/a7.test.js` brez
+`NODE_ENV=test` je tekel na razvojni bazi `bugdr` in jo izpraznil
+(`TRUNCATE users, problems, contests CASCADE`). Baza je ponovno napolnjena z
+`npm run seed` (12 problemov, 5 tekmovanj); lokalni uporabniški računi,
+poskusi in komentarji so izgubljeni - registracija znova. Testi se odslej
+poganjajo samo z `npm test -- <datoteka>`. Začasni testni podatki
+izbrisani.
+
+### Rezina A8 (uporabniki)
+
+Odločitev uporabnika: seznam + stran podrobnosti (novi poti
+`/admin/users`, `/admin/users/[id]`, "Users" v admin stranski vrstici).
+
+- Backend: `GET /admin/users?q=` (iskanje po uporabniškem imenu ali
+  e-pošti, nivo iz točk), `GET /admin/users/:id` (profil, statistika, vsi
+  poskusi z vsemi tries), `POST /admin/users/:id/ban` / `unban`. Ban že
+  deluje prek `requireAuth` (odjava ob naslednji zahtevi, profil skrit).
+- Frontend: seznam z iskanjem na strežniku, stran uporabnika s
+  statistiko, poskusi in stranskim panelom (Ban / Unban s potrditvijo,
+  podatki profila); `BanBadge`.
+
+Preverjeno: backend testi 128/128 (+3 A8, zagon z `npm test`); frontend
+lint, typecheck, build; Playwright Chromium (začasna uporabnika na
+razvojni bazi, nato izbrisana): Users v stranski vrstici, iskanje,
+podrobnosti s tries, ban → "Banned" → unban; brez vodoravnega drsenja pri
+320-2560 px; brez napak v konzoli. Povezave "View" dobijo `aria-label` z
+imenom uporabnika.
+
+Popravek A7: `npx prettier` je stran `/admin/contests` preformatiral na
+80 znakov (repozitorij nima nastavitev Prettierja, koda je ročno na ~120).
+Stran obnovljena iz zadnjega commita, spremembe A7 ponovno uporabljene brez
+preformatiranja.
+
+### Rezina A9 (statistika platforme)
+
+- Backend: `GET /admin/stats?range=today|7d|30d|all` → `AdminOverview` po
+  D46 (UTC dnevi, trend proti prejšnjemu enako dolgemu obdobju; aktiven =
+  odprl stran problema). Grafi 30 / 14 dni, vse težavnosti in vloge tudi z
+  0, nizi kot na profilu, top 8 in 8 z največjim osipom.
+- Frontend: `/admin` na API namesto `mockGetAdminOverview`; krof pri 0
+  rešitvah ne kaže več `NaN%`; prazni tabeli dobita sporočilo.
+
+Preverjeno: backend testi 131/131 (+3 A9); frontend lint, typecheck,
+build; Playwright Chromium na prazni razvojni bazi in z enim začasnim
+uporabnikom (nato izbrisan): vsi razponi, brez `NaN`, brez vodoravnega
+drsenja pri 320-2560 px, brez napak v konzoli.
+
+### Rezina A9.1 (AI analiza z OpenAI ključem) - M6 zaključen
+
+Odločitve uporabnika: ponudnik po ključu (oba → `AI_PROVIDER`), privzet
+model `gpt-4o`, AI klepet (M8) se odloči kasneje.
+
+- Backend: `analysis.service.js` ima poleg Claude še OpenAI pot (`fetch` na
+  Chat Completions, stroga JSON shema - ista kot za Claude, brez nove
+  odvisnosti). Ponudnik se izbere ob vsakem klicu. Napake (zavrnitev,
+  odrezan odgovor, neveljaven JSON, zavrnjen ključ, preobremenjenost) imajo
+  enake kode kot pri Claude. `.env.example`: `OPENAI_API_KEY`,
+  `OPENAI_MODEL`, `AI_PROVIDER`.
+
+Preverjeno: backend testi 134/134 (+3 A9.1 z nadomeščenim `fetch`; A10 test
+posodobljen na novo sporočilo brez ključa); frontend lint, typecheck. Ni
+preverjeno s pravim OpenAI ključem.

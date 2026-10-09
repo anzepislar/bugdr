@@ -22,7 +22,7 @@ async function contests(): Promise<AdminContest[]> {
   const pick = (...slugs: string[]) => options.filter((p) => slugs.includes(p.slug));
   const now = Date.now();
   const at = (ms: number) => new Date(now + ms).toISOString();
-  const base = { description: "", rewardType: null, rewardDescription: null } as const;
+  const base = { description: "", rewardType: null, rewardDescription: null, rewardSentAt: null } as const;
 
   // Ids of active/ended contests match src/lib/mock/contests.ts, so "View results" opens their page.
   store = [
@@ -58,6 +58,7 @@ export async function mockSaveContest(draft: AdminContestDraft, id?: string): Pr
   const saved: AdminContest = {
     ...rest,
     id: id ?? `mock-${Date.now()}`,
+    rewardSentAt: null,
     problems: options.filter((p) => problemSlugs.includes(p.slug)),
   };
   const all = await contests();

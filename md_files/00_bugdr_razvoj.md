@@ -30,7 +30,7 @@ This defines the next generation of engineering skill.
 | Code editor | Monaco Editor (@monaco-editor/react) |
 | Problem execution | Docker containers |
 | Auth | JWT |
-| AI | Claude API — built-in AI chat + problem analysis, server-side only |
+| AI | Claude API or OpenAI (by key, A9.1) for problem analysis; built-in AI chat provider decided at M8 — server-side only |
 
 ---
 
@@ -74,20 +74,21 @@ bugdr/
 
 ```
 Phase: Backend slices (06_backend_slices.md) - frontend screens swap their mocks slice by slice
-Frontend: 20 screens; login, signup, logout, onboarding, /problems, /problems/[slug] (incl. rating and discussion),
+Frontend: 22 screens; login, signup, logout, onboarding, /problems, /problems/[slug] (incl. rating and discussion),
   the solve page, /profile/[username], /settings (profile tab), /dashboard, the sidebar, /contests, /contests/[id],
-  /admin/login, /admin/problems (+ new, edit) and /admin/contests (+ new, edit) use the real API; still on mock
-  data: the solve page's AI chat and the admin overview (/admin, stats = A9)
+  /admin/login, /admin (overview), /admin/problems (+ new, edit), /admin/contests (+ new, edit, results inline)
+  and /admin/users (+ [id]) use the real API; still on mock data: the solve page's AI chat (M8)
 Backend: Milestones M0 (F0-F4: skeleton, levels, auth, route protection, onboarding), M1 (P1-P2: problem list,
   bookmarks, problem detail, streak on view) and M2 (R1-R6: start, give up, try history, Docker check runner,
   solve + points, terminal, live results), M3 (O1-O2: ratings, comments) and M4 (U1-U3: profile + settings,
   activity grid + streak on read, dashboard) and M5 (T1-T2: contest list + detail, entries, participation,
-  history) done; M6 (admin) in progress: A1 admin login (not a user account, D48), A2 problem list + drafts,
-  A10 ZIP upload + Claude analysis, A3 code replacement, A4 check run, A5 publish/unpublish, A6 contests done;
-  next A7 (contest results), A8 (users), A9 (stats), A9.1 (analysis with an OpenAI key); AI session = M8 (S1-S5)
-Database: PostgreSQL 17 in Docker; migrations 0001-0016 (levels, users, profiles, problems, problem detail,
+  history) and M6 (admin: A1 login (not a user account, D48), A2 problem list + drafts, A10 ZIP upload + AI
+  analysis, A3 code replacement, A4 check run, A5 publish/unpublish, A6 contests, A7 contest results + CSV +
+  reward sent, A8 users + ban, A9 platform stats, A9.1 analysis with Claude or OpenAI by key) done;
+  next M7 (Z1, Z2) or M8 AI session (S1-S5, waits for D51/D52)
+Database: PostgreSQL 17 in Docker; migrations 0001-0017 (levels, users, profiles, problems, problem detail,
   problem brief, attempt tries, check results + points ledger, comment replies + helpful, profile fields, contests,
-  contest entries, drop users.is_admin, bug summary, codebase hash, dry-run version);
+  contest entries, drop users.is_admin, bug summary, codebase hash, dry-run version, contest reward sent);
   `npm run seed` = 12 dev problems with code and checks, no made-up ratings (D57); only payment-retries-disappear
   is runnable so far; + 5 dev contests (dates relative to the seed run)
 Detailed status: CLAUDE.md "Current Status" and 06_backend_slices.md "Stanje"
@@ -179,7 +180,7 @@ Backend (Node.js/Express)
   → Business logic
   → PostgreSQL queries
   → Docker container management
-  → Claude API (built-in AI chat, problem analysis) — key server-side only
+  → Claude API or OpenAI (problem analysis, A9.1; AI chat provider decided at M8) — keys server-side only
 
 Docker (Problem Execution, backend/src/modules/runner)
   → Official node:24-alpine image, driven through the docker CLI (no extra dependency)

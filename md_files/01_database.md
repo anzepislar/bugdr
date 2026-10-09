@@ -466,6 +466,7 @@ CREATE TABLE contests (
   reward_type          VARCHAR(20) CHECK (reward_type IN ('subscription', 'merch', 'points')),
   reward_description   VARCHAR(255),         -- '1 year free subscription' or 'Bugdr hoodie'
   archived_at          TIMESTAMP,            -- NULL = not archived (04 "Archive", used from A6)
+  reward_sent_at       TIMESTAMP,            -- NULL = reward not sent yet (04 "Reward flow", A7, migration 0017)
   created_by           UUID REFERENCES users(id),
   created_at           TIMESTAMP DEFAULT NOW(),
   CHECK ((starts_at IS NULL) = (ends_at IS NULL)),
@@ -493,7 +494,7 @@ CREATE INDEX contest_problems_problem ON contest_problems (problem_id);
 One row per user per contest — tracks total score across all contest problems. Built in T2 (migration 0012).
 The row is created on the first start of a contest problem while the contest is live (D60, "Enter contest").
 A solve while the contest is live adds 1 to `problems_solved` and its points to `total_score` in the solve
-transaction (D18); a solve after `ends_at` does not count. No `rank` (D61: no contest ranking until A7).
+transaction (D18); a solve after `ends_at` does not count. No `rank`: the ranking is computed on read in the admin results (A7, `03`).
 
 ```sql
 CREATE TABLE contest_entries (

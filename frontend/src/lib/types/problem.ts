@@ -46,7 +46,7 @@ export interface Check {
   mustPass: boolean;
 }
 
-/** Result of POST /admin/problems/analyze (Claude output, camelCased by the API). */
+/** Result of POST /admin/problems/analyze (AI output, camelCased by the API). */
 export interface ProblemAnalysis {
   bugSummary: string;
   title: string;

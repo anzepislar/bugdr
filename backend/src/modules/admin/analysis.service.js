@@ -2,8 +2,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { config } from "../../config.js";
 import { HttpError } from "../../errors.js";
 
-// A10: one Claude call per upload. The key stays on the server (D21); the answer is forced into this JSON schema
+// A10: one AI call per upload. The key stays on the server (D21); the answer is forced into this JSON schema
 // (structured outputs) and then checked again by the route, so a bad answer is a 502, never a broken draft.
+// A9.1: Claude or OpenAI, whichever key is set; with both, AI_PROVIDER decides (config.aiProvider).
 
 const SYSTEM_PROMPT = `You prepare debugging problems for Bugdr, a platform where engineers fix real production bugs with AI help.
 
@@ -75,57 +76,104 @@ const SCHEMA = {
 };
 
 const invalid = (message) => new HttpError(502, "ANALYSIS_INVALID", message);
+const busy = (name) => new HttpError(503, "ANALYSIS_BUSY", `${name} is busy right now. Try again in a minute.`);
+const parse = (text, name) => {
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw invalid(`${name} did not return valid JSON.`);
+  }
+};
 let client;
 
 /**
- * Claude's analysis of `files` ({ path: content }) as the raw snake_case object from the schema above.
+ * The AI's analysis of `files` ({ path: content }) as the raw snake_case object from the schema above.
  * Wrapped in an object so tests can replace it without calling the API.
  */
 export const analysis = {
   async analyze(files) {
-    if (!config.anthropicApiKey) throw new HttpError(503, "ANALYSIS_DISABLED", "ANTHROPIC_API_KEY is not set on the server");
-    client ??= new Anthropic({ apiKey: config.anthropicApiKey });
     const source = Object.entries(files)
       .map(([path, content]) => `<file path="${path}">\n${content}\n</file>`)
       .join("\n\n");
-
-    let message;
-    try {
-      // Streaming: a large codebase + long test files can take minutes. "default" fallbacks retry a safety
-      // decline on the model Anthropic recommends for that category.
-      message = await client.beta.messages
-        .stream({
-          model: config.analysisModel,
-          max_tokens: 64000,
-          betas: ["server-side-fallback-2026-07-01"],
-          fallbacks: "default",
-          output_config: { effort: "high", format: { type: "json_schema", schema: SCHEMA } },
-          system: SYSTEM_PROMPT,
-          messages: [{ role: "user", content: `Here is the codebase.\n\n${source}` }],
-        })
-        .finalMessage();
-    } catch (err) {
-      if (err instanceof Anthropic.RateLimitError || err instanceof Anthropic.InternalServerError)
-        throw new HttpError(503, "ANALYSIS_BUSY", "Claude is busy right now. Try again in a minute.");
-      if (err instanceof Anthropic.AuthenticationError)
-        throw new HttpError(502, "ANALYSIS_FAILED", "The server's ANTHROPIC_API_KEY was rejected.");
-      if (err instanceof Anthropic.APIError) {
-        console.error("Claude analysis failed:", err.status, err.message);
-        throw new HttpError(502, "ANALYSIS_FAILED", "The AI analysis failed. Try again.");
-      }
-      throw err;
-    }
-
-    if (message.stop_reason === "refusal") throw invalid("Claude declined to analyse this codebase.");
-    if (message.stop_reason === "max_tokens") throw invalid("The analysis was cut off. Try a smaller codebase.");
-    const text = message.content
-      .filter((b) => b.type === "text")
-      .map((b) => b.text)
-      .join("");
-    try {
-      return JSON.parse(text);
-    } catch {
-      throw invalid("Claude did not return valid JSON.");
-    }
+    const prompt = `Here is the codebase.\n\n${source}`;
+    const provider = config.aiProvider || (config.anthropicApiKey ? "anthropic" : config.openaiApiKey ? "openai" : "");
+    if (provider === "openai") return analyzeWithOpenAI(prompt);
+    if (provider === "anthropic") return analyzeWithClaude(prompt);
+    throw new HttpError(503, "ANALYSIS_DISABLED", "Set ANTHROPIC_API_KEY or OPENAI_API_KEY (and AI_PROVIDER=anthropic or openai) on the server");
   },
 };
+
+async function analyzeWithClaude(prompt) {
+  if (!config.anthropicApiKey) throw new HttpError(503, "ANALYSIS_DISABLED", "ANTHROPIC_API_KEY is not set on the server");
+  client ??= new Anthropic({ apiKey: config.anthropicApiKey });
+
+  let message;
+  try {
+    // Streaming: a large codebase + long test files can take minutes. "default" fallbacks retry a safety
+    // decline on the model Anthropic recommends for that category.
+    message = await client.beta.messages
+      .stream({
+        model: config.analysisModel,
+        max_tokens: 64000,
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+        output_config: { effort: "high", format: { type: "json_schema", schema: SCHEMA } },
+        system: SYSTEM_PROMPT,
+        messages: [{ role: "user", content: prompt }],
+      })
+      .finalMessage();
+  } catch (err) {
+    if (err instanceof Anthropic.RateLimitError || err instanceof Anthropic.InternalServerError)
+      throw busy("Claude");
+    if (err instanceof Anthropic.AuthenticationError)
+      throw new HttpError(502, "ANALYSIS_FAILED", "The server's ANTHROPIC_API_KEY was rejected.");
+    if (err instanceof Anthropic.APIError) {
+      console.error("Claude analysis failed:", err.status, err.message);
+      throw new HttpError(502, "ANALYSIS_FAILED", "The AI analysis failed. Try again.");
+    }
+    throw err;
+  }
+
+  if (message.stop_reason === "refusal") throw invalid("Claude declined to analyse this codebase.");
+  if (message.stop_reason === "max_tokens") throw invalid("The analysis was cut off. Try a smaller codebase.");
+  const text = message.content
+    .filter((b) => b.type === "text")
+    .map((b) => b.text)
+    .join("");
+  return parse(text, "Claude");
+}
+
+// OpenAI Chat Completions with a strict JSON schema (the same SCHEMA meets its rules: every property required,
+// additionalProperties false). Plain fetch, no SDK.
+async function analyzeWithOpenAI(prompt) {
+  if (!config.openaiApiKey) throw new HttpError(503, "ANALYSIS_DISABLED", "OPENAI_API_KEY is not set on the server");
+  let res;
+  try {
+    res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${config.openaiApiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: config.openaiModel,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: prompt },
+        ],
+        response_format: { type: "json_schema", json_schema: { name: "problem_analysis", strict: true, schema: SCHEMA } },
+      }),
+      signal: AbortSignal.timeout(10 * 60_000),
+    });
+  } catch (err) {
+    console.error("OpenAI analysis failed:", err.message);
+    throw new HttpError(502, "ANALYSIS_FAILED", "Could not reach OpenAI. Try again.");
+  }
+  if (res.status === 429 || res.status >= 500) throw busy("OpenAI");
+  if (res.status === 401) throw new HttpError(502, "ANALYSIS_FAILED", "The server's OPENAI_API_KEY was rejected.");
+  if (!res.ok) {
+    console.error("OpenAI analysis failed:", res.status, await res.text().catch(() => ""));
+    throw new HttpError(502, "ANALYSIS_FAILED", "The AI analysis failed. Try again.");
+  }
+  const choice = (await res.json()).choices?.[0];
+  if (choice?.message?.refusal) throw invalid("OpenAI declined to analyse this codebase.");
+  if (choice?.finish_reason === "length") throw invalid("The analysis was cut off. Try a smaller codebase.");
+  return parse(choice?.message?.content ?? "", "OpenAI");
+}

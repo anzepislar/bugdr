@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { primaryButton } from "@/components/admin/problems/shared";
+import { Fragment, useEffect, useState, useSyncExternalStore } from "react";
+import { primaryButton, secondaryButton } from "@/components/admin/problems/shared";
 import { Icon } from "@/components/Icon";
-import { formatUtcDateTime } from "@/lib/format";
+import { duration, formatUtcDateTime } from "@/lib/format";
 import { getContestDates } from "@/lib/getContestDates";
 import { getContestStatus, type ContestStatus } from "@/lib/getContestStatus";
 import { api, ApiError } from "@/lib/api";
-import { REWARD_TYPES, type AdminContest } from "@/lib/types/contest";
+import { REWARD_TYPES, type AdminContest, type AdminContestResult } from "@/lib/types/contest";
 
 // Tab order on the page.
 const GROUPS: Record<ContestStatus, string> = {
@@ -31,7 +31,8 @@ const toDate = (iso: string | null) => (iso ? new Date(iso) : null);
 const statusOf = (c: AdminContest) => getContestStatus({ starts_at: toDate(c.startsAt), ends_at: toDate(c.endsAt) });
 const dateRange = (c: AdminContest) =>
   c.startsAt && c.endsAt ? `${formatUtcDateTime(c.startsAt)} – ${formatUtcDateTime(c.endsAt)}` : "Not scheduled";
-const reward = (c: AdminContest) => (c.rewardType ? `${REWARD_TYPES[c.rewardType]} · ${c.rewardDescription}` : "—");
+const reward = (c: AdminContest) =>
+  c.rewardType ? `${REWARD_TYPES[c.rewardType]} · ${c.rewardDescription}${c.rewardSentAt ? " · sent" : ""}` : "—";
 
 export default function AdminContestsPage() {
   const [contests, setContests] = useState<AdminContest[] | null>(null);
@@ -77,6 +78,10 @@ export default function AdminContestsPage() {
     archive(c: AdminContest) {
       if (window.confirm(`Archive "${c.title}"? It disappears from this list.`))
         run(api(`/admin/contests/${c.id}/archive`, { method: "POST" }));
+    },
+    rewardSent(c: AdminContest) {
+      const sent = !c.rewardSentAt;
+      run(api(`/admin/contests/${c.id}/reward-sent`, { method: "PUT", body: JSON.stringify({ sent }) }));
     },
   };
 
@@ -179,10 +184,12 @@ export default function AdminContestsPage() {
   );
 }
 
-type Actions = Record<"schedule" | "cancel" | "remove" | "archive", (c: AdminContest) => void>;
+type Actions = Record<"schedule" | "cancel" | "remove" | "archive" | "rewardSent", (c: AdminContest) => void>;
 
 function ContestRow({ contest: c, status, actions }: { contest: AdminContest; status: ContestStatus; actions: Actions }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [resultsOpen, setResultsOpen] = useState(false);
+  const columns = useVisibleColumns();
   const badge = BADGE[status];
   // Same rule as step 1 + 2 of the wizard.
   const schedulable = c.description.trim() !== "" && c.problems.length > 0;
@@ -193,36 +200,35 @@ function ContestRow({ contest: c, status, actions }: { contest: AdminContest; st
   };
 
   return (
-    <tr className="border-b border-border align-top">
-      <td className="px-3 py-4 sm:px-4">
-        <p className="break-words text-[15px] text-text">{c.title}</p>
-        {/* Columns hidden at this width move here. */}
-        <p className="mt-1.5 text-xs text-muted md:hidden">
-          {TYPE_LABEL[c.type]} · {c.problems.length} {c.problems.length === 1 ? "problem" : "problems"}
-        </p>
-        <p className="mt-1.5 text-xs text-muted lg:hidden">{dateRange(c)}</p>
-        <p className="mt-1.5 truncate text-xs text-muted xl:hidden">{c.rewardType ? reward(c) : "No reward"}</p>
-      </td>
-      <td className="hidden px-3 py-4 text-text md:table-cell">{TYPE_LABEL[c.type]}</td>
-      <td className="px-3 py-4">
-        <span className={`inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-semibold ${badge.className}`}>
-          {status === "active" && (
-            <span aria-hidden className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-passed opacity-60 motion-reduce:hidden" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-passed" />
-            </span>
-          )}
-          {badge.label}
-        </span>
-      </td>
-      <td className="hidden px-3 py-4 text-[13px] text-muted lg:table-cell">{dateRange(c)}</td>
-      <td className="hidden px-3 py-4 text-text md:table-cell">{c.problems.length}</td>
-      <td className="hidden truncate px-3 py-4 text-[13px] text-muted xl:table-cell" title={reward(c)}>
-        {reward(c)}
-      </td>
-      <td className="px-3 py-3">
-        {/* A running contest has no actions until results (A7). */}
-        {status !== "active" && (
+    <Fragment>
+      <tr className={`align-top ${resultsOpen ? "" : "border-b border-border"}`}>
+        <td className="px-3 py-4 sm:px-4">
+          <p className="break-words text-[15px] text-text">{c.title}</p>
+          {/* Columns hidden at this width move here. */}
+          <p className="mt-1.5 text-xs text-muted md:hidden">
+            {TYPE_LABEL[c.type]} · {c.problems.length} {c.problems.length === 1 ? "problem" : "problems"}
+          </p>
+          <p className="mt-1.5 text-xs text-muted lg:hidden">{dateRange(c)}</p>
+          <p className="mt-1.5 truncate text-xs text-muted xl:hidden">{c.rewardType ? reward(c) : "No reward"}</p>
+        </td>
+        <td className="hidden px-3 py-4 text-text md:table-cell">{TYPE_LABEL[c.type]}</td>
+        <td className="px-3 py-4">
+          <span className={`inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-semibold ${badge.className}`}>
+            {status === "active" && (
+              <span aria-hidden className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-passed opacity-60 motion-reduce:hidden" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-passed" />
+              </span>
+            )}
+            {badge.label}
+          </span>
+        </td>
+        <td className="hidden px-3 py-4 text-[13px] text-muted lg:table-cell">{dateRange(c)}</td>
+        <td className="hidden px-3 py-4 text-text md:table-cell">{c.problems.length}</td>
+        <td className="hidden truncate px-3 py-4 text-[13px] text-muted xl:table-cell" title={reward(c)}>
+          {reward(c)}
+        </td>
+        <td className="px-3 py-3">
           <div
             className="relative"
             onBlur={(e) => {
@@ -261,7 +267,12 @@ function ContestRow({ contest: c, status, actions }: { contest: AdminContest; st
                     Cancel
                   </button>
                 )}
-                {/* Results come with A7; the public contest page needs a user account, which the admin is not (D48). */}
+                {/* Inline, not the public contest page: that one needs a user account, which the admin is not (D48). */}
+                {(status === "active" || status === "ended") && (
+                  <button type="button" onClick={act(() => setResultsOpen((o) => !o))} className={`${item} text-text`}>
+                    {resultsOpen ? "Hide results" : "View results"}
+                  </button>
+                )}
                 {status === "ended" && (
                   <button type="button" onClick={act(actions.archive)} className={`${item} text-text`}>
                     Archive
@@ -270,8 +281,121 @@ function ContestRow({ contest: c, status, actions }: { contest: AdminContest; st
               </div>
             )}
           </div>
-        )}
-      </td>
-    </tr>
+        </td>
+      </tr>
+      {resultsOpen && (
+        <tr className="border-b border-border">
+          <td colSpan={columns} className="px-3 pb-6 sm:px-4">
+            <ContestResults contest={c} status={status} onRewardSent={() => actions.rewardSent(c)} />
+          </td>
+        </tr>
+      )}
+    </Fragment>
+  );
+}
+
+// Columns shown at the current width (md: Type + Problems, lg: Dates, xl: Reward). A fixed-layout table gets one
+// column per spanned cell, so the results row must span exactly the visible ones.
+const WIDER = ["(min-width: 768px)", "(min-width: 768px)", "(min-width: 1024px)", "(min-width: 1280px)"];
+function useVisibleColumns() {
+  return useSyncExternalStore(
+    (onChange) => {
+      const lists = WIDER.map((q) => window.matchMedia(q));
+      lists.forEach((l) => l.addEventListener("change", onChange));
+      return () => lists.forEach((l) => l.removeEventListener("change", onChange));
+    },
+    () => 3 + WIDER.filter((q) => window.matchMedia(q).matches).length,
+    () => 7,
+  );
+}
+
+// A7: ranking by solved, score, then total solve time (03). Read only; a live contest can still change.
+function ContestResults({
+  contest: c,
+  status,
+  onRewardSent,
+}: {
+  contest: AdminContest;
+  status: ContestStatus;
+  onRewardSent: () => void;
+}) {
+  const [results, setResults] = useState<AdminContestResult[] | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    api<{ results: AdminContestResult[] }>(`/admin/contests/${c.id}/results`)
+      .then((r) => setResults(r.results))
+      .catch(() => setError(true));
+  }, [c.id]);
+
+  return (
+    <div className="rounded border border-border bg-surface p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-lg font-semibold text-text">
+          Results{status === "active" ? " so far" : ""}
+          {results && <span className="ml-2 text-sm font-normal text-muted">{results.length} engineers</span>}
+        </h2>
+        <div className="flex flex-wrap gap-2">
+          {status === "ended" && c.rewardType && (
+            <button type="button" onClick={onRewardSent} className={`${secondaryButton} sm:w-fit`}>
+              {c.rewardSentAt ? "Mark reward as not sent" : "Mark reward as sent"}
+            </button>
+          )}
+          <a href={`/api/v1/admin/contests/${c.id}/results?format=csv`} download className={`${secondaryButton} sm:w-fit`}>
+            Export CSV
+          </a>
+        </div>
+      </div>
+      {c.rewardSentAt && <p className="mt-2 text-xs text-muted">Reward sent {formatUtcDateTime(c.rewardSentAt)} (UTC)</p>}
+
+      {error ? (
+        <p className="mt-4 text-sm text-failed">Could not load the results. Try again.</p>
+      ) : !results ? (
+        <p className="mt-4 text-sm text-muted">Loading results…</p>
+      ) : results.length === 0 ? (
+        <p className="mt-4 text-sm text-muted">Nobody has entered this contest.</p>
+      ) : (
+        <table className="mt-4 w-full table-fixed text-left text-sm">
+          <thead className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+            <tr>
+              <th scope="col" className="w-12 py-2 pr-2">
+                Rank
+              </th>
+              <th scope="col" className="py-2 pr-2">
+                Engineer
+              </th>
+              <th scope="col" className="hidden w-20 py-2 pr-2 sm:table-cell">
+                Solved
+              </th>
+              <th scope="col" className="w-20 py-2 pr-2">
+                Score
+              </th>
+              <th scope="col" className="hidden w-24 py-2 sm:table-cell">
+                Solve time
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {results.map((r) => (
+              <tr key={r.username} className="border-t border-border align-top">
+                <td className="py-2 pr-2 text-text">{r.rank}</td>
+                <td className="min-w-0 py-2 pr-2">
+                  <p className="truncate text-text">{r.username}</p>
+                  <p className="truncate text-xs text-muted">{r.email}</p>
+                  <p className="text-xs text-muted sm:hidden">
+                    {r.problemsSolved}/{c.problems.length} solved · {duration(r.solveTimeSeconds)}
+                  </p>
+                </td>
+                <td className="hidden py-2 pr-2 text-text sm:table-cell">
+                  {r.problemsSolved}/{c.problems.length}
+                </td>
+                <td className="py-2 pr-2 text-text">{r.score}</td>
+                <td className="hidden py-2 text-muted sm:table-cell">{duration(r.solveTimeSeconds)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }

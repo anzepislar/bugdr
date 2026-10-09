@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { ChartCard, ColumnChart, DifficultyDonut, HorizontalBarChart, UserGrowthChart } from "@/components/admin/Chart";
 import { DifficultyBadge } from "@/components/admin/problems/shared";
 import { StatCard } from "@/components/admin/StatCard";
-import { mockGetAdminOverview } from "@/lib/mock/adminStats";
+import { api } from "@/lib/api";
 import { STATS_RANGES, type AdminOverview, type StatsRange } from "@/lib/types/adminStats";
 import { CATEGORIES } from "@/lib/types/problem";
 
@@ -48,9 +48,21 @@ export default function AdminOverviewPage() {
   const [range, setRange] = useState<StatsRange>("7d");
   const [growth, setGrowth] = useState<"signups" | "dau">("signups");
   const [data, setData] = useState<AdminOverview | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    mockGetAdminOverview(range).then(setData);
+    // Ignore an answer for a range the admin has already left.
+    let current = true;
+    api<AdminOverview>(`/admin/stats?range=${range}`)
+      .then((d) => {
+        if (!current) return;
+        setData(d);
+        setError(false);
+      })
+      .catch(() => current && setError(true));
+    return () => {
+      current = false;
+    };
   }, [range]);
 
   return (
@@ -63,7 +75,9 @@ export default function AdminOverviewPage() {
         <Pills options={STATS_RANGES} value={range} onChange={setRange} label="Date range" />
       </header>
 
-      {!data ? (
+      {error ? (
+        <p className="mt-8 text-sm text-failed">Could not load the stats. Reload the page.</p>
+      ) : !data ? (
         <p className="mt-8 text-sm text-muted">Loading…</p>
       ) : (
         <>
@@ -137,6 +151,7 @@ export default function AdminOverviewPage() {
                   ))}
                 </tbody>
               </table>
+              {data.topProblems.length === 0 && <p className="pt-3 text-sm text-muted">No solves yet.</p>}
             </ChartCard>
 
             <ChartCard title="Needs Attention" subtitle="Started but not solved">
@@ -169,6 +184,7 @@ export default function AdminOverviewPage() {
                     ))}
                 </tbody>
               </table>
+              {data.dropOff.length === 0 && <p className="pt-3 text-sm text-muted">Nobody has started a problem yet.</p>}
             </ChartCard>
           </div>
         </>
