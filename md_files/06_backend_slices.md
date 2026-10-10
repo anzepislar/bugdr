@@ -556,7 +556,7 @@ Vsa e-pošta gre prek Resend. Uporabnik nastavi `RESEND_API_KEY` (poln dostop) i
 **E1 · Modul za e-pošto** `S` · ✅ 10. 10. 2026
 - `backend/src/modules/email/email.service.js`: `sendEmail({ to, subject, text, replyTo, headers })`, `listReceived`, `getReceived` - Resend HTTP API z `fetch` (brez SDK). Brez ključa izven produkcije se e-pošta izpiše v konzolo; v produkciji brez ključa napaka. Testi nikoli ne pošiljajo (ključ prazen pri `NODE_ENV=test`, test nastavi lažen Resend strežnik).
 - Nastavitve: `RESEND_API_KEY`, `RESEND_API_URL` (privzeto api.resend.com), `EMAIL_FROM`, `APP_URL` (povezave v e-pošti).
-- Preverjeno ročno: testno sporočilo `hello@` → `hello@` poslano in prejeto. Resend lastni Message-ID zamenja (SES), zato niti po naslovu `hello+<id>@`.
+- Preverjeno ročno: testno sporočilo `hello@` → `hello@` poslano in prejeto; uporabnik 10. 10. 2026 preveril v živo: e-pošta iz Gmaila pride v `/admin/inbox`, odgovor pride v Gmail, odgovor nanj se vrne v isto nit. Resend lastni Message-ID zamenja (SES), zato niti po naslovu `hello+<id>@`.
 
 **E2 · Help & feedback in admin predal** `M` · odvisno od: E1, A1 · ✅ 10. 10. 2026
 - `POST /feedback` `{ type: bug|idea|problem|other, message ≤ 2000, page }` (prijava, 5 na uro → 429 `RATE_LIMITED`, `page` samo pot z `/`). Okno `FeedbackDialog` iz stranske vrstice in mobilnega traku; gost → prijava. `/me/profile` vrne še `email` (okno pove, kam pride odgovor).

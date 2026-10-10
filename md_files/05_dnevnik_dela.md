@@ -2196,3 +2196,5 @@ sledljivost), `00` (Career Paths, pragovi, brezplačna raven), `03`, `04`,
     Chromium (začasna kopija frontenda + lažen API, brez prave seje - lokalni
     žeton seje je bil zavrnjen); popravljena številka v stranski vrstici po
     odgovoru. Dokumenti 01, 04, 06 posodobljeni.
+  - **Preverjeno v živo** (uporabnik): e-pošta iz Gmaila → `/admin/inbox`,
+    odgovor iz predala → Gmail, odgovor nanj → ista nit kot New.
