@@ -23,6 +23,7 @@ This defines the next generation of engineering skill — not "can you code" but
 | Code editor | Monaco Editor (@monaco-editor/react) |
 | Problem execution | Docker containers |
 | Auth | JWT |
+| Email | Resend (sending + receiving on mail.bugdr.app, D68) |
 | AI | Claude API or OpenAI (by key, A9.1) for problem analysis; built-in AI chat = platform key with a cheap model + daily limit, or the user's own encrypted key (S1, S6; D62/D63) — server-side only |
 
 ---
@@ -67,11 +68,11 @@ bugdr/
 
 ```
 Phase: Backend slices (06_backend_slices.md) - frontend screens swap their mocks slice by slice
-Frontend: 24 screens; login, signup, logout, onboarding, /problems, /problems/[slug] (incl. rating and discussion),
+Frontend: 26 screens; login, signup, logout, forgot + reset password, onboarding, /problems, /problems/[slug] (incl. rating and discussion),
   the solve page, /profile/[username], /settings (profile tab), / (dashboard), the sidebar, /contests, /contests/[id],
   /admin/login, /admin (overview), /admin/problems (+ new, edit), /admin/contests (+ new, edit, results inline)
-  /admin/users (+ [id]), /admin/analytics, /admin/career-paths, /leaderboard and /career-paths use the real API,
-  incl. the solve page's AI chat (M8)
+  /admin/users (+ [id]), /admin/analytics, /admin/career-paths, /admin/inbox, /leaderboard and /career-paths use the
+  real API, incl. the solve page's AI chat (M8) and the Help & feedback dialog
 Backend: Milestones M0 (F0-F4: skeleton, levels, auth, route protection, onboarding), M1 (P1-P2: problem list,
   bookmarks, problem detail, streak on view) and M2 (R1-R6: start, give up, try history, Docker check runner,
   solve + points, terminal, live results), M3 (O1-O2: ratings, comments) and M4 (U1-U3: profile + settings,
@@ -82,12 +83,13 @@ Backend: Milestones M0 (F0-F4: skeleton, levels, auth, route protection, onboard
   S1 chat on a free model with a daily limit, S6 own API key, S2 session capture, S3 efficiency score in the points,
   S7 per-problem benchmark, S8 post-solve feedback, S4 public leaderboard, S5 admin AI analytics) and M9 (career
   paths: K1 path problems in the admin, K2 progress + assignment + unlock + /career-paths, K3 admin thresholds +
-  metrics) done; next M7 (Z1, Z2)
-Database: PostgreSQL 17 in Docker; migrations 0001-0025 (levels, users, profiles, problems, problem detail,
+  metrics) and M10 (email through Resend: E1 email module, E2 Help & feedback + /admin/inbox with replies by
+  email, E3 password reset) done; next M7 (Z1, Z2)
+Database: PostgreSQL 17 in Docker; migrations 0001-0026 (levels, users, profiles, problems, problem detail,
   problem brief, attempt tries, check results + points ledger, comment replies + helpful, profile fields, contests,
   contest entries, drop users.is_admin, bug summary, codebase hash, dry-run version, contest reward sent,
   solve sessions + prompts, user API keys, editor events, problem benchmarks, solve feedback, problem career paths,
-  career path progress + attempts per path, career path thresholds);
+  career path progress + attempts per path, career path thresholds, inbox + password reset tokens);
   `npm run seed` = 12 dev problems with code and checks, no made-up ratings (D57); only payment-retries-disappear
   is runnable so far; + 5 dev contests (dates relative to the seed run)
 Detailed status: CLAUDE.md "Current Status" and 06_backend_slices.md "Stanje"
@@ -287,7 +289,7 @@ PostgreSQL
 
 | Page | Route | Description |
 |------|-------|-------------|
-| Login / Signup | `/login` `/signup` `/forgot-password` | Standard auth + password reset request |
+| Login / Signup | `/login` `/signup` `/forgot-password` `/reset-password` | Standard auth + password reset by emailed link |
 | Onboarding | `/onboarding` | 4 steps after signup: role, experience, goal, languages |
 | Dashboard | `/` (`/dashboard` redirects) | Personalized feed + contests |
 | Problems | `/problems` | Browse all problems |
@@ -298,7 +300,7 @@ PostgreSQL
 | Contests | `/contests` | Daily/weekly/monthly |
 | Contest detail | `/contests/[id]` | Incident, rules, entry + your participation |
 | Leaderboard | `/leaderboard` | Public top 100 by points (include efficiency), All time / This month (D52) |
-| Admin | `/admin` | Problem + contest management, AI session analytics (`/admin/analytics`) |
+| Admin | `/admin` | Problem + contest management, AI session analytics (`/admin/analytics`), inbox (`/admin/inbox`) |
 | Landing | Separate repo | Friend 2 builds this |
 
 ---

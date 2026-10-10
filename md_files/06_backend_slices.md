@@ -201,6 +201,7 @@ seznam sprememb za tabele, ki še niso zgrajene. Narejeno v `01`: `users`
 | M6 Admin | A1 → A2 → A10 → A3 → A4 → A5 → A6-A9 → A9.1 | Upravljanje problemov, tekmovanj, uporabnikov, statistika |
 | M8 AI seja | S1 → S6 → S2 → S3 → S7 → S8 → S4, S5 | Vgrajeni AI klepet (brezplačni model / lasten ključ), zajem seje, ocena učinkovitosti v točkah, benchmark problema, povratna informacija po rešitvi, lestvica, AI analitika |
 | M9 Karierne poti | K1 → K2 → K3 | Problemi poti v adminu, 5 poti z lastnimi problemi in stopnjami, odklep s pragom, pragovi v adminu |
+| M10 E-pošta | E1 → E2 → E3 | Vsa e-pošta prek Resend, Help & feedback, admin predal z odgovori, ponastavitev gesla |
 | M7 Produkcija | Z1 → Z2 | Seed zaklenjen v produkciji, varna namestitev |
 
 M3-M6 so med seboj neodvisni (razen naštetih odvisnosti). Admin za probleme
