@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Icon, type IconName } from "@/components/Icon";
 import { api } from "@/lib/api";
 
@@ -16,6 +16,7 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/admin/users", label: "Users", icon: "user" },
   { href: "/admin/analytics", label: "Analytics", icon: "ranking" },
   { href: "/admin/career-paths", label: "Career paths", icon: "stairs" },
+  { href: "/admin/inbox", label: "Inbox", icon: "mail" },
 ];
 
 const CRUMB: [RegExp, string][] = [
@@ -28,7 +29,11 @@ const CRUMB: [RegExp, string][] = [
   [/^\/admin\/contests/, "Contests"],
   [/^\/admin\/users\/[^/]+$/, "User"],
   [/^\/admin\/users$/, "Users"],
+  [/^\/admin\/inbox$/, "Inbox"],
 ];
+
+/** Fired by /admin/inbox after a reply or status change, so the badge follows. */
+export const INBOX_CHANGED = "bugdr:inbox-changed";
 
 /** Full page load to /admin/login, so no cached admin page survives the logout (as useLogout does for users). */
 async function logout() {
@@ -43,6 +48,17 @@ export function AdminShell({ email, children }: { email: string; children: React
   const isActive = (href: string) =>
     href === "/admin" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
   const crumb = CRUMB.find(([re]) => re.test(pathname))?.[1];
+  // Sidebar badge: new inbox messages, re-read on every navigation and when the inbox page changes a thread.
+  const [inboxNew, setInboxNew] = useState(0);
+  useEffect(() => {
+    const read = () =>
+      api<{ new: number }>("/admin/inbox/count")
+        .then((r) => setInboxNew(r.new))
+        .catch(() => {});
+    read();
+    window.addEventListener(INBOX_CHANGED, read);
+    return () => window.removeEventListener(INBOX_CHANGED, read);
+  }, [pathname]);
 
   return (
     <div className="flex min-h-screen flex-1">
@@ -63,7 +79,10 @@ export function AdminShell({ email, children }: { email: string; children: React
               }`}
             >
               <Icon name={item.icon} className={`h-5 w-5 ${isActive(item.href) ? "text-action" : ""}`} />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {item.href === "/admin/inbox" && inboxNew > 0 ? (
+                <span className="rounded bg-surface px-1.5 text-xs font-medium text-action">{inboxNew}</span>
+              ) : null}
             </Link>
           ))}
         </nav>

@@ -3,8 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useLoginHref, useLogout, useMe } from "@/components/app/Session";
+import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
 import { Icon, type IconName } from "@/components/Icon";
 import { EXPERIENCE_LABEL, type Me } from "@/lib/types/dashboard";
 import { CATEGORIES } from "@/lib/types/problem";
@@ -47,6 +48,7 @@ export function AppShell({ children, liveContests }: { children: ReactNode; live
   ];
   const loginLink = useLoginHref();
   const logout = useLogout();
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const current = nav.find((item) => isActive(item.href));
   const crumb = pathname.startsWith("/problems/")
     ? "Problem details"
@@ -125,10 +127,13 @@ export function AppShell({ children, liveContests }: { children: ReactNode; live
               >
                 <Icon name="logout" /> Log out
               </button>
-              {/* No route yet. */}
-              <a href="#" className="flex items-center gap-3 rounded px-3 py-2 text-sm text-muted hover:text-text">
+              <button
+                type="button"
+                onClick={() => setFeedbackOpen(true)}
+                className="flex items-center gap-3 rounded px-3 py-2 text-sm text-muted hover:text-text"
+              >
                 <Icon name="help" /> Help &amp; feedback
-              </a>
+              </button>
               <div className="mt-3 flex items-center gap-3 border-t border-border px-2 pt-4">
                 <Avatar me={me} className="h-9 w-9 text-sm" />
                 <div className="min-w-0">
@@ -139,9 +144,10 @@ export function AppShell({ children, liveContests }: { children: ReactNode; live
             </>
           ) : (
             <>
-              <a href="#" className="flex items-center gap-3 rounded px-3 py-2 text-sm text-muted hover:text-text">
+              {/* Feedback needs an account, so it can be answered (and not spammed). */}
+              <Link href={loginLink} className="flex items-center gap-3 rounded px-3 py-2 text-sm text-muted hover:text-text">
                 <Icon name="help" /> Help &amp; feedback
-              </a>
+              </Link>
               <div className="mt-3 flex flex-col gap-2 border-t border-border px-2 pt-4">
                 <Link
                   href={loginLink}
@@ -217,9 +223,19 @@ export function AppShell({ children, liveContests }: { children: ReactNode; live
               {item.label}
             </Link>
           ))}
+          {me ? (
+            <button type="button" onClick={() => setFeedbackOpen(true)} className="shrink-0 rounded px-3 py-1.5 text-sm text-muted">
+              Help &amp; feedback
+            </button>
+          ) : (
+            <Link href={loginLink} className="shrink-0 rounded px-3 py-1.5 text-sm text-muted">
+              Help &amp; feedback
+            </Link>
+          )}
         </nav>
 
         <main className="flex-1">{children}</main>
+        {me && <FeedbackDialog open={feedbackOpen} email={me.email} onClose={() => setFeedbackOpen(false)} />}
       </div>
     </div>
   );

@@ -37,4 +37,11 @@ export const config = {
   aiFreeDailyTokens: Number(env.AI_FREE_DAILY_TOKENS ?? 20000),
   // S6 (D63): master key for users' own API keys (AES-256-GCM). Unset = connecting a key is switched off.
   apiKeyEncryptionKey: env.API_KEY_ENCRYPTION_KEY ?? "",
+  // D68: every email goes through Resend. Unset outside production = emails are printed instead of sent.
+  // Tests never send: a test that needs it sets resendApiKey + resendApiUrl (a local fake) on config.
+  resendApiKey: testing ? "" : (env.RESEND_API_KEY ?? ""),
+  resendApiUrl: env.RESEND_API_URL ?? "https://api.resend.com",
+  emailFrom: env.EMAIL_FROM ?? "Bugdr <hello@mail.bugdr.app>",
+  // Links in emails (password reset).
+  appUrl: (env.APP_URL ?? "http://localhost:3000").replace(/\/$/, ""),
 };

@@ -23,8 +23,8 @@ async function getMe(): Promise<Me | null> {
   if (!(await cookies()).has(SESSION_COOKIE)) return null;
   const res = await serverFetch("/me/profile");
   if (!res.ok) return null;
-  const { username, settings } = (await res.json()) as { username: string; settings: ProfileSettings };
-  return { username, displayName: settings.displayName, goalRole: settings.goalRole, experienceLevel: settings.experienceLevel };
+  const { username, email, settings } = (await res.json()) as { username: string; email: string; settings: ProfileSettings };
+  return { username, email, displayName: settings.displayName, goalRole: settings.goalRole, experienceLevel: settings.experienceLevel };
 }
 
 // Sidebar badge. ponytail: loads the whole contest list for one number; add a count endpoint if the list grows large.

@@ -74,14 +74,16 @@ export const bannedError = () => new HttpError(403, "BANNED", "This account has 
  * A ban applies on the next request, without logging in again.
  */
 export async function requireAuth(req, res, next) {
-  let userId;
+  let payload;
   try {
-    userId = jwt.verify(readCookie(req, SESSION_COOKIE) ?? "", config.jwtSecret, { algorithms: ["HS256"] }).sub;
+    payload = jwt.verify(readCookie(req, SESSION_COOKIE) ?? "", config.jwtSecret, { algorithms: ["HS256"] });
   } catch {
     throw new HttpError(401, "UNAUTHENTICATED", "Log in to continue");
   }
-  const row = await findUser("id", userId);
-  if (!row) throw new HttpError(401, "UNAUTHENTICATED", "Log in to continue");
+  const row = await findUser("id", payload.sub);
+  // X5: a password change ends every session issued before it.
+  const changedAt = row?.password_changed_at && Math.floor(row.password_changed_at.getTime() / 1000);
+  if (!row || (changedAt && payload.iat < changedAt)) throw new HttpError(401, "UNAUTHENTICATED", "Log in to continue");
   if (row.is_banned) throw bannedError();
   // At most one write a minute per user.
   if (row.stale) await pool.query("UPDATE users SET last_active_at = now() WHERE id = $1", [row.id]);

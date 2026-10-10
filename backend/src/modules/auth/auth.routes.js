@@ -1,4 +1,6 @@
+import { createHash, randomBytes } from "node:crypto";
 import { Router } from "express";
+import { config } from "../../config.js";
 import { pool } from "../../db.js";
 import { HttpError } from "../../errors.js";
 import {
@@ -11,6 +13,7 @@ import {
   toUser,
   verifyPassword,
 } from "./auth.service.js";
+import { sendEmail } from "../email/email.service.js";
 
 export const authRouter = Router();
 
@@ -83,4 +86,67 @@ authRouter.post("/logout", (req, res) => {
 
 authRouter.get("/me", requireAuth, (req, res) => {
   res.json({ user: req.user });
+});
+
+// X5: password reset by email. Only the SHA-256 of the token is stored; the link works once, for 1 hour.
+const RESET_MINUTES = 60;
+const sha256 = (s) => createHash("sha256").update(s).digest("hex");
+
+// POST /auth/forgot-password { email } → always 204, so the form never tells whether an account exists.
+// The email is sent after the response (same timing either way). At most one link per account every 2 minutes.
+authRouter.post("/forgot-password", async (req, res) => {
+  const email = str(req.body?.email).trim().toLowerCase();
+  res.status(204).end();
+
+  const row = EMAIL.test(email) ? await findUser("email", email) : undefined;
+  if (!row || row.is_banned) return;
+  const token = randomBytes(32).toString("base64url");
+  const { rowCount } = await pool.query(
+    `INSERT INTO password_reset_tokens (token_hash, user_id, expires_at)
+     SELECT $1, $2, now() + make_interval(mins => $3)
+     WHERE NOT EXISTS (SELECT 1 FROM password_reset_tokens WHERE user_id = $2 AND created_at > now() - interval '2 minutes')`,
+    [sha256(token), row.id, RESET_MINUTES],
+  );
+  if (!rowCount) return;
+  await sendEmail({
+    to: row.email,
+    subject: "Reset your Bugdr password",
+    text:
+      `Hi ${row.username},\n\nSomeone asked to reset the password for your Bugdr account. ` +
+      `Open this link to set a new one (it works once, for 1 hour):\n\n` +
+      `${config.appUrl}/reset-password?token=${token}\n\n` +
+      `If it was not you, ignore this email - your password stays the same.\n\nBugdr`,
+  }).catch((err) => console.error(`Password reset email: ${err.message}`));
+});
+
+// POST /auth/reset-password { token, password } → 204. Every session from before the change stops working.
+authRouter.post("/reset-password", async (req, res) => {
+  const token = str(req.body?.token);
+  const password = str(req.body?.password);
+  if (password.length < MIN_PASSWORD || password.length > MAX_PASSWORD)
+    throw new HttpError(400, "VALIDATION_ERROR", "Check the highlighted fields", {
+      password: `At least ${MIN_PASSWORD} characters`,
+    });
+  const passwordHash = await hashPassword(password);
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query(
+      `UPDATE password_reset_tokens SET used_at = now()
+       WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now() RETURNING user_id`,
+      [sha256(token)],
+    );
+    if (!rows[0]) throw new HttpError(400, "INVALID_TOKEN", "This link has expired or was already used");
+    const userId = rows[0].user_id;
+    await client.query("UPDATE users SET password_hash = $2, password_changed_at = now() WHERE id = $1", [userId, passwordHash]);
+    await client.query("UPDATE password_reset_tokens SET used_at = now() WHERE user_id = $1 AND used_at IS NULL", [userId]);
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+  res.status(204).end();
 });

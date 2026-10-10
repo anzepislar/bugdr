@@ -8,6 +8,7 @@ import { adminContestsRouter } from "./contests.routes.js";
 import { adminProblemsRouter } from "./problems.routes.js";
 import { adminStatsRouter } from "./stats.routes.js";
 import { adminUsersRouter } from "./users.routes.js";
+import { adminInboxRouter } from "../inbox/inbox.routes.js";
 
 // Every admin endpoint goes on this router behind requireAdmin; only login and logout are open.
 export const adminRouter = Router();
@@ -58,4 +59,5 @@ adminRouter.use("/contests", requireAdmin, adminContestsRouter);
 adminRouter.use("/users", requireAdmin, adminUsersRouter);
 adminRouter.use("/stats", requireAdmin, adminStatsRouter);
 adminRouter.use("/analytics", requireAdmin, adminAnalyticsRouter);
+adminRouter.use("/inbox", requireAdmin, adminInboxRouter);
 adminRouter.use("/career-paths", requireAdmin, adminCareerPathsRouter);

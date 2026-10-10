@@ -26,6 +26,8 @@ export type PlatformGoal = (typeof PLATFORM_GOALS)[number];
 /** Signed-in user, as the app shell needs it (user_profiles + users). */
 export interface Me {
   username: string;
+  /** Where replies to feedback go. */
+  email: string;
   displayName: string;
   /** null = "Exploring my path" (D41). */
   goalRole: CategorySlug | null;
