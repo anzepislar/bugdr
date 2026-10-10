@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLoginHref, useSignedIn } from "@/components/app/Session";
 import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { api } from "@/lib/api";
 import {
   CATEGORIES,
@@ -165,52 +166,43 @@ export function ProblemBrowser({ initialQuery }: { initialQuery: string }) {
 
       <div className="mt-4 flex flex-col gap-4 xl:flex-row">
         <div className="grid flex-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-          <select
+          <Select
             aria-label="Role"
             value={filters.category}
-            onChange={(e) => patch({ category: e.target.value as Filters["category"] })}
+            onChange={(category) => patch({ category })}
+            options={[
+              { value: "all" as const, label: "Role: All roles" },
+              ...CATEGORIES.map((c) => ({ value: c.slug, label: `Role: ${c.name}` })),
+            ]}
             className={selectClass}
-          >
-            <option value="all">Role: All roles</option>
-            {CATEGORIES.map((c) => (
-              <option key={c.slug} value={c.slug}>
-                Role: {c.name}
-              </option>
-            ))}
-          </select>
-          <select
+          />
+          <Select
             aria-label="Difficulty"
             value={filters.difficulty}
-            onChange={(e) => patch({ difficulty: e.target.value as Filters["difficulty"] })}
+            onChange={(difficulty) => patch({ difficulty })}
+            options={[
+              { value: "all" as const, label: "Difficulty: Any" },
+              ...DIFFICULTIES.map((d) => ({ value: d, label: `Difficulty: ${DIFFICULTY_LABEL[d]}` })),
+            ]}
             className={selectClass}
-          >
-            <option value="all">Difficulty: Any</option>
-            {DIFFICULTIES.map((d) => (
-              <option key={d} value={d}>
-                Difficulty: {DIFFICULTY_LABEL[d]}
-              </option>
-            ))}
-          </select>
-          <select aria-label="Topic" value={filters.tag} onChange={(e) => patch({ tag: e.target.value })} className={selectClass}>
-            <option value="">Topic: All topics</option>
-            {tags.map((t) => (
-              <option key={t} value={t}>
-                Topic: {t}
-              </option>
-            ))}
-          </select>
-          <select
+          />
+          <Select
+            aria-label="Topic"
+            value={filters.tag}
+            onChange={(tag) => patch({ tag })}
+            options={[{ value: "", label: "Topic: All topics" }, ...tags.map((t) => ({ value: t, label: `Topic: ${t}` }))]}
+            className={selectClass}
+          />
+          <Select
             aria-label="Status"
             value={filters.status}
-            onChange={(e) => patch({ status: e.target.value as Filters["status"] })}
+            onChange={(status) => patch({ status })}
+            options={(Object.keys(STATUSES) as Filters["status"][]).map((value) => ({
+              value,
+              label: `Status: ${STATUSES[value]}`,
+            }))}
             className={selectClass}
-          >
-            {Object.entries(STATUSES).map(([value, label]) => (
-              <option key={value} value={value}>
-                Status: {label}
-              </option>
-            ))}
-          </select>
+          />
           </div>
         <button
           type="button"
@@ -226,18 +218,13 @@ export function ProblemBrowser({ initialQuery }: { initialQuery: string }) {
 
       <div className="mt-8 flex items-center justify-between gap-4">
         <p className="font-semibold text-text">{shown.length} problems</p>
-        <select
+        <Select
           aria-label="Sort"
           value={filters.sort}
-          onChange={(e) => patch({ sort: e.target.value as Filters["sort"] })}
-          className="bg-transparent text-sm text-muted focus:text-text focus:outline-none"
-        >
-          {Object.entries(SORTS).map(([value, label]) => (
-            <option key={value} value={value}>
-              Sort: {label}
-            </option>
-          ))}
-        </select>
+          onChange={(sort) => patch({ sort })}
+          options={(Object.keys(SORTS) as Filters["sort"][]).map((value) => ({ value, label: `Sort: ${SORTS[value]}` }))}
+          className="rounded text-sm text-muted hover:text-text focus:text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-action"
+        />
       </div>
 
       {items.length > 0 ? (

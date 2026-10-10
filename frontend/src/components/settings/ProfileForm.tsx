@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { ErrorMessage, FieldLabel, inputClass, primaryButton, Spinner } from "@/components/admin/problems/shared";
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { api, ApiError } from "@/lib/api";
-import { EXPERIENCE_LABEL, EXPERIENCE_LEVELS, type ExperienceLevel } from "@/lib/types/dashboard";
-import { CATEGORIES, type CategorySlug } from "@/lib/types/problem";
+import { EXPERIENCE_LABEL, EXPERIENCE_LEVELS } from "@/lib/types/dashboard";
+import { CATEGORIES } from "@/lib/types/problem";
 import { LANGUAGES, type ProfileSettings } from "@/lib/types/profile";
 
 const fieldClass = `${inputClass} py-2.5`;
@@ -97,34 +98,26 @@ export function ProfileForm({ initial, profileHref }: { initial: ProfileSettings
           <div className="mt-6 flex flex-col gap-6">
             <div>
               <FieldLabel htmlFor="goalRole">Role</FieldLabel>
-              <select
+              <Select
                 id="goalRole"
                 value={form.goalRole ?? ""}
-                onChange={(e) => patch({ goalRole: (e.target.value || null) as CategorySlug | null })}
+                onChange={(v) => patch({ goalRole: v || null })}
+                options={[
+                  { value: "" as const, label: "Exploring my path" },
+                  ...CATEGORIES.map((c) => ({ value: c.slug, label: c.name })),
+                ]}
                 className={fieldClass}
-              >
-                <option value="">Exploring my path</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c.slug} value={c.slug}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
             <div>
               <FieldLabel htmlFor="experience">Production experience</FieldLabel>
-              <select
+              <Select
                 id="experience"
                 value={form.experienceLevel}
-                onChange={(e) => patch({ experienceLevel: e.target.value as ExperienceLevel })}
+                onChange={(experienceLevel) => patch({ experienceLevel })}
+                options={EXPERIENCE_LEVELS.map((l) => ({ value: l, label: EXPERIENCE_LABEL[l] }))}
                 className={fieldClass}
-              >
-                {EXPERIENCE_LEVELS.map((l) => (
-                  <option key={l} value={l}>
-                    {EXPERIENCE_LABEL[l]}
-                  </option>
-                ))}
-              </select>
+              />
               <p className="mt-1.5 text-xs text-muted">Sets the starting difficulty of your recommendations.</p>
             </div>
             <fieldset>

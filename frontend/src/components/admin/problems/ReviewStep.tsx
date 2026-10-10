@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/Select";
 import {
   CATEGORIES,
   CHECK_TYPES,
@@ -8,7 +9,6 @@ import {
   DIFFICULTY_LABEL,
   toSlug,
   type Check,
-  type CheckType,
   type Difficulty,
   type ProblemForm,
 } from "@/lib/types/problem";
@@ -275,18 +275,13 @@ function CheckCard({
   return (
     <div className={`${cardClass} space-y-3`}>
       <div className="flex flex-wrap items-center gap-3">
-        <select
+        <Select
           aria-label="Check type"
           value={check.checkType}
-          onChange={(e) => onChange({ checkType: e.target.value as CheckType })}
+          onChange={(checkType) => onChange({ checkType })}
+          options={CHECK_TYPES.map((type) => ({ value: type, label: type }))}
           className="rounded border border-border bg-canvas px-2 py-0.5 text-xs uppercase tracking-wide text-muted focus:border-action focus:outline-none"
-        >
-          {CHECK_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
+        />
         <label className="ml-auto flex items-center gap-2 text-sm text-muted">
           <input
             type="checkbox"

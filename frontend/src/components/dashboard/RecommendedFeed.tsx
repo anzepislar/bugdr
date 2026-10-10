@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useLoginHref, useSignedIn } from "@/components/app/Session";
 import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { api } from "@/lib/api";
 import { STARTING_DIFFICULTY, type ExperienceLevel } from "@/lib/types/dashboard";
 import {
@@ -86,47 +87,36 @@ export function RecommendedFeed({
           {goalRole ? "Recommended for you" : "Start with these problems"}
         </h2>
         <span className="text-sm text-muted">{shown.length} problems</span>
-        <select
+        <Select
           aria-label="Sort"
           value={filters.sort}
-          onChange={(e) => patch({ sort: e.target.value as Filters["sort"] })}
+          onChange={(sort) => patch({ sort })}
+          options={(Object.keys(SORTS) as Filters["sort"][]).map((value) => ({ value, label: SORTS[value] }))}
           className={`${selectClass} ml-auto`}
-        >
-          {Object.entries(SORTS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+        />
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <select
+        <Select
           aria-label="Category"
           value={filters.category}
-          onChange={(e) => patch({ category: e.target.value as Filters["category"] })}
+          onChange={(category) => patch({ category })}
+          options={[
+            { value: "all" as const, label: "All categories" },
+            ...CATEGORIES.map((c) => ({ value: c.slug, label: c.name })),
+          ]}
           className={`${selectClass} min-w-[184px]`}
-        >
-          <option value="all">All categories</option>
-          {CATEGORIES.map((c) => (
-            <option key={c.slug} value={c.slug}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select
+        />
+        <Select
           aria-label="Difficulty"
           value={filters.difficulty}
-          onChange={(e) => patch({ difficulty: e.target.value as Filters["difficulty"] })}
+          onChange={(difficulty) => patch({ difficulty })}
+          options={[
+            { value: "all" as const, label: "All levels" },
+            ...DIFFICULTIES.map((d) => ({ value: d, label: DIFFICULTY_LABEL[d] })),
+          ]}
           className={`${selectClass} min-w-[130px]`}
-        >
-          <option value="all">All levels</option>
-          {DIFFICULTIES.map((d) => (
-            <option key={d} value={d}>
-              {DIFFICULTY_LABEL[d]}
-            </option>
-          ))}
-        </select>
+        />
         <button type="button" onClick={() => setFilters(defaults)} className="text-sm text-action hover:underline">
           Reset
         </button>

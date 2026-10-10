@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { AcceptanceChecks, Description } from "@/components/problems/ProblemOverview";
 import { AiChatPanel } from "@/components/solve/AiChatPanel";
 import { ChecksPanel } from "@/components/solve/ChecksPanel";
@@ -509,16 +510,13 @@ export function Workspace({
                 </button>
               ))}
             </div>
-            <select
+            <Select
               key={activePath}
               aria-label="Language"
               defaultValue={LANGUAGE_BY_EXT[activePath.split(".").pop() ?? ""] ?? LANGUAGES[0]}
+              options={LANGUAGES.map((l) => ({ value: l, label: l }))}
               className="m-1 shrink-0 rounded border border-border bg-[#1e1e1e] px-2 text-xs text-muted"
-            >
-              {LANGUAGES.map((l) => (
-                <option key={l}>{l}</option>
-              ))}
-            </select>
+            />
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col">

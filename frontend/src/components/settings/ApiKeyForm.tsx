@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { ErrorMessage, FieldLabel, inputClass, primaryButton, secondaryButton, Spinner } from "@/components/admin/problems/shared";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { api, ApiError } from "@/lib/api";
 
 export type AiProvider = "anthropic" | "openai";
@@ -92,22 +93,16 @@ export function ApiKeyForm({ initial }: { initial: ApiKeyStatus }) {
         <form onSubmit={connect} className="mt-6 flex flex-col gap-6">
           <div>
             <FieldLabel htmlFor="aiProvider">Provider</FieldLabel>
-            <select
+            <Select
               id="aiProvider"
               value={provider}
-              onChange={(e) => {
-                const p = e.target.value as AiProvider;
+              onChange={(p) => {
                 setProvider(p);
                 setModel(status.models[p][0]);
               }}
+              options={(Object.keys(PROVIDER_LABEL) as AiProvider[]).map((p) => ({ value: p, label: PROVIDER_LABEL[p] }))}
               className={fieldClass}
-            >
-              {(Object.keys(PROVIDER_LABEL) as AiProvider[]).map((p) => (
-                <option key={p} value={p}>
-                  {PROVIDER_LABEL[p]}
-                </option>
-              ))}
-            </select>
+            />
           </div>
           <div>
             <FieldLabel htmlFor="aiKey">API key</FieldLabel>
@@ -129,13 +124,13 @@ export function ApiKeyForm({ initial }: { initial: ApiKeyStatus }) {
           </div>
           <div>
             <FieldLabel htmlFor="aiModel">Model</FieldLabel>
-            <select id="aiModel" value={model} onChange={(e) => setModel(e.target.value)} className={fieldClass}>
-              {status.models[provider].map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+            <Select
+              id="aiModel"
+              value={model}
+              onChange={setModel}
+              options={status.models[provider].map((m) => ({ value: m, label: m }))}
+              className={fieldClass}
+            />
           </div>
           <button type="submit" disabled={busy || !key.trim()} className={`${primaryButton} w-full px-6 py-2.5 sm:w-fit sm:min-w-44`}>
             {busy ? (

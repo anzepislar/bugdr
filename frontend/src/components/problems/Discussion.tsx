@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Select } from "@/components/Select";
 import { api } from "@/lib/api";
 import { CATEGORIES, type ProblemComment } from "@/lib/types/problem";
 
@@ -210,18 +211,13 @@ export function Discussion({ slug, initial }: { slug: string; initial: ProblemCo
         <h2 id="discussion-heading" className="text-xl font-semibold text-text">
           Discussion
         </h2>
-        <select
+        <Select
           aria-label="Sort comments"
           value={sort}
-          onChange={(e) => setSort(e.target.value as Sort)}
-          className="bg-transparent text-sm text-muted focus:text-text focus:outline-none"
-        >
-          {Object.entries(SORTS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+          onChange={setSort}
+          options={(Object.keys(SORTS) as Sort[]).map((value) => ({ value, label: SORTS[value] }))}
+          className="rounded text-sm text-muted hover:text-text focus:text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-action"
+        />
       </div>
 
       <form onSubmit={post} className="mt-5 rounded border border-border bg-surface p-5 focus-within:border-action">
