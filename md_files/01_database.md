@@ -6,6 +6,7 @@
 - PostgreSQL 17
 - All IDs are UUID
 - All timestamps default to NOW()
+- `TIMESTAMP` columns (no zone) hold UTC: every connection sets `TimeZone=UTC` and `backend/src/db.js` reads and writes them as UTC, whatever the server's local timezone
 - Migrations are plain `.sql` files in `/migrations/`
 - Tables that already exist are written here exactly as their migration created them. Planned changes to tables not built yet are listed in `06_backend_slices.md` ("Spremembe sheme")
 - Never update points directly — always insert a transaction (see point_transactions)

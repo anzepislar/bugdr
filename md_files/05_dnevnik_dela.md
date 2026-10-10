@@ -2133,3 +2133,17 @@ sledljivost), `00` (Career Paths, pragovi, brezplačna raven), `03`, `04`,
   `CASCADE`; poskusov in točk ni bilo). Uporabnik in kategorije ostanejo.
   Datoteke `seeds/` ostanejo, ker jih uporabljajo testi (npr.
   `payment-retries-disappear` v Dockerju); `npm run seed` bi vzorce vrnil.
+- **Napaka s časovnimi pasovi** (odkrita med snemanjem): stolpci `TIMESTAMP`
+  (brez pasu) hranijo UTC (baza teče v UTC), `pg` pa jih je bral in zapisoval
+  v lokalnem času procesa Node - na prenosniku v Ljubljani 2 uri zamika
+  (npr. števec na strani reševanja bi začel pri ~2:00:00). Popravek v
+  `backend/src/db.js`: vsaka povezava nastavi `TimeZone=UTC`, `TIMESTAMP` se
+  bere kot UTC, parametri `Date` se zapišejo kot UTC
+  (`parseInputDatesAsUTC`). `sessionTimes` v `attempts.routes.js` bere čase
+  iz `json_agg` kot UTC. Nov test v `f0.test.js` (pade brez popravka, tudi
+  pri `TZ=Pacific/Auckland`). Testi 204/204. Pravilo dodano v `01`.
+- **Posnetki in posnetki zaslona za pristajalno stran** (zunaj repozitorija):
+  ločena demo kopija (baza `bugdr_demo`, backend :4100, frontend :3100,
+  skriptirani AI odgovori - odločitev uporabnika), ~5 mesecev izmišljene
+  uporabe, 10 posnetkov MP4 in 56 posnetkov zaslona v
+  `~/Desktop/bugdr-marketing` (z README za urednika).

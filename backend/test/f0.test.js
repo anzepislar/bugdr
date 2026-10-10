@@ -37,3 +37,10 @@ test("running migrate twice applies nothing the second time", async () => {
     await pool.query("DELETE FROM schema_migrations WHERE name = '0001_f0_test.sql'");
   }
 });
+
+test("TIMESTAMP columns read and write as UTC, whatever the Node timezone", async () => {
+  const sent = new Date();
+  const { rows } = await pool.query("SELECT now()::timestamp AS now, $1::timestamp AS back", [sent]);
+  assert.ok(Math.abs(rows[0].now - sent) < 5000, `now() came back ${(rows[0].now - sent) / 3_600_000} h off`);
+  assert.equal(rows[0].back.toISOString(), sent.toISOString());
+});

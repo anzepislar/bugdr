@@ -510,8 +510,9 @@ async function sessionTimes(client, attemptId) {
   );
   const s = rows[0];
   if (!s) return; // recordTestRun creates the session before every solve; kept for safety
-  // json_agg returns timestamps as strings without a zone; pg reads TIMESTAMP columns as local time, so do the same.
-  const tries = s.tries.map((t) => ({ startedAt: new Date(t.startedAt), endedAt: t.endedAt && new Date(t.endedAt) }));
+  // json_agg returns timestamps as strings without a zone; they are UTC like every TIMESTAMP column (db.js).
+  const utc = (v) => new Date(`${v}Z`);
+  const tries = s.tries.map((t) => ({ startedAt: utc(t.startedAt), endedAt: t.endedAt && utc(t.endedAt) }));
   const firstAction = [s.first_prompt, s.first_event].filter(Boolean).sort((x, y) => x - y)[0];
   await client.query(
     "UPDATE solve_sessions SET time_to_first_prompt = $2, time_on_description = $3, updated_at = now() WHERE id = $1",
