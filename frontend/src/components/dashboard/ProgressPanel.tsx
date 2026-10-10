@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ActivityGrid, isoDay, mondayOf } from "@/components/ActivityGrid";
 import { Icon } from "@/components/Icon";
+import { RankBadge, type Rank } from "@/components/RankBadge";
 import type { ActivityDay, DashboardStats, RecentWin } from "@/lib/types/dashboard";
 
 const DAY = 86_400_000;
@@ -43,9 +44,7 @@ export function ProgressPanel({
       </div>
 
       <div className="mt-5 flex items-center gap-4">
-        <span className="flex h-14 w-14 items-center justify-center rounded bg-canvas text-2xl font-semibold text-action">
-          {level.order}
-        </span>
+        <RankBadge rank={level.name as Rank} size={56} />
         <div>
           <p className="text-lg font-semibold text-text">{level.name}</p>
           <p className="text-sm text-muted">

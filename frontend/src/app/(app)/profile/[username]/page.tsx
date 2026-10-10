@@ -4,6 +4,7 @@ import { ActivityGrid, heatClass } from "@/components/ActivityGrid";
 import { secondaryButton } from "@/components/admin/problems/shared";
 import { ContestHistory } from "@/components/contests/ContestHistory";
 import { Icon } from "@/components/Icon";
+import { RankBadge, type Rank } from "@/components/RankBadge";
 import { ShareProfileButton } from "@/components/profile/ShareProfileButton";
 import { SolvedProblems } from "@/components/profile/SolvedProblems";
 import { serverFetch } from "@/lib/serverApi";
@@ -115,7 +116,15 @@ function Overview({ profile, now, base }: { profile: Profile; now: number; base:
   const statList = [
     { value: stats.problemsSolved.toLocaleString("en-US"), label: "Problems solved" },
     { value: stats.totalPoints.toLocaleString("en-US"), label: "Total points" },
-    { value: stats.level.name, label: "Current level" },
+    {
+      value: (
+        <span className="flex items-center gap-3">
+          <RankBadge rank={stats.level.name as Rank} size={36} />
+          {stats.level.name}
+        </span>
+      ),
+      label: "Current level",
+    },
     { value: `${stats.currentStreak} ${stats.currentStreak === 1 ? "day" : "days"}`, label: "Current streak" },
   ];
 

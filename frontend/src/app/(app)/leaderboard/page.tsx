@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RankBadge, type Rank } from "@/components/RankBadge";
 import { serverFetch } from "@/lib/serverApi";
 import type { LeaderboardEntry, LeaderboardPeriod } from "@/lib/types/leaderboard";
 
@@ -50,7 +51,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
             <tr>
               <th className={`${th} w-14`}>Rank</th>
               <th className={th}>Engineer</th>
-              <th className={`${th} hidden w-28 md:table-cell`}>Level</th>
+              <th className={`${th} hidden w-36 md:table-cell`}>Level</th>
               <th className={`${th} hidden w-20 text-right sm:table-cell`}>Solved</th>
               <th className={`${th} hidden w-32 text-right md:table-cell`}>AI efficiency</th>
               <th className={`${th} w-24 text-right`}>Points</th>
@@ -75,7 +76,12 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
                   </div>
                   <p className="truncate text-xs text-muted">@{e.username}</p>
                 </td>
-                <td className={`${td} hidden truncate text-muted md:table-cell`}>{e.level}</td>
+                <td className={`${td} hidden text-muted md:table-cell`}>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <RankBadge rank={e.level as Rank} size={20} />
+                    <span className="truncate">{e.level}</span>
+                  </span>
+                </td>
                 <td className={`${td} hidden text-right tabular-nums text-muted sm:table-cell`}>{e.problemsSolved}</td>
                 <td className={`${td} hidden text-right tabular-nums text-muted md:table-cell`}>
                   {e.avgEfficiency === null ? "-" : `${e.avgEfficiency.toFixed(2)}x`}

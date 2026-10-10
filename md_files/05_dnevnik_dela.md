@@ -2147,3 +2147,13 @@ sledljivost), `00` (Career Paths, pragovi, brezplačna raven), `03`, `04`,
   skriptirani AI odgovori - odločitev uporabnika), ~5 mesecev izmišljene
   uporabe, 10 posnetkov MP4 in 56 posnetkov zaslona v
   `~/Desktop/bugdr-marketing` (z README za urednika).
+- **Značke nivojev** (dizajn uporabnika, `bugdr_rank_badges_v2.svg`): nova
+  komponenta `src/components/RankBadge.tsx` - 7 šestkotnih značk (gradient,
+  obroba, notranja črta, ikona; Distinguished 1,3× večja z 8-krako zvezdo),
+  props `rank`, `size`, `showLabel`, `className`; pomožne funkcije
+  `getRankColor`, `getRankFromPoints`, `getNextRank`. Uporabljena na
+  dashboardu (namesto številke nivoja v "Your progress"), na lestvici (stolpec
+  Level, širši `w-36`) in na profilu (Current level). Admin strani še kažejo
+  besedilo. Preverjeno pri 320-2560 px (brez vodoravnega drsenja); lint +
+  typecheck + build zelena. Posnetki za pristajalno stran so nastali pred
+  značkami.
