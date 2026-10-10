@@ -432,7 +432,6 @@ function ProblemPicker({
         />
       </div>
 
-      {/* ponytail: all mock problems count as published; A2 returns only is_published = TRUE. */}
       {options === null ? (
         <p className="mt-3 text-sm text-muted">Loading problems…</p>
       ) : (

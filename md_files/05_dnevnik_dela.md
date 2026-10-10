@@ -2121,3 +2121,15 @@ sledljivost), `00` (Career Paths, pragovi, brezplačna raven), `03`, `04`,
   po prijavi) kažejo na `/`. API `GET /dashboard` ostane.
 - Posodobljeni CLAUDE.md (tabela poti), 00 in 06.
 - Lint + typecheck + build zelena; v brskalniku ni preverjeno.
+- **Odstranjeni vsi mocki**: izbrisani `src/lib/mock/` (11 datotek),
+  `public/mock/` (3 sličice) ter neuporabljena `DefineStep.tsx` in
+  `ValidateStep.tsx`. Dashboard: gostje pod zameglitvijo vidijo prazno
+  stanje novega računa (0 točk, Intern) namesto izmišljene statistike.
+  `/forgot-password`: obrazec z lažnim "poslali smo povezavo" zamenjan s
+  sporočilom, da ponastavitev po e-pošti še ni na voljo (X5). Lint +
+  typecheck + build zelena.
+- **Vzorčni podatki iz razvojne baze** (odločitev uporabnika): izbrisanih
+  12 vzorčnih problemov in 5 tekmovanj (vse povezane vrstice gredo s
+  `CASCADE`; poskusov in točk ni bilo). Uporabnik in kategorije ostanejo.
+  Datoteke `seeds/` ostanejo, ker jih uporabljajo testi (npr.
+  `payment-retries-disappear` v Dockerju); `npm run seed` bi vzorce vrnil.

@@ -9,11 +9,18 @@ import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
 import { api } from "@/lib/api";
 import { countdown } from "@/lib/format";
-import { mockGetDashboard } from "@/lib/mock/dashboard";
 import type { Contest } from "@/lib/types/contest";
-import type { Dashboard, InProgressAttempt } from "@/lib/types/dashboard";
+import type { Dashboard, DashboardStats, InProgressAttempt } from "@/lib/types/dashboard";
 
-type MockDashboard = Awaited<ReturnType<typeof mockGetDashboard>>;
+// What a new account starts with, shown blurred to guests (GET /dashboard sends guests no stats).
+const GUEST_STATS: DashboardStats = {
+  totalPoints: 0,
+  problemsSolved: 0,
+  currentStreak: 0,
+  longestStreak: 0,
+  level: { name: "Intern", order: 1, minPoints: 0 },
+  nextLevel: { name: "Junior", order: 2, minPoints: 500 },
+};
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -33,13 +40,13 @@ function elapsed(startedAt: string, now: number): string {
 
 export default function DashboardPage() {
   // Data only exists client-side, so time-based text never mismatches on hydration.
-  const [state, setState] = useState<{ data: Dashboard; mock: MockDashboard; now: number } | "error" | null>(null);
+  const [state, setState] = useState<{ data: Dashboard; now: number } | "error" | null>(null);
   const me = useMe();
   const signedIn = me !== null;
 
   useEffect(() => {
-    Promise.all([api<Dashboard>("/dashboard"), mockGetDashboard()]).then(
-      ([data, mock]) => setState({ data, mock, now: Date.now() }),
+    api<Dashboard>("/dashboard").then(
+      (data) => setState({ data, now: Date.now() }),
       () => setState("error"),
     );
   }, []);
@@ -51,7 +58,7 @@ export default function DashboardPage() {
     return <p className="px-8 py-10 text-sm text-muted">Loading dashboard…</p>;
   }
 
-  const { data, mock, now } = state;
+  const { data, now } = state;
   const { contests } = data;
   const date = new Date(now);
 
@@ -105,12 +112,11 @@ export default function DashboardPage() {
             profileHref={`/profile/${me?.username}`}
           />
         ) : (
-          // Sample stats under the blur: GET /dashboard sends guests none.
           <Locked label="your progress, level and streak">
             <ProgressPanel
-              stats={mock.sample.stats}
-              activity={mock.sample.activity}
-              recentWins={mock.sample.recentWins}
+              stats={GUEST_STATS}
+              activity={[]}
+              recentWins={[]}
               now={now}
               profileHref="/login"
             />
