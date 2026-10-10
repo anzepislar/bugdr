@@ -116,6 +116,8 @@ Each level requires significantly more points than the previous — early levels
 - Staff and above: only the most dedicated engineers
 - Distinguished: elite status, very few people reach this
 
+**Rank badges:** every level has its own hexagon badge (`frontend/src/components/RankBadge.tsx`): Intern `>_` grey, Junior `{ }` blue, Mid diagonal line teal, Senior star amber, Staff circuit node orange, Principal `λ` purple, Distinguished 8-point star in gold-silver, 1.3× larger. Shown wherever a level appears: dashboard progress panel, leaderboard, profile.
+
 ---
 
 ## Streak System

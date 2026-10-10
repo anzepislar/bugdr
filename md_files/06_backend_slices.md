@@ -25,7 +25,7 @@ Frontend: 24 zaslonov (večina na API) - /login, /signup, /forgot-password, /onb
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit,
           /admin/login, /admin/problems, /admin/problems/[id]/edit, /admin/users (+ [id]), /admin/analytics,
           /leaderboard, /career-paths, /admin/career-paths
-Naslednja rezina: M6 ✅ (A1-A10 + A9.1 ✅ 9. 10. 2026); M8 ✅ 9. 10. 2026 (S1-S8; odloženo: AI statistike profila iz `03`, področja izboljšav v S5); M9 ✅ 10. 10. 2026 (K1-K3); naprej M7 (Z1, Z2); za pravo analizo `ANTHROPIC_API_KEY` v `backend/.env`; odločitve M6 D20, D21, D22, D45, D46, D48, D50 rešene); testi 203/203; nove funkcije 9. 10. 2026 (brezplačni model, lasten API ključ, povratna informacija, benchmark, karierne poti) so rezine S6-S8 in M9 (K1-K3)
+Naslednja rezina: M6 ✅ (A1-A10 + A9.1 ✅ 9. 10. 2026); M8 ✅ 9. 10. 2026 (S1-S8; odloženo: AI statistike profila iz `03`, področja izboljšav v S5); M9 ✅ 10. 10. 2026 (K1-K3); naprej M7 (Z1, Z2); za pravo analizo `ANTHROPIC_API_KEY` v `backend/.env`; odločitve M6 D20, D21, D22, D45, D46, D48, D50 rešene); testi 204/204 (10. 10. 2026: + test časovnih pasov v f0); nove funkcije 9. 10. 2026 (brezplačni model, lasten API ključ, povratna informacija, benchmark, karierne poti) so rezine S6-S8 in M9 (K1-K3)
 ```
 
 Oznake: ⬜ ni začeto · 🟨 v delu · ✅ narejeno (z datumom) · ⏸ odloženo
