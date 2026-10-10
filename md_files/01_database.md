@@ -63,7 +63,8 @@ CREATE TABLE users (
   avatar_url      VARCHAR(500),
   is_banned       BOOLEAN DEFAULT FALSE,
   created_at      TIMESTAMP DEFAULT NOW(),
-  last_active_at  TIMESTAMP DEFAULT NOW()   -- refreshed at most once a minute
+  last_active_at  TIMESTAMP DEFAULT NOW(),  -- refreshed at most once a minute
+  password_changed_at TIMESTAMP              -- X5: sessions issued before it stop working (migration 0026)
 );
 CREATE UNIQUE INDEX users_username_lower_key ON users (lower(username));
 ```
@@ -692,6 +693,66 @@ CREATE TABLE level_thresholds (
 | 5 | Staff | 7,500 |
 | 6 | Principal | 15,000 |
 | 7 | Distinguished | 30,000 |
+
+---
+
+## Email (D68)
+
+All email goes through Resend (`backend/src/modules/email/email.service.js`). `migrations/0026_inbox.sql`.
+
+### inbox_threads
+One conversation in `/admin/inbox`: an email to any address @mail.bugdr.app (pulled from Resend every 2 minutes
+and when the inbox opens) or a message from the "Help & feedback" form (`POST /feedback`, logged-in users, 5 an
+hour). A reply sets `status = 'done'`; an answer from the same address makes it `'new'` again.
+
+```sql
+CREATE TABLE inbox_threads (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  kind           VARCHAR(10) NOT NULL CHECK (kind IN ('email', 'feedback')),
+  status         VARCHAR(10) NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'done')),
+  subject        VARCHAR(300) NOT NULL,          -- email subject; feedback: the type label
+  feedback_type  VARCHAR(10) CHECK (feedback_type IN ('bug', 'idea', 'problem', 'other')),
+  page           VARCHAR(500),                   -- feedback: page the form was sent from
+  to_address     VARCHAR(255),                   -- email: the address it was sent to
+  from_name      VARCHAR(255),
+  from_email     VARCHAR(255) NOT NULL,
+  user_id        UUID REFERENCES users(id) ON DELETE SET NULL,
+  last_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+  created_at     TIMESTAMP NOT NULL DEFAULT NOW(),
+  CHECK ((kind = 'feedback') = (feedback_type IS NOT NULL))
+);
+```
+
+### inbox_entries
+Messages in a thread. `resend_id` = Resend id of a received email (the sync skips known ones) or of a sent reply;
+`message_id` = the email's Message-ID, sent back as In-Reply-To so mail clients thread the reply. Replies go out with
+Reply-To `hello+<thread id>@mail.bugdr.app`, so the answer finds its thread (Resend replaces our own Message-ID).
+
+```sql
+CREATE TABLE inbox_entries (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  thread_id   UUID NOT NULL REFERENCES inbox_threads(id) ON DELETE CASCADE,
+  direction   VARCHAR(3) NOT NULL CHECK (direction IN ('in', 'out')),
+  body        TEXT NOT NULL,                     -- plain text; quoted history of replies cut off
+  resend_id   VARCHAR(100) UNIQUE,
+  message_id  VARCHAR(500),
+  created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
+
+### password_reset_tokens
+X5. Only the SHA-256 of the emailed token is stored; single use, 1 hour, at most one new link per account every
+2 minutes. A reset sets `users.password_changed_at` and uses up the account's other open tokens.
+
+```sql
+CREATE TABLE password_reset_tokens (
+  token_hash  CHAR(64) PRIMARY KEY,
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at  TIMESTAMP NOT NULL,
+  used_at     TIMESTAMP,
+  created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
 
 ---
 

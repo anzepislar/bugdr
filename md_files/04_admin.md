@@ -166,6 +166,18 @@ A change applies from each engineer's next solve on a path.
 - Most common improvement areas across all users: not built (would need AI to read every feedback text)
 - Efficiency improvement over time: built as "Efficiency by Week" on /admin/analytics (platform average per week)
 
+### 5. Inbox (`/admin/inbox`)
+
+Built 10. 10. 2026 (D68). One page for everything people send in, with an "Inbox" sidebar item showing the
+number of new threads:
+- **Email** tab: mail to any address @mail.bugdr.app (published address: hello@mail.bugdr.app), pulled from
+  Resend every 2 minutes and when the page opens (Refresh button). Mail from our own address is skipped.
+- **Feedback** tab: messages from "Help & feedback" in the app sidebar (type, message, page it was sent from,
+  link to the user).
+- Filter New / Done / All. A thread shows the messages and replies; the reply box sends an email from
+  EMAIL_FROM and marks the thread done; the person's answer comes back to the same thread as new.
+- No alerts outside the admin panel yet (would need a webhook on a public backend).
+
 ---
 
 ## AI Session Analytics (/admin/analytics)

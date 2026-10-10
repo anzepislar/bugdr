@@ -18,14 +18,14 @@ povezala na API.
 
 ```
 Zadnja posodobitev: 10. 10. 2026
-Backend: M9 ✅ (K1-K3), M8 ✅ (S1-S8), M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2), M6 ✅ (A1-A10 + A9.1)
-Frontend: 24 zaslonov (večina na API) - /login, /signup, /forgot-password, /onboarding, / (dashboard),
+Backend: M10 ✅ (E1-E3, e-pošta), M9 ✅ (K1-K3), M8 ✅ (S1-S8), M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2), M6 ✅ (A1-A10 + A9.1)
+Frontend: 26 zaslonov (večina na API) - /login, /signup, /forgot-password, /reset-password, /onboarding, / (dashboard),
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit,
           /admin/login, /admin/problems, /admin/problems/[id]/edit, /admin/users (+ [id]), /admin/analytics,
-          /leaderboard, /career-paths, /admin/career-paths
-Naslednja rezina: M6 ✅ (A1-A10 + A9.1 ✅ 9. 10. 2026); M8 ✅ 9. 10. 2026 (S1-S8; odloženo: AI statistike profila iz `03`, področja izboljšav v S5); M9 ✅ 10. 10. 2026 (K1-K3); naprej M7 (Z1, Z2); za pravo analizo `ANTHROPIC_API_KEY` v `backend/.env`; odločitve M6 D20, D21, D22, D45, D46, D48, D50 rešene); testi 204/204 (10. 10. 2026: + test časovnih pasov v f0); nove funkcije 9. 10. 2026 (brezplačni model, lasten API ključ, povratna informacija, benchmark, karierne poti) so rezine S6-S8 in M9 (K1-K3)
+          /leaderboard, /career-paths, /admin/career-paths, /admin/inbox (+ okno Help & feedback)
+Naslednja rezina: M10 ✅ 10. 10. 2026 (E1-E3: Resend, Help & feedback, /admin/inbox, ponastavitev gesla; testi 215/215); M6 ✅ (A1-A10 + A9.1 ✅ 9. 10. 2026); M8 ✅ 9. 10. 2026 (S1-S8; odloženo: AI statistike profila iz `03`, področja izboljšav v S5); M9 ✅ 10. 10. 2026 (K1-K3); naprej M7 (Z1, Z2); za pravo analizo `ANTHROPIC_API_KEY` v `backend/.env`; odločitve M6 D20, D21, D22, D45, D46, D48, D50 rešene); testi 204/204 (10. 10. 2026: + test časovnih pasov v f0); nove funkcije 9. 10. 2026 (brezplačni model, lasten API ključ, povratna informacija, benchmark, karierne poti) so rezine S6-S8 in M9 (K1-K3)
 ```
 
 Oznake: ⬜ ni začeto · 🟨 v delu · ✅ narejeno (z datumom) · ⏸ odloženo
@@ -122,6 +122,7 @@ dokler je uporabnik ne potrdi.
 | D64 | ~~Ocena in lestvica pri različnih modelih~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M8): **vse skupaj** - en benchmark (S7) in ena lestvica (D52) za vse; vsak poziv in seja zabeležita `key_source` + `model` za kasnejšo analizo | S3, S4, S7 |
 | D65 | ~~Povratna informacija po rešitvi (`02`)~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M8): klic **po** commitu transakcije R4, Submit nanj ne čaka; `solve_feedback.status` = `pending` / `ready` / `failed`, neuspela se ponovi ob `GET`; vedno platformni ključ s cenenim modelom; vidi jo samo lastnik. **Primerjava s "top performers" = zgornja četrtina rešitev problema** (izračun ob klicu iz `solve_sessions`, ne v `problem_benchmarks`); privzeto (brez vprašanja): **najmanj 8 rešitev**, do takrat konstante po težavnosti. **Brez ocene povratne informacije** (metrika `04` "Average feedback rating" odpade do nadaljnjega) | S8, S7 |
 | D66 | ~~Karierne poti~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M9): (a) **vsaka pot ima svoj nabor problemov** (od Easy do Get a job; stopnja = težavnost problema); problem poti **ni na `/problems`** (niti v feedu dashboarda in izbiri problemov tekmovanj); **en problem je lahko v več poteh** (admin jih izbere ob objavi); (b) poti = 5 obstoječih vlog (`ai-engineer`, `backend`, `frontend`, `fullstack`, `database`), novih kategorij ni; (c) **uporabnik sme hkrati na poljubno poti**, vsaka ima svoj napredek; vloga z onboardinga je samo prva prikazana, `goal_role = NULL` ne zapre ničesar; (d) **en dodeljen problem naenkrat, brez izbire**: naslednji nerešeni problem trenutne stopnje po vrstnem redu dodajanja (najstarejši prvi); ni preskoka, "Give up" → dodeli se naslednji; (e) **pragovi** (konstante v kodi do K3): Easy→Medium: ≥ 5 rešitev, ocena ≥ 1,2, pozivi ≤ 10, prvi zagon ≥ 40 %; Medium→Hard: ≥ 5, ≥ 1,4, ≤ 7, ≥ 50 %, časovni množitelj ≥ 1,25; Hard→Get a job: ≥ 3, ≥ 1,6, ≤ 5, ≥ 60 %, množitelj ≥ 1,5; **povprečja iz zadnjih 5 rešitev stopnje** (na Hard zadnje 3), preverjanje po vsaki rešitvi od najmanjšega števila naprej; (f) **izčrpan nabor**: problem se lahko spet dodeli **3 mesece** po zadnji rešitvi na tej poti (najstarejši prvi), ponovna rešitev **spet da točke**; do takrat stran pove "New problems are coming - check back soon"; (g) **rešitve so ločene po poti**: rešitev v poti Backend ne šteje v Database - tam se isti problem dodeli posebej (nov poskus); (h) ena stran `/career-paths` s harmoniko (uporabnik 10. 10. 2026; brez `/career-paths/[role]`): vrstica na pot, odprta pokaže stopnje, napredek do praga in naslednji problem, "Career paths" v stranski vrstici; reševanje na običajnem zaslonu reševanja. Privzeto (brez vprašanja): obvestila ob odklepu ni (D25) - stran poti pokaže novo stopnjo; točke, niz, lestvica in povratna informacija (S8) delujejo kot pri ostalih problemih; ocene in komentarji zaklenjeni do rešitve kot drugje | K1, K2, K3 |
+| D68 | ~~Pošiljanje e-pošte~~ → **rešeno 10. 10. 2026** (uporabnik): **vsa e-pošta gre prek Resend** (domena `mail.bugdr.app` preverjena za pošiljanje in prejemanje, regija eu-west-1), pošiljatelj `EMAIL_FROM=Bugdr <hello@mail.bugdr.app>`; ključ s polnim dostopom (branje prejete pošte). **Prejeta pošta brez preusmeritve na osebni naslov**: backend jo bere iz Resend API (vsaki 2 min + ob odprtju) v **en admin predal `/admin/inbox`** z zavihkoma Email in Feedback, odgovori gredo po e-pošti iz aplikacije. "Help & feedback" samo za prijavljene (guest → prijava), 5 sporočil na uro. Privzeto (brez vprašanja): brez webhooka in brez obvestil (backend ni javen), samo besedilna sporočila, odgovor označi nit kot rešeno | E1, E2, E3 |
 | D67 | ~~Kaj zaklene brezplačna raven~~ → **rešeno 9. 10. 2026** (uporabnik, priprava M9): **v razvoju je vse odprto vsem** - splošni problemi vseh težavnosti, vse karierne poti, povratna informacija. Edini zaklep so stopnje znotraj poti (prag, D66). **Pozneje gredo karierne poti in AI povratna informacija za plačilni zid** - takrat svoja rezina (X2) | P1, R1, K2 |
 | D52 | ~~Lestvica `/leaderboard`~~ → **rešeno 9. 10. 2026** (uporabnik, S4): uvrstitev po **točkah** (že vsebujejo čas in učinkovitost), **samo top 100** (brez najmanjšega števila rešitev; uporabnik brez točk ni na seznamu), zavihka **All time + This month** (UTC koledarski mesec, točke iz `point_transactions` v obdobju), **javna tudi za goste**; zasebni profili (D34) in blokirani uporabniki niso na seznamu, enake točke = enako mesto | S4 |
 | D53 | ~~Izvedljivi problemi za M2~~ → **rešeno 8. 10. 2026** (uporabnik): najprej **en** pravi problem - `payment-retries-disappear` dobi skrite teste (`hidden_files`), rešitev (`solution_files`) in preverjanja, ki tečejo brez npm paketov. Ostalih 11 seed problemov ostane samo za prikaz: Test vrne jasno "checks not available yet", dokler jih ne doda admin (A2-A5) | R3, R4 |
@@ -155,6 +156,8 @@ Posledica odločitev - narejene v migraciji rezine, ki tabelo ustvari:
 | `problem_career_paths` | ✅ v `01` (migracija 0023): `problem_id UUID REFERENCES problems(id) ON DELETE CASCADE`, `role VARCHAR(50) NOT NULL` (slug vloge = `problem_categories.slug`), `PRIMARY KEY (problem_id, role)`; problem z vsaj eno vrstico = problem poti (ni na `/problems`, v feedu, izbiri tekmovanj) | D66 | K1 ✅ |
 | `user_problem_attempts` | ✅ v `01` (migracija 0024): + `career_path VARCHAR(100) NULL` (NULL = splošni problem); `UNIQUE (user_id, problem_id)` → delni `UNIQUE (user_id, problem_id) WHERE career_path IS NULL` + delni `UNIQUE (user_id, problem_id, career_path) WHERE status = 'in_progress'`; ponovna rešitev na poti po 3 mesecih = nova vrstica (seja, poskusi, povratna informacija se vežejo na `attempt_id` in ostanejo ločeni) | D66 (f, g) | K2 ✅ |
 | `career_path_progress` | ✅ v `01` (migracija 0024): `user_id UUID REFERENCES users(id) ON DELETE CASCADE`, `role VARCHAR(50)`, `current_stage VARCHAR(20) NOT NULL DEFAULT 'easy'` (`easy` / `medium` / `hard` / `get_a_job`), `started_at`, `stage_unlocked_at TIMESTAMP`, `PRIMARY KEY (user_id, role)`; vrstica ob prvem startu na poti. Povprečja se ne shranijo - ob branju iz zadnjih rešitev stopnje (`solve_sessions` + `time_bonus_multiplier`) | D66 | K2 |
+| `inbox_threads`, `inbox_entries` | ✅ v `01` (migracija 0026): niti predala (`email` / `feedback`, `new` / `done`) in sporočila v njih (`in` / `out`, `resend_id` UNIQUE, `message_id`) | D68 | E2 ✅ |
+| `password_reset_tokens` | ✅ v `01` (migracija 0026): SHA-256 žetona, `expires_at`, `used_at`; `users` + `password_changed_at` (seje pred spremembo gesla ne veljajo) | D68 | E3 ✅ |
 | `user_profiles` | + `display_name VARCHAR(50)`, `headline VARCHAR(80)`, `github_username VARCHAR(39)`, (`languages` že v F4), `is_public BOOLEAN NOT NULL DEFAULT TRUE` | D34 | U1 |
 
 Ko rezina tabelo ustvari, se `01_database.md` posodobi, da se ujema z
@@ -163,7 +166,7 @@ seznam sprememb za tabele, ki še niso zgrajene. Narejeno v `01`: `users`
 (F2), `user_profiles` + `languages` (F4), `problem_categories`, `problems`, `problem_tags`,
 `problem_bookmarks`, `user_problem_attempts` (P1), `attempt_tries` (R2b), `check_results`, `point_transactions` (R4), `problem_codebase` (+ `hidden_files`, `solution_files`,
 `repository_name`), `problem_checks`, `problem_ratings`, `problem_comments`, `user_daily_activity` (P2); `problem_comments.parent_id`, `comment_helpful` (O2, migracija 0009 - brez `helpful_count`, šteje se ob branju);
-`problems.description` → `codebase_context` + `incident_report` (migracija 0006, 8. 10. 2026); `contests` (NULL datumi, `archived_at`), `contest_problems` (T1, migracija 0011), `contest_entries` (T2, migracija 0012; `contest_attempt_links` ni zgrajena); `solve_sessions`, `prompt_events` (S1, migracija 0018); `user_api_keys` (S6, migracija 0019); `editor_events` (S2, migracija 0020); `problem_benchmarks` (S7, migracija 0021); `solve_feedback` (S8, migracija 0022); `problem_career_paths` (K1, migracija 0023); `career_path_progress`, `user_problem_attempts.career_path` (K2, migracija 0024); `career_path_thresholds` (K3, migracija 0025).
+`problems.description` → `codebase_context` + `incident_report` (migracija 0006, 8. 10. 2026); `contests` (NULL datumi, `archived_at`), `contest_problems` (T1, migracija 0011), `contest_entries` (T2, migracija 0012; `contest_attempt_links` ni zgrajena); `solve_sessions`, `prompt_events` (S1, migracija 0018); `user_api_keys` (S6, migracija 0019); `editor_events` (S2, migracija 0020); `problem_benchmarks` (S7, migracija 0021); `solve_feedback` (S8, migracija 0022); `problem_career_paths` (K1, migracija 0023); `career_path_progress`, `user_problem_attempts.career_path` (K2, migracija 0024); `career_path_thresholds` (K3, migracija 0025); `inbox_threads`, `inbox_entries`, `password_reset_tokens`, `users.password_changed_at` (E2, E3, migracija 0026).
 
 ---
 
@@ -546,6 +549,28 @@ Vsaka pot (5 vlog) ima svoj nabor problemov od Easy do Get a job; višja stopnja
 - Frontend: 3 kartice, porazdelitev po stopnjah (zložena vrstica na pot, CSS), tabela prehodnost / obstali / blokatorji, obrazec pragov (prvi zagon v %, prazno časovno polje = brez pogoja, napake ob polju).
 - Testi: `test/k3.test.js` (samo admin, seme, metrike z obstalimi in blokatorji, validacija, znižan prag odklene ob naslednjem preverjanju); `k2-thresholds.test.js` podaja prag kot argument. 203/203. V brskalniku pri 6 širinah (začasni podatki odstranjeni, pragovi ostali na privzetih).
 
+### M10 - E-pošta (D68)
+
+Vsa e-pošta gre prek Resend. Uporabnik nastavi `RESEND_API_KEY` (poln dostop) in `EMAIL_FROM` v `backend/.env`; domena `mail.bugdr.app` je v Cloudflare DNS (DKIM, SPF, MX za prejemanje).
+
+**E1 · Modul za e-pošto** `S` · ✅ 10. 10. 2026
+- `backend/src/modules/email/email.service.js`: `sendEmail({ to, subject, text, replyTo, headers })`, `listReceived`, `getReceived` - Resend HTTP API z `fetch` (brez SDK). Brez ključa izven produkcije se e-pošta izpiše v konzolo; v produkciji brez ključa napaka. Testi nikoli ne pošiljajo (ključ prazen pri `NODE_ENV=test`, test nastavi lažen Resend strežnik).
+- Nastavitve: `RESEND_API_KEY`, `RESEND_API_URL` (privzeto api.resend.com), `EMAIL_FROM`, `APP_URL` (povezave v e-pošti).
+- Preverjeno ročno: testno sporočilo `hello@` → `hello@` poslano in prejeto. Resend lastni Message-ID zamenja (SES), zato niti po naslovu `hello+<id>@`.
+
+**E2 · Help & feedback in admin predal** `M` · odvisno od: E1, A1 · ✅ 10. 10. 2026
+- `POST /feedback` `{ type: bug|idea|problem|other, message ≤ 2000, page }` (prijava, 5 na uro → 429 `RATE_LIMITED`, `page` samo pot z `/`). Okno `FeedbackDialog` iz stranske vrstice in mobilnega traku; gost → prijava. `/me/profile` vrne še `email` (okno pove, kam pride odgovor).
+- `GET /admin/inbox` (najprej sinhronizacija iz Resend, nato vse niti s sporočili, novejše prve), `GET /admin/inbox/count`, `POST /admin/inbox/:id/reply` (e-pošta + zapis, nit `done`; neuspelo pošiljanje → 502 `EMAIL_FAILED`, nič zapisano), `PUT /admin/inbox/:id/status`.
+- Sinhronizacija (`inbox.service.js`): zadnjih 100 prejetih (ponytail), preskoči znane `resend_id` in pošto z lastnega naslova; odgovor na `hello+<nit>@` od istega pošiljatelja se pripne niti (status `new`), sicer nova nit; uporabnik po e-pošti se poveže. Besedilo: `text` ali HTML brez oznak; citat odgovora ("On … wrote:", `>`) odrezan. Odgovor: Reply-To `hello+<nit>@…`, In-Reply-To = zadnji prejeti Message-ID; odgovor na feedback citira izvirno sporočilo. `server.js` sinhronizira vsaki 2 min (ne v testih).
+- Frontend: `/admin/inbox` (zavihka z novimi, filter New/Done/All, seznam + nit, na telefonu izmenično), "Inbox" v admin stranski vrstici s številom novih (osveži se ob navigaciji in po spremembi).
+- Testi: `test/inbox.test.js` (validacija, omejitev, admin dostop, odgovor in citat, neuspelo pošiljanje, status, sinhronizacija s HTML, lastna pošta, dvojna sinhronizacija, nit prek plus naslova, tuj pošiljatelj ne vstopi, rez citata). V brskalniku pri 6 širinah (WebKit + Chromium) z začasno kopijo frontenda in lažnim API (brez prave seje).
+
+**E3 · Ponastavitev gesla (X5)** `S` · odvisno od: E1, F2 · ✅ 10. 10. 2026
+- `POST /auth/forgot-password` `{ email }` → vedno 204 (ne izda, ali račun obstaja), e-pošta se pošlje po odgovoru; največ ena povezava na račun na 2 min; blokiran račun ne dobi povezave. `POST /auth/reset-password` `{ token, password }` → 204 ali 400 `INVALID_TOKEN` (napačen, porabljen, potekel); enkratna uporaba, 1 ura; porabi še ostale odprte žetone računa.
+- `requireAuth` zavrne JWT z `iat` pred `password_changed_at` - sprememba gesla odjavi vse stare seje.
+- Frontend: `/forgot-password` obrazec + "If an account exists…", nova stran `/reset-password?token=` (geslo dvakrat, povezava za novo povezavo ob poteku). Javni strani (ni v `proxy.ts`).
+- Testi: `test/x5.test.js` (enak odgovor za neznan naslov, e-pošta samo pravemu računu, hranjen samo hash, omejitev 2 min, kratko geslo, napačen / porabljen / potekel žeton, stara seja 401, prijava s starim geslom 401).
+
 ### M7 - Produkcija
 
 **Z1 · Seed v produkciji** `S` · odvisno od: F2 · ⬜
@@ -574,7 +599,7 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | `/settings` | ~~`MOCK_SETTINGS`, `mockSaveSettings`~~ → U1 ✅ 9. 10. 2026 (`GET`/`PUT /me/profile`). Zavihek Practice preferences ostane "coming soon" (D35). Account ima zaenkrat samo razdelek "AI model" za lasten API ključ (S6 ✅, `GET /me/api-key/status`, `POST`/`DELETE /me/api-key`); e-pošta in geslo pozneje (D35) | D35, S6 ✅ | 🟨 |
 | `/login` | ~~`mockLogin`, `mockLogout`~~ → `POST /auth/login`, `POST /auth/logout` (F2). Ostane mock: "Continue with GitHub" pokaže napako (D37) | F2 | ✅ 7. 10. 2026 |
 | `/signup` | ~~`mockSignup`~~ → `POST /auth/signup` (F2): Username (D38), geslo ≥ 8 (D39) | F2 | ✅ 7. 10. 2026 |
-| `/forgot-password` | ~~`mockRequestPasswordReset`~~ odstranjen 10. 10. 2026: stran pove, da ponastavitev gesla po e-pošti še ni na voljo (brez obrazca); pošiljanje pošte je odloženo (X5) | X5 (rezina še ne obstaja) | ⏸ |
+| `/forgot-password` | ~~`mockRequestPasswordReset`~~ odstranjen 10. 10. 2026; pravi obrazec na API (E3) | E3 | ✅ 10. 10. 2026 |
 | `/onboarding` | ~~`mockSaveOnboarding`~~ → `PUT /me/onboarding` (F4); "exploring" → `null` (D41), jeziki se shranijo (D42); "Sign out" → `POST /auth/logout` (F2) | F4 | ✅ 7. 10. 2026 |
 | `/admin` (Overview) | ~~`mockGetAdminOverview(range)`~~ → `GET /admin/stats?range=` (A9). `src/lib/mock/adminStats.ts` ni več v uporabi (ni izbrisan) | A9 ✅ | ✅ 9. 10. 2026 |
 | `/admin/problems/new` (Add Problem) | vse na API (A2, A10, A4, A5 ✅); ostane samo neuporabljen `mockRunCheck` v `src/lib/mock/adminProblems.ts` (za neuporabljen `ValidateStep`) | - | ✅ |
@@ -620,7 +645,7 @@ Odprto:
 | X2 | Plačilni zid / naročnine | D67: karierne poti in AI povratna informacija gredo pozneje za plačilni zid; `04`: nagrade po uvedbi naročnin |
 | X3 | Bonusi tekmovanj | `03`: "TBD - not needed for v1" |
 | X4 | Nalaganje avatarja | `users.avatar_url` obstaja, shramba datotek ni odločena |
-| X5 | Pozabljeno geslo prek e-pošte | Pošiljanje pošte ni v stacku |
+| ~~X5~~ | ~~Pozabljeno geslo prek e-pošte~~ → narejeno kot E3 (10. 10. 2026) | Resend, D68 |
 | X6 | B2B: problemi podjetij, vabila na razgovor, ogled seje za zaposlovalce | `00` "Monetization Model": V2 |
 | X7 | Hackathoni (sponzorirani dogodki) | `00` "Monetization Model": V2 |
 
@@ -631,7 +656,7 @@ Odprto:
 | Stran | Rezine |
 | --- | --- |
 | `/login`, `/signup` | F2 |
-| `/forgot-password` | X5 (odloženo) |
+| `/forgot-password`, `/reset-password` | E3 ✅ |
 | `/onboarding` | F4 |
 | `/` (dashboard, prej `/dashboard`) | U3, T1 |
 | `/problems` | P1 |
@@ -648,4 +673,5 @@ Odprto:
 | `/admin/contests`, `/admin/contests/new`, `/admin/contests/[id]/edit` | A6 (A7 za rezultate) |
 | `/admin/analytics` | S5 ✅ |
 | `/admin/career-paths` | K3 ✅ |
+| `/admin/inbox`, okno Help & feedback | E2 ✅ |
 | `/admin/*` | A1-A9 |

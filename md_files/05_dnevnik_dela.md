@@ -2157,3 +2157,42 @@ sledljivost), `00` (Career Paths, pragovi, brezplačna raven), `03`, `04`,
   besedilo. Preverjeno pri 320-2560 px (brez vodoravnega drsenja); lint +
   typecheck + build zelena. Posnetki za pristajalno stran so nastali pred
   značkami.
+
+## 10. 10. 2026 — Seja 24: lastni spustni seznami, e-pošta (Resend), predal in ponastavitev gesla
+
+- **Spustni seznami**: nova komponenta `src/components/Select.tsx` (vzorec
+  "select-only combobox" iz WAI-ARIA APG) zamenja vse privzete `<select>`
+  (15 mest: dashboard, /problems, razprava, nastavitve profila in AI ključa,
+  admin preverjanja, jezik v urejevalniku). Seznam je v portalu s fiksnim
+  položajem (odpre se navzgor, če spodaj ni prostora), zapre se ob kliku
+  zunaj, drsenju ali spremembi velikosti; tipkovnica: puščice, Home/End,
+  Enter/presledek, Esc, iskanje po prvih črkah. Klici obdržijo svoje razrede
+  za gumb. Safari ob kliku ne fokusira gumba - komponenta ga fokusira sama.
+- **Potrditvena polja, številke, datumi** (`globals.css`, `@layer base`):
+  lastno potrditveno polje (kljukica v barvi Action), brez puščic pri
+  `type="number"`, `color-scheme: dark` za temne drsnike in izbirnike datuma.
+  Izbirnik datuma/časa (admin tekmovanja) ostaja sistemski, le temen.
+- Preverjeno v Chromium in WebKit (1440 in 320 px, brez vodoravnega
+  drsenja); lint + typecheck + build zelena.
+- **E-pošta prek Resend (M10, D68)** - uporabnik je domeno `mail.bugdr.app`
+  dodal v Resend (DNS v Cloudflare; MX za prejemanje je bilo treba dodati v
+  Cloudflare, ne pri registrarju) in ključ s polnim dostopom v `.env`.
+  Preverjeno: testno sporočilo `hello@mail.bugdr.app` → samemu sebi poslano in
+  prejeto; Resend zamenja lasten Message-ID, zato niti tečejo prek naslova
+  `hello+<id nit>@`.
+  - **E1** `email.service.js`: `sendEmail` + branje prejete pošte z `fetch`;
+    brez ključa (dev) izpis v konzolo, testi nikoli ne pošiljajo.
+  - **E2** "Help & feedback" je okno (prej mrtva povezava; zdaj tudi na
+    telefonu), `POST /feedback` (5/uro), nova stran **`/admin/inbox`**
+    (zavihka Email + Feedback, odgovori po e-pošti, odgovor stranke se vrne v
+    isto nit, število novih v stranski vrstici). Pošta se bere iz Resend
+    vsaki 2 minuti in ob odprtju (brez webhooka, backend ni javen).
+  - **E3** (prej X5) `/forgot-password` je pravi obrazec, nova stran
+    `/reset-password`; enkratna povezava za 1 uro, sprememba gesla odjavi vse
+    stare seje (`users.password_changed_at`).
+  - Migracija 0026 (`inbox_threads`, `inbox_entries`,
+    `password_reset_tokens`). Testi 215/215 (novi `x5`, `inbox`, z lažnim
+    Resend strežnikom). Okno in predal preverjena pri 6 širinah v WebKit in
+    Chromium (začasna kopija frontenda + lažen API, brez prave seje - lokalni
+    žeton seje je bil zavrnjen); popravljena številka v stranski vrstici po
+    odgovoru. Dokumenti 01, 04, 06 posodobljeni.
