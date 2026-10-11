@@ -2315,3 +2315,29 @@ sledljivost), `00` (Career Paths, pragovi, brezplačna raven), `03`, `04`,
 - Odprto: oznake vrstice ("Average" levo, čeprav je 1.0× na sredini); prompt
   za povratne informacije ne zahteva omembe učinkovitosti, zato vrstica pogosto
   manjka.
+
+## 11. 10. 2026 — Seja 27: dvoosna merila za AI povratne informacije
+
+- **Merila težavnost × izkušnje** (samo za povratne informacije; točke in
+  učinkovitost ostajajo na `scoring.js`): nov
+  `backend/src/modules/scoring/benchmarks.js` - `FEEDBACK_BENCHMARKS` (čas,
+  prompti, tokeni, prag učinkovitosti; začetnik + Get a job nima merila),
+  `getBenchmark`, `mapUserToExperienceLevel` (student/junior → beginner,
+  senior → senior, ostalo ali brez profila → mid; let izkušenj profil nima),
+  `tier` (> 1.2 excellent, ≥ 0.8 on_target, ≥ 0.5 below, sicer struggling),
+  `benchmarkSnapshot` (razmerja = cilj / dejansko, 0 šteje kot 1).
+  Datoteka je v backendu (ne `frontend/src/lib`), ker povratne informacije
+  piše backend.
+- Migracija 0029: `user_problem_attempts.benchmark_snapshot JSONB`, zapisan v
+  transakciji rešitve (težavnost, raven, cilji, razmerja) - za kasnejše
+  mešanje z resničnimi percentili.
+- `feedback.service.js`: primerjava z zgornjimi 25 % rešitev odstranjena;
+  poročilo za model ima raven izkušenj, cilje, razmerja + nivoje po oseh in
+  najšibkejšo os (za nasvete "Next time"); sistemski prompt ima pravila tona
+  (začetnik na hard: najprej pohvala, nikoli "slow"/"failed", "our benchmark
+  for X problems at your level" namesto "other users", učinkovitost zapisana
+  kot 1.4× - kartica jo zdaj zanesljiveje prikaže). Brez merila: samo
+  kvalitativno, brez številk in ocene, zato kartica nima čipov ne vrstice.
+  Starejše rešitve brez posnetka se izmerijo ob pisanju povratne informacije.
+- UI kartice nespremenjen. Testi 227/227 (nov `test/benchmarks.test.js`, s8
+  posodobljen); frontend lint, typecheck, build OK.

@@ -9,6 +9,7 @@ import { checkUnlock } from "../careerPaths/careerPaths.routes.js";
 import { sendRankUpEmail } from "../email/rankUpEmail.js";
 import { PLANS } from "../plans/plans.js";
 import { runChecks, runTerminal, stopTerminal, validateFiles } from "../runner/runner.service.js";
+import { benchmarkSnapshot, mapUserToExperienceLevel } from "../scoring/benchmarks.js";
 import { activeSeconds, efficiencyScore, finalPoints, lineChanges, pickBenchmark, timeMultiplier } from "../scoring/scoring.js";
 
 export const attemptsRouter = Router();
@@ -225,6 +226,7 @@ async function solve(attemptId, userId, problem, finalCode) {
     );
     await client.query("UPDATE problems SET solve_count = solve_count + 1 WHERE id = $1", [problem.problem_id]);
     await sessionTimes(client, attemptId);
+    await saveBenchmarkSnapshot(client, attemptId, userId, problem.difficulty, seconds);
     await updateBenchmark(client, problem.problem_id, attemptId, seconds);
     // K2 (D66 e): a solve on a career path can open the path's next stage.
     if (problem.career_path) await checkUnlock(client, userId, problem.career_path);
@@ -559,6 +561,22 @@ async function sessionScore(client, attemptId, problem) {
   );
   await client.query("UPDATE solve_sessions SET efficiency_score = $2 WHERE attempt_id = $1", [attemptId, score]);
   return score;
+}
+
+/** Feedback benchmarks: what the feedback measures this solve against (difficulty × experience), kept on the attempt. */
+async function saveBenchmarkSnapshot(client, attemptId, userId, difficulty, seconds) {
+  const { rows } = await client.query(
+    `SELECT s.total_prompts, s.total_tokens_used, (SELECT experience_level FROM user_profiles WHERE user_id = $2)
+     FROM solve_sessions s WHERE s.attempt_id = $1`,
+    [attemptId, userId],
+  );
+  const r = rows[0];
+  const snapshot = benchmarkSnapshot(difficulty, mapUserToExperienceLevel(r), {
+    seconds,
+    prompts: r.total_prompts,
+    tokens: r.total_tokens_used,
+  });
+  await client.query("UPDATE user_problem_attempts SET benchmark_snapshot = $2 WHERE id = $1", [attemptId, snapshot]);
 }
 
 /** S7: the problem's own benchmark once it has enough solves, else the difficulty's (pickBenchmark). */

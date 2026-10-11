@@ -284,7 +284,8 @@ CREATE TABLE user_problem_attempts (
   lines_added             INTEGER DEFAULT 0,
   lines_deleted           INTEGER DEFAULT 0,
   final_code              JSONB,   -- snapshot of files on solve
-  career_path             VARCHAR(100) REFERENCES problem_categories(slug)  -- K2: NULL = general problem
+  career_path             VARCHAR(100) REFERENCES problem_categories(slug),  -- K2: NULL = general problem
+  benchmark_snapshot      JSONB    -- feedback benchmark used at solve time (migration 0029), NULL = solved before it
 );
 -- K2 (migration 0024): solve once only for general problems; a path has one open attempt at a time.
 CREATE UNIQUE INDEX user_problem_attempts_general_key ON user_problem_attempts (user_id, problem_id)
@@ -372,7 +373,7 @@ Built in R4 (migration 0008): one row per check on every Test run.
 
 ## AI Session Tracking
 
-`solve_sessions` + `prompt_events` built in S1 (migration 0018), `editor_events` in S2 (migration 0020); session counters from S2: test runs, passed on first run and iterations on every Submit, time to first prompt / on description on solve (milestone M8 in `06_backend_slices.md`). `user_api_keys` built in S6 (migration 0019). `problem_benchmarks` built in S7 (migration 0021). `solve_feedback` built in S8 (migration 0022). Also planned (not described here yet, see `06` "Spremembe sheme"): `career_path_progress` and `user_problem_attempts.career_path` (built in K2, migration 0024). They are added to this file when the slice builds them.
+`solve_sessions` + `prompt_events` built in S1 (migration 0018), `editor_events` in S2 (migration 0020); session counters from S2: test runs, passed on first run and iterations on every Submit, time to first prompt / on description on solve (milestone M8 in `06_backend_slices.md`). `user_api_keys` built in S6 (migration 0019). `problem_benchmarks` built in S7 (migration 0021). `solve_feedback` built in S8 (migration 0022). `user_problem_attempts.benchmark_snapshot` (migration 0029): `{ difficulty, experienceLevel, targets, ratios }` from `backend/src/modules/scoring/benchmarks.js`, written in the solve transaction; `targets` / `ratios` are null when there is no benchmark (beginner + Get a job). Also planned (not described here yet, see `06` "Spremembe sheme"): `career_path_progress` and `user_problem_attempts.career_path` (built in K2, migration 0024). They are added to this file when the slice builds them.
 
 ### solve_sessions
 One session per solve attempt, across all its tries (like the solve time, D56). Tracks the full AI interaction.

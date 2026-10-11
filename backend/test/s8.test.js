@@ -89,13 +89,18 @@ test("a solve creates pending feedback that becomes ready; only the owner sees i
   // One call with the cheap platform model (no user key), the session numbers and the prompts - plain text.
   const call = calls.find((c) => c.system.startsWith("You write"));
   assert.equal(call.userKey, undefined);
-  // Scoring direction: fewer prompts is better, and typical values are not "top performers".
+  // Scoring direction: fewer prompts is better; compared with the benchmark, never with other users.
   assert.match(call.system, /Never suggest sending more prompts/);
-  assert.match(call.system, /Typical values are averages, not top performers/);
+  assert.match(call.system, /our benchmark for <difficulty> problems at your level/);
   const report = call.messages[0].content;
   assert.match(report, /Prompts to the AI: 1/);
   assert.match(report, /Why do retries vanish\?/);
-  assert.match(report, /few solves yet/); // < 8 other solves → typical values
+  // No profile → mid; the snapshot stored at solve time is what the report uses.
+  const { benchmark_snapshot: snap } = await one("SELECT benchmark_snapshot FROM user_problem_attempts WHERE id = $1", [aliceAttempt]);
+  assert.equal(snap.experienceLevel, "mid");
+  assert.equal(snap.ratios.prompts, snap.targets.prompts); // 1 prompt
+  assert.match(report, /Our benchmark for .+ problems at the mid level/);
+  assert.match(report, /Weakest axis/);
   const row = await one("SELECT model, generated_at FROM solve_feedback WHERE attempt_id = $1", [aliceAttempt]);
   assert.equal(row.model, "claude-haiku-4-5");
   assert.ok(row.generated_at);
@@ -177,23 +182,22 @@ test("X2: on the Free plan feedback is locked", async () => {
   assert.deepEqual(await getFeedback(attempt.id, cookie), { status: "locked", content: null });
 });
 
-test("with 8+ other solves the feedback compares with their top 25% by efficiency score", { skip }, async () => {
-  // 8 more solves by hand (scores 1.0-1.7); the best two used 2 and 4 prompts.
-  for (let i = 0; i < 8; i++) {
-    const { rows } = await pool.query(
-      `WITH u AS (INSERT INTO users (email, password_hash, username) VALUES ($1, 'x', $2) RETURNING id),
-       a AS (INSERT INTO user_problem_attempts (user_id, problem_id, status, solved_at, time_taken_seconds)
-             SELECT u.id, p.id, 'solved', now(), 600 FROM u, problems p WHERE p.slug = 'payment-retries-disappear' RETURNING id)
-       INSERT INTO solve_sessions (attempt_id, total_prompts, total_tokens_used, efficiency_score)
-       SELECT id, $3, 1000, $4 FROM a RETURNING attempt_id`,
-      [`q${i}@example.com`, `q${i}`, i === 7 ? 2 : i === 6 ? 4 : 10, 1 + i / 10],
-    );
-    assert.ok(rows[0]);
-  }
+test("a beginner on a problem without a benchmark gets qualitative feedback only", { skip }, async () => {
+  await pool.query(
+    `INSERT INTO user_profiles (user_id, experience_level) SELECT id, 'student' FROM users WHERE username = 'alice'
+     ON CONFLICT (user_id) DO UPDATE SET experience_level = 'student'`,
+  );
+  await pool.query(
+    "UPDATE problems SET difficulty = 'get_a_job', base_points = 1000 WHERE id = (SELECT problem_id FROM user_problem_attempts WHERE id = $1)",
+    [aliceAttempt],
+  );
+  // A solve from before the snapshot: measured when the feedback is written.
+  await pool.query("UPDATE user_problem_attempts SET benchmark_snapshot = NULL WHERE id = $1", [aliceAttempt]);
   await pool.query("UPDATE solve_feedback SET status = 'failed', content = NULL WHERE attempt_id = $1", [aliceAttempt]);
   calls = [];
   await feedback.start(aliceAttempt);
   const report = calls[0].messages[0].content;
-  // Others for alice's solve: bob + these 8 = 9 (carol's hand-solved attempt has no session).
-  assert.match(report, /Top 25% of 9 other solves/);
+  assert.match(report, /experience level: beginner/);
+  assert.match(report, /no benchmark for their level/);
+  assert.doesNotMatch(report, /Efficiency score|Our benchmark/);
 });

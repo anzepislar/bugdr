@@ -278,13 +278,18 @@ Using the solve_session and prompt_events data, Claude generates a debrief cover
 - Specific actionable advice: 2-3 concrete things to do differently next time
 
 ### Example feedback
-"You used 12 prompts where top performers average 4. You ran tests 8 times before your first passing run. Top performers typically read the full stack trace first, identify the likely failure point, then write one targeted prompt. Try diagnosing before prompting next time."
+"For a mid-level engineer on a Medium problem, our benchmark is 7 prompts and you used 12. You ran tests 8 times before your first passing run. Engineers who hit the benchmark typically read the full stack trace first, identify the likely failure point, then write one targeted prompt. Try diagnosing before prompting next time."
 
 ### Implementation
 Built in S8 (9. 10. 2026, `backend/src/modules/ai/feedback.service.js`, table `solve_feedback`): a `pending` row is
 created in the solve transaction and the text is written right after the commit (Submit does not wait). The
-comparison is the top 25% of the problem's other solves by efficiency score once it has 8, typical values for the
-difficulty before that (D65). Shown as "AI feedback" above Validation results on the solved problem page, only to
+comparison is a two-axis benchmark (`backend/src/modules/scoring/benchmarks.js`, 11. 10. 2026, replaces the top 25%
+of D65): targets for time, prompts and tokens plus an efficiency floor per difficulty × experience level
+(`user_profiles.experience_level`: student / junior → beginner, mid, senior; unknown → mid). Ratio = target / actual,
+tiers excellent (> 1.2) / on_target (≥ 0.8) / below (≥ 0.5) / struggling; the weakest axis drives the "Next time"
+tips. A beginner on Get a job has no benchmark: qualitative feedback only, no numbers. The benchmark used is stored
+on the attempt (`benchmark_snapshot`). Tone rules in the system prompt: frame everything as a distance from the
+target, name the experience level, "our benchmark for <difficulty> problems at your level" instead of other users. Shown as "AI feedback" above Validation results on the solved problem page, only to
 its owner; the profile links each solved problem to that page. No rating of the feedback (D65).
 The instructions tell the model how scoring works: fewer prompts, tokens and test-fix iterations score higher, so
 being under the comparison is better, and it never suggests sending more prompts (fixed 11. 10. 2026 after a real
