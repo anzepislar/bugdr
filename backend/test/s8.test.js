@@ -89,6 +89,9 @@ test("a solve creates pending feedback that becomes ready; only the owner sees i
   // One call with the cheap platform model (no user key), the session numbers and the prompts - plain text.
   const call = calls.find((c) => c.system.startsWith("You write"));
   assert.equal(call.userKey, undefined);
+  // Scoring direction: fewer prompts is better, and typical values are not "top performers".
+  assert.match(call.system, /Never suggest sending more prompts/);
+  assert.match(call.system, /Typical values are averages, not top performers/);
   const report = call.messages[0].content;
   assert.match(report, /Prompts to the AI: 1/);
   assert.match(report, /Why do retries vanish\?/);
