@@ -3,6 +3,7 @@ import { pool } from "../../db.js";
 import { HttpError } from "../../errors.js";
 import { optionalAuth, requireAuth } from "../auth/auth.service.js";
 import { nextProblem, stageOf } from "../careerPaths/careerPaths.routes.js";
+import { PLANS, planRequired } from "../plans/plans.js";
 
 export const problemsRouter = Router();
 
@@ -171,13 +172,15 @@ async function recordOpen(userId) {
  * so the timer keeps running; an abandoned one reopens with a new started_at (D8); a solved one never reopens.
  * R2b (D56): a new or reopened attempt opens the next try in attempt_tries; previousSeconds = the closed tries, so the
  * clock keeps counting across tries. One statement, so it is atomic.
- * K2 (D66): a career path problem starts only with { careerPath } and only when it is the path's assigned problem.
+ * K2 (D66): a career path problem starts only with { careerPath } and only when it is the path's assigned problem;
+ * X2: only on plans with career paths.
  * Files are the visible codebase only - never hidden_files, solution_files or check commands (D10).
  */
 problemsRouter.post("/:slug/start", requireAuth, async (req, res) => {
   const careerPath = req.body?.careerPath ?? null;
   if (careerPath !== null && typeof careerPath !== "string")
     throw new HttpError(400, "VALIDATION_ERROR", "careerPath must be a role");
+  if (careerPath !== null && !PLANS[req.user.plan].careerPaths) throw planRequired("Career paths");
   const { rows } = await pool.query(
     `SELECT p.id, p.slug, p.title, p.time_limit_minutes, cb.repository_name, cb.files, ${PATH_PROBLEM} AS path_problem,
        EXISTS (SELECT 1 FROM problem_career_paths pcp WHERE pcp.problem_id = p.id AND pcp.role = $2) AS in_path,

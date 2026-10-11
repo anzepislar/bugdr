@@ -26,7 +26,8 @@ async function signup() {
   const name = `k2user${++n}`;
   const res = await request("POST", "/auth/signup", null, { email: `${name}@example.com`, username: name, password: "password1" });
   const cookie = res.headers.get("set-cookie").split(";")[0];
-  const { id } = await one("SELECT id FROM users WHERE username = $1", [name]);
+  // X2: career paths need a paid plan.
+  const { id } = await one("UPDATE users SET plan = 'pro' WHERE username = $1 RETURNING id", [name]);
   return { cookie, id };
 }
 
@@ -90,6 +91,17 @@ before(async () => {
 after(async () => {
   server.close();
   await pool.end();
+});
+
+test("X2: on the Free plan career paths are 403 PLAN_REQUIRED, also starting a path problem", async () => {
+  const u = await signup();
+  await pool.query("UPDATE users SET plan = 'free' WHERE id = $1", [u.id]);
+  const list = await request("GET", "/career-paths", u.cookie);
+  assert.equal(list.status, 403);
+  assert.equal((await list.json()).error.code, "PLAN_REQUIRED");
+  const start = await request("POST", "/problems/e1/start", u.cookie, { careerPath: "backend" });
+  assert.equal(start.status, 403);
+  assert.equal((await start.json()).error.code, "PLAN_REQUIRED");
 });
 
 test("GET /career-paths: every role, the goal role first, Easy, the oldest Easy problem assigned; guests 401", async () => {

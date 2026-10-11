@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { pool } from "../../db.js";
 import { HttpError } from "../../errors.js";
+import { PLANS } from "../plans/plans.js";
 import { getStats } from "../users/users.routes.js";
 
 // A8: users for the admin (04 "Users Management"). The admin is not a user (D48), so it can never ban itself.
@@ -15,7 +16,7 @@ const iso = (d) => d?.toISOString() ?? null;
 adminUsersRouter.get("/", async (req, res) => {
   const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
   const { rows } = await pool.query(
-    `SELECT u.id, u.username, u.email, u.is_banned, u.created_at AT TIME ZONE 'UTC' AS created_at,
+    `SELECT u.id, u.username, u.email, u.is_banned, u.plan, u.created_at AT TIME ZONE 'UTC' AS created_at,
        u.last_active_at AT TIME ZONE 'UTC' AS last_active_at,
        (SELECT level_name FROM level_thresholds WHERE min_points <= coalesce(s.total_points, 0)
         ORDER BY min_points DESC LIMIT 1) AS level
@@ -33,6 +34,7 @@ adminUsersRouter.get("/", async (req, res) => {
       joinedAt: iso(r.created_at),
       lastActiveAt: iso(r.last_active_at),
       isBanned: r.is_banned,
+      plan: r.plan,
     })),
   });
 });
@@ -40,7 +42,7 @@ adminUsersRouter.get("/", async (req, res) => {
 async function findUser(id) {
   if (!UUID.test(id)) throw notFound();
   const { rows } = await pool.query(
-    `SELECT u.id, u.username, u.email, u.is_banned, u.created_at AT TIME ZONE 'UTC' AS created_at,
+    `SELECT u.id, u.username, u.email, u.is_banned, u.plan, u.created_at AT TIME ZONE 'UTC' AS created_at,
        u.last_active_at AT TIME ZONE 'UTC' AS last_active_at,
        p.display_name, p.headline, p.github_username, p.goal_role, p.experience_level, p.platform_goal,
        coalesce(p.languages, '{}') AS languages, coalesce(p.is_public, true) AS is_public,
@@ -77,6 +79,7 @@ adminUsersRouter.get("/:id", async (req, res) => {
       username: u.username,
       email: u.email,
       isBanned: u.is_banned,
+      plan: u.plan,
       joinedAt: iso(u.created_at),
       lastActiveAt: iso(u.last_active_at),
       profile: {
@@ -111,3 +114,12 @@ for (const [action, banned] of [["ban", true], ["unban", false]])
     await pool.query("UPDATE users SET is_banned = $2 WHERE id = $1", [req.params.id, banned]);
     res.status(204).end();
   });
+
+// X2: the admin sets a user's plan (until payments exist). { plan } → 204.
+adminUsersRouter.put("/:id/plan", async (req, res) => {
+  const plan = req.body?.plan;
+  if (!Object.hasOwn(PLANS, plan ?? "")) throw new HttpError(400, "VALIDATION_ERROR", `plan must be one of ${Object.keys(PLANS).join(", ")}`);
+  await findUser(req.params.id);
+  await pool.query("UPDATE users SET plan = $2 WHERE id = $1", [req.params.id, plan]);
+  res.status(204).end();
+});

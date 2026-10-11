@@ -4,7 +4,8 @@ import { app } from "../src/app.js";
 import { config } from "../src/config.js";
 import { pool } from "../src/db.js";
 import { migrate } from "../src/migrate.js";
-import { chat } from "../src/modules/ai/chat.service.js";
+import { chat, platformModel } from "../src/modules/ai/chat.service.js";
+import { PLANS } from "../src/modules/plans/plans.js";
 
 // S1: built-in AI chat on the platform key. The provider call is replaced - no network, no real key.
 const server = app.listen(0);
@@ -47,7 +48,9 @@ before(async () => {
   attemptId = (await (await call("POST", "/problems/leaky-worker/start", alice)).json()).attempt.id;
 });
 beforeEach(async () => {
-  Object.assign(config, saved, { aiProvider: "anthropic", anthropicApiKey: "sk-ant-platform-secret", aiFreeDailyTokens: 20000 });
+  Object.assign(config, saved, { aiProvider: "anthropic", anthropicApiKey: "sk-ant-platform-secret" });
+  PLANS.free.promptsPerDay = 30;
+  await pool.query("UPDATE users SET plan = 'free'");
   calls = [];
   chat.complete = async (args) => {
     calls.push(args);
@@ -99,7 +102,7 @@ test("the AI sees the user's current code and earlier turns - never the problem 
   ]);
 });
 
-test("each prompt is recorded with real token usage; totals and the remaining free limit come back", async () => {
+test("each prompt is recorded with real token usage; totals and today's prompt count come back", async () => {
   const res = await ask(attemptId, alice, "first");
   const body = await res.json();
   assert.equal(body.message.role, "ai");
@@ -107,12 +110,12 @@ test("each prompt is recorded with real token usage; totals and the remaining fr
   assert.deepEqual(body.model, { keySource: "platform", name: "claude-haiku-4-5" });
   assert.equal(body.totalPrompts, 1);
   assert.equal(body.totalTokens, 400);
-  assert.equal(body.remainingTokens, 19600);
+  assert.deepEqual(body.prompts, { plan: "free", usedToday: 1, limit: 30 });
 
   const second = await (await ask(attemptId, alice, "second")).json();
   assert.equal(second.totalPrompts, 2);
   assert.equal(second.totalTokens, 800);
-  assert.equal(second.remainingTokens, 19200);
+  assert.deepEqual(second.prompts, { plan: "free", usedToday: 2, limit: 30 });
 
   const { rows } = await pool.query(
     `SELECT s.total_prompts, (SELECT count(*)::int FROM prompt_events WHERE session_id = s.id) AS events,
@@ -144,27 +147,47 @@ test("the chat history, model and remaining limit can be read back (reload); the
   assert.deepEqual(body.model, { keySource: "platform", name: "claude-haiku-4-5" });
   assert.equal(body.totalPrompts, 1);
   assert.equal(body.totalTokens, 400);
-  assert.equal(body.remainingTokens, 19600);
+  assert.deepEqual(body.prompts, { plan: "free", usedToday: 1, limit: 30 });
   for (const text of [sent, raw]) assert.ok(!text.includes("sk-ant-platform-secret"));
 });
 
-test("over the daily free limit → 429 without calling the AI; the next UTC day it works again", async () => {
-  config.aiFreeDailyTokens = 800;
+test("at the plan's daily prompt limit → 429 without calling the AI; the next UTC day it works again", async () => {
+  PLANS.free.promptsPerDay = 2;
   await ask(attemptId, alice, "one");
   await ask(attemptId, alice, "two");
   const res = await ask(attemptId, alice, "three");
   assert.equal(res.status, 429);
   const { error } = await res.json();
   assert.equal(error.code, "AI_DAILY_LIMIT");
-  assert.match(error.message, /Connect your own API key in Settings/);
+  assert.equal(error.message, "You've used all 2 prompts for today.");
   assert.equal(calls.length, 2);
-  assert.equal((await (await call("GET", `/attempts/${attemptId}/ai/messages`, alice)).json()).remainingTokens, 0);
+  assert.deepEqual((await (await call("GET", `/attempts/${attemptId}/ai/messages`, alice)).json()).prompts, {
+    plan: "free",
+    usedToday: 2,
+    limit: 2,
+  });
 
   // The limit is per user, across attempts: yesterday's usage no longer counts.
   await pool.query("UPDATE prompt_events SET sent_at = sent_at - interval '1 day'");
   const again = await ask(attemptId, alice, "four");
   assert.equal(again.status, 201);
-  assert.equal((await again.json()).remainingTokens, 400);
+  assert.equal((await again.json()).prompts.usedToday, 1);
+});
+
+test("X2: the plan picks the platform model and limit; Own Key without a key → 403", async () => {
+  await pool.query("UPDATE users SET plan = 'pro' WHERE username = 'alice'");
+  const pro = await (await ask(attemptId, alice, "hi")).json();
+  assert.equal(calls[0].plan, "pro");
+  assert.deepEqual(pro.prompts, { plan: "pro", usedToday: 1, limit: 150 });
+  assert.deepEqual(platformModel("max"), { provider: "anthropic", model: "claude-opus-5-5" });
+  assert.deepEqual(platformModel("free"), { provider: "anthropic", model: "claude-haiku-4-5" });
+  assert.equal(platformModel("own_key"), null);
+
+  await pool.query("UPDATE users SET plan = 'own_key' WHERE username = 'alice'");
+  const res = await ask(attemptId, alice, "hi");
+  assert.equal(res.status, 403);
+  assert.equal((await res.json()).error.code, "API_KEY_REQUIRED");
+  assert.equal(calls.length, 1);
 });
 
 test("an abandoned or solved attempt → 409", async () => {

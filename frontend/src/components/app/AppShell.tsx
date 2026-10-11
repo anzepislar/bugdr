@@ -56,7 +56,9 @@ export function AppShell({ children, liveContests }: { children: ReactNode; live
       ? "Contest details"
       : isActive("/settings")
         ? "Settings"
-        : current?.label;
+        : isActive("/pricing")
+          ? "Pricing"
+          : current?.label;
 
   return (
     <div className="flex min-h-screen flex-1">

@@ -60,7 +60,7 @@ before(async () => {
      WHERE p.slug = 'payment-retries-disappear'`,
   );
   solution = { ...cb.files, ...cb.solution_files };
-  Object.assign(config, { aiProvider: "anthropic", anthropicApiKey: "sk-test", aiFreeDailyTokens: 1e9 });
+  Object.assign(config, { aiProvider: "anthropic", anthropicApiKey: "sk-test" });
   chat.complete = async () => ({ text: "ok", model: "claude-haiku-4-5", promptTokens: 1500, responseTokens: 500 });
 });
 after(async () => {

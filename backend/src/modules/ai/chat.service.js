@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { config } from "../../config.js";
 import { HttpError } from "../../errors.js";
+import { PLANS } from "../plans/plans.js";
 
 // S1: the built-in AI chat on the solve page. The AI sees only the code (the user's current files) and the earlier
 // turns - never the incident report or codebase context: like an assistant in a real repo, the engineer has to
@@ -11,7 +12,6 @@ const SYSTEM_PROMPT = `You are an AI coding assistant built into an engineer's e
 Answer questions about the code, help investigate problems the engineer describes, and suggest changes. Be concise and specific: refer to files and functions by name and show code in fenced blocks.`;
 
 const MAX_ANSWER_TOKENS = 4000;
-const FREE_MODELS = { anthropic: "claude-haiku-4-5", openai: "gpt-4o-mini" };
 // D63: what a user can pick for their own key, default first.
 export const USER_MODELS = {
   anthropic: ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-4-5"],
@@ -24,11 +24,16 @@ const rejected = () =>
   new HttpError(400, "API_KEY_REJECTED", "Your API key was rejected by the provider. Check it, or connect another one in Settings.");
 let client;
 
-/** Provider + model of the platform key (A9.1 provider choice, D62 cheap model). Null when no key is set. */
-export function platformModel() {
+/**
+ * Provider + model of the platform key for a plan (A9.1 provider choice, X2 model per plan; AI_FREE_MODEL overrides
+ * Free's). Null when no key is set, or on Own Key (no platform model).
+ */
+export function platformModel(plan = "free") {
   const provider = config.aiProvider || (config.anthropicApiKey ? "anthropic" : config.openaiApiKey ? "openai" : "");
   const key = provider === "anthropic" ? config.anthropicApiKey : provider === "openai" ? config.openaiApiKey : "";
-  return key ? { provider, model: config.aiFreeModel || FREE_MODELS[provider] } : null;
+  const models = PLANS[plan].models;
+  if (!key || !models) return null;
+  return { provider, model: (plan === "free" && config.aiFreeModel) || models[provider] };
 }
 
 /** The codebase as the system prompt: one <file> block per path, sorted so the prefix stays stable. */
@@ -42,14 +47,14 @@ export function systemPrompt(files) {
 
 /**
  * One chat turn. `messages` = earlier turns + the new prompt, as { role, content }. `userKey` = { provider, apiKey,
- * model } of the user's own key (S6); without it the platform key and cheap model. A key the provider rejects is
+ * model } of the user's own key (S6); without it the platform key with the model of `plan` (default Free). A key the provider rejects is
  * 400 API_KEY_REJECTED for a user key, 502 for the platform key.
  * Returns { text, model, promptTokens, responseTokens } with the provider's real usage.
  * Wrapped in an object so tests can replace it without calling the API.
  */
 export const chat = {
-  async complete({ system, messages, userKey }) {
-    const platform = platformModel();
+  async complete({ system, messages, userKey, plan }) {
+    const platform = platformModel(plan);
     if (!userKey && !platform) throw new HttpError(503, "AI_DISABLED", "The AI assistant is not set up on the server yet.");
     const { provider, model } = userKey ?? platform;
     const apiKey = userKey?.apiKey ?? (provider === "openai" ? config.openaiApiKey : config.anthropicApiKey);

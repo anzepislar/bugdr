@@ -103,3 +103,16 @@ test("ban locks the user out on the next request and hides the profile; unban re
   assert.equal((await call("GET", "/auth/me", bob.cookie)).status, 200);
   assert.equal((await call("POST", "/admin/users/00000000-0000-4000-8000-000000000000/ban")).status, 404);
 });
+
+test("X2: the admin sets a plan; it shows on the user detail, /auth/me, /me/profile and the public profile", async () => {
+  assert.equal((await get(`/admin/users/${bob.id}`)).user.plan, "free");
+  assert.equal((await call("PUT", `/admin/users/${bob.id}/plan`, admin, { plan: "max" })).status, 204);
+  assert.equal((await get(`/admin/users/${bob.id}`)).user.plan, "max");
+  assert.equal((await (await call("GET", "/auth/me", bob.cookie)).json()).user.plan, "max");
+  assert.equal((await (await call("GET", "/me/profile", bob.cookie)).json()).plan, "max");
+  assert.equal((await (await call("GET", "/users/Bobby_M", alice.cookie)).json()).profile.plan, "max");
+
+  assert.equal((await call("PUT", `/admin/users/${bob.id}/plan`, admin, { plan: "gold" })).status, 400);
+  assert.equal((await call("PUT", `/admin/users/${bob.id}/plan`, admin, { plan: "constructor" })).status, 400);
+  assert.equal((await call("PUT", `/admin/users/${bob.id}/plan`, bob.cookie, { plan: "pro" })).status, 401);
+});

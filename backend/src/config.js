@@ -31,10 +31,8 @@ export const config = {
   openaiApiKey: testing ? "" : (env.OPENAI_API_KEY ?? ""),
   openaiModel: env.OPENAI_MODEL ?? "gpt-4o",
   aiProvider: env.AI_PROVIDER ?? "",
-  // S1 (D62): the built-in chat on the platform key uses a cheap model (default per provider) and a daily
-  // per-user token limit (UTC day).
+  // S1 (D62): overrides the Free plan's cheap model; the daily prompt limits are per plan (modules/plans/plans.js).
   aiFreeModel: env.AI_FREE_MODEL ?? "",
-  aiFreeDailyTokens: Number(env.AI_FREE_DAILY_TOKENS ?? 20000),
   // S6 (D63): master key for users' own API keys (AES-256-GCM). Unset = connecting a key is switched off.
   apiKeyEncryptionKey: env.API_KEY_ENCRYPTION_KEY ?? "",
   // D68: every email goes through Resend. Unset outside production = emails are printed instead of sent.

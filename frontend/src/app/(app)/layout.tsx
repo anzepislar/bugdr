@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/app/AppShell";
 import { SessionProvider } from "@/components/app/Session";
+import type { PlanId } from "@/lib/plans";
 import { SESSION_COOKIE } from "@/lib/session";
 import { serverFetch } from "@/lib/serverApi";
 import type { ContestList } from "@/lib/types/contest";
@@ -23,8 +24,20 @@ async function getMe(): Promise<Me | null> {
   if (!(await cookies()).has(SESSION_COOKIE)) return null;
   const res = await serverFetch("/me/profile");
   if (!res.ok) return null;
-  const { username, email, settings } = (await res.json()) as { username: string; email: string; settings: ProfileSettings };
-  return { username, email, displayName: settings.displayName, goalRole: settings.goalRole, experienceLevel: settings.experienceLevel };
+  const { username, email, plan, settings } = (await res.json()) as {
+    username: string;
+    email: string;
+    plan: PlanId;
+    settings: ProfileSettings;
+  };
+  return {
+    username,
+    email,
+    plan,
+    displayName: settings.displayName,
+    goalRole: settings.goalRole,
+    experienceLevel: settings.experienceLevel,
+  };
 }
 
 // Sidebar badge. ponytail: loads the whole contest list for one number; add a count endpoint if the list grows large.

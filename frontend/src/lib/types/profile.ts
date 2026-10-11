@@ -1,3 +1,4 @@
+import type { PlanId } from "@/lib/plans";
 import type { ContestHistoryEntry } from "@/lib/types/contest";
 import type { ActivityDay, DashboardStats, ExperienceLevel } from "@/lib/types/dashboard";
 import type { CategorySlug, Difficulty } from "@/lib/types/problem";
@@ -34,6 +35,7 @@ export interface Profile {
   isPublic: boolean;
   /** The viewer is this user. */
   own: boolean;
+  plan: PlanId;
   stats: DashboardStats;
   /** Last 52 weeks (U2). */
   activity: ActivityDay[];

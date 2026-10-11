@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Icon } from "@/components/Icon";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { estimateTokens, type SessionTracker } from "@/hooks/useSessionTracker";
 import { api, ApiError } from "@/lib/api";
+import { PLANS, type PlanId } from "@/lib/plans";
 import { DIFFICULTY_LABEL, type Difficulty } from "@/lib/types/problem";
 
 interface Message {
@@ -22,7 +24,8 @@ interface AiUsage {
   model: AiModel | null;
   totalPrompts: number;
   totalTokens: number;
-  remainingTokens: number;
+  /** X2: platform-key prompts today (UTC) and the plan's limit; limit null = unlimited (own key or Own Key plan). */
+  prompts: { plan: PlanId; usedToday: number; limit: number | null };
   /** S3: the score so far (as on solve) and the benchmark for the problem's difficulty. */
   /** source (S7): the problem's own averages once it has enough solves, else the difficulty's. */
   efficiency: {
@@ -33,7 +36,7 @@ interface AiUsage {
 
 const MAX_INPUT_HEIGHT = 96; // px, 4 rows of text-sm
 const time = (d: Date) => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-const modelLabel = (m: AiModel) => `${m.keySource === "user" ? "Your key" : "Free model"} · ${m.name}`;
+const modelLabel = (m: AiModel, plan: PlanId) => `${m.keySource === "user" ? "Your key" : `${PLANS[plan].name} plan`} · ${m.name}`;
 
 // Fenced blocks become code boxes, `inline` spans become <code>.
 function MessageText({ text }: { text: string }) {
@@ -47,6 +50,17 @@ function MessageText({ text }: { text: string }) {
         {part.trim().split(/`([^`]+)`/).map((s, j) => (j % 2 ? <code key={j} className="font-mono text-[13px]">{s}</code> : s))}
       </p>
     ),
+  );
+}
+
+/** X2: "X / N prompts today" - muted, yellow from 80 %, red at the limit. */
+function PromptCounter({ usedToday, limit }: AiUsage["prompts"]) {
+  const share = limit === null ? 0 : limit === 0 ? 1 : usedToday / limit;
+  const color = share >= 1 ? "text-failed" : share >= 0.8 ? "text-pending" : "text-muted";
+  return (
+    <p className={`shrink-0 bg-canvas px-4 pb-2 pl-8 font-mono text-xs tabular-nums ${color}`}>
+      {limit === null ? "Unlimited prompts" : `${Math.min(usedToday, limit)} / ${limit} prompts today`}
+    </p>
   );
 }
 
@@ -129,10 +143,15 @@ export function AiChatPanel({
       setMessages((m) => m.slice(0, -1));
       setInput(text);
       const code = e instanceof ApiError ? e.code : "";
-      if (code === "AI_DAILY_LIMIT") setUsage((u) => u && { ...u, remainingTokens: 0 });
+      // At the limit the input gives way to the upgrade prompt; no error line needed.
+      if (code === "AI_DAILY_LIMIT" && usage?.prompts.limit != null) {
+        const limit = usage.prompts.limit;
+        setUsage((u) => u && { ...u, prompts: { ...u.prompts, usedToday: limit } });
+        return;
+      }
       setError({
         text: e instanceof ApiError ? e.message : "The AI did not answer. Try again.",
-        settings: ["AI_DAILY_LIMIT", "API_KEY_REJECTED", "API_KEY_UNREADABLE"].includes(code),
+        settings: ["AI_DAILY_LIMIT", "API_KEY_REJECTED", "API_KEY_UNREADABLE", "API_KEY_REQUIRED"].includes(code),
       });
     } finally {
       setTyping(false);
@@ -147,6 +166,8 @@ export function AiChatPanel({
   }
 
   const level = DIFFICULTY_LABEL[difficulty];
+  const limits = usage?.model ? usage.prompts : null;
+  const isAtLimit = limits !== null && limits.limit !== null && limits.usedToday >= limits.limit;
   const prompts = usage?.totalPrompts ?? 0;
   const tokens = usage?.totalTokens ?? 0;
   const efficiency = usage?.efficiency;
@@ -158,7 +179,7 @@ export function AiChatPanel({
       <div className="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-border px-4 pl-8">
         <h2 className="truncate text-sm font-medium text-text">AI Assistant</h2>
         {usage ? (
-          <span className="min-w-0 truncate text-xs text-muted">{usage.model ? modelLabel(usage.model) : "AI not available"}</span>
+          <span className="min-w-0 truncate text-xs text-muted">{usage.model ? modelLabel(usage.model, usage.prompts.plan) : "AI not available"}</span>
         ) : null}
       </div>
 
@@ -169,6 +190,7 @@ export function AiChatPanel({
         <span aria-hidden className="h-3 w-px shrink-0 bg-border" />
         <Stat label="Runs" value={tracker.testRunCount} />
       </div>
+      {limits ? <PromptCounter {...limits} /> : null}
 
       <div className="shrink-0 border-b border-border">
         <button
@@ -239,45 +261,48 @@ export function AiChatPanel({
         )}
       </div>
 
-      <div className="shrink-0 border-t border-border p-3">
-        {error ? (
-          <p role="alert" className="mb-2 text-xs text-failed">
-            {error.text}
-            {error.settings ? (
-              <>
-                {" "}
-                <Link href="/settings?tab=account" className="text-action hover:underline">
-                  Open Settings
-                </Link>
-              </>
-            ) : null}
-          </p>
-        ) : null}
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={onKeyDown}
-          rows={1}
-          aria-label="Ask AI"
-          placeholder="Ask AI for help..."
-          className="block w-full resize-none rounded border border-border bg-canvas px-3 py-2 text-sm text-text placeholder:text-muted focus:border-action focus:outline-none"
-        />
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <span className="min-w-0 truncate text-xs text-muted">
-            ~{estimateTokens(input)} tokens
-            {usage?.model?.keySource === "platform" ? ` · ${usage.remainingTokens.toLocaleString()} free left today` : ""}
-          </span>
-          <button
-            type="button"
-            onClick={() => void send()}
-            disabled={!input.trim() || typing || !attemptId || usage?.model === null}
-            className="shrink-0 rounded bg-action px-3 py-1 text-xs font-medium text-canvas hover:opacity-90 disabled:opacity-60"
-          >
-            Send
-          </button>
+      {isAtLimit ? (
+        <div className="shrink-0 border-t border-border p-3">
+          <UpgradePrompt feature="prompts" limit={limits.limit ?? undefined} planId={limits.plan} className="p-4" />
         </div>
-      </div>
+      ) : (
+        <div className="shrink-0 border-t border-border p-3">
+          {error ? (
+            <p role="alert" className="mb-2 text-xs text-failed">
+              {error.text}
+              {error.settings ? (
+                <>
+                  {" "}
+                  <Link href="/settings?tab=account" className="text-action hover:underline">
+                    Open Settings
+                  </Link>
+                </>
+              ) : null}
+            </p>
+          ) : null}
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={onKeyDown}
+            rows={1}
+            aria-label="Ask AI"
+            placeholder="Ask AI for help..."
+            className="block w-full resize-none rounded border border-border bg-canvas px-3 py-2 text-sm text-text placeholder:text-muted focus:border-action focus:outline-none"
+          />
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-xs text-muted">~{estimateTokens(input)} tokens</span>
+            <button
+              type="button"
+              onClick={() => void send()}
+              disabled={!input.trim() || typing || !attemptId || usage?.model === null}
+              className="shrink-0 rounded bg-action px-3 py-1 text-xs font-medium text-canvas hover:opacity-90 disabled:opacity-60"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

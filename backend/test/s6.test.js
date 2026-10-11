@@ -8,6 +8,7 @@ import { HttpError } from "../src/errors.js";
 import { migrate } from "../src/migrate.js";
 import { decryptKey, encryptKey } from "../src/modules/ai/apiKeys.js";
 import { chat } from "../src/modules/ai/chat.service.js";
+import { PLANS } from "../src/modules/plans/plans.js";
 
 // S6: the user's own API key. Provider calls are replaced - no network, no real keys.
 const server = app.listen(0);
@@ -56,9 +57,9 @@ beforeEach(async () => {
   Object.assign(config, saved, {
     aiProvider: "anthropic",
     anthropicApiKey: "sk-ant-platform",
-    aiFreeDailyTokens: 20000,
     apiKeyEncryptionKey: randomBytes(32).toString("hex"),
   });
+  PLANS.free.promptsPerDay = 30;
   calls = [];
   chat.complete = async (args) => {
     calls.push(args);
@@ -147,7 +148,7 @@ test("connecting tests the key with the chosen model, stores it encrypted, and n
 
 test("with an own key the chat uses it and the chosen model, records key_source 'user', and has no daily limit", async () => {
   await connect(alice);
-  config.aiFreeDailyTokens = 0;
+  PLANS.free.promptsPerDay = 0;
   calls = [];
   const res = await ask(alice);
   assert.equal(res.status, 201);
@@ -160,6 +161,8 @@ test("with an own key the chat uses it and the chosen model, records key_source 
   assert.deepEqual(rows, [{ key_source: "user", model: "claude-opus-5-5" }]);
   const history = await (await call("GET", `/attempts/${attemptId}/ai/messages`, alice)).json();
   assert.deepEqual(history.model, { keySource: "user", name: "claude-opus-5-5" });
+  assert.equal(history.prompts.limit, null);
+  assert.equal(history.prompts.usedToday, 0);
 });
 
 test("after removing the key the chat is back on the free model and its limit", async () => {
@@ -174,7 +177,7 @@ test("after removing the key the chat is back on the free model and its limit", 
   assert.deepEqual((await res.json()).model, { keySource: "platform", name: "claude-haiku-4-5" });
   assert.equal(calls[0].userKey, null);
 
-  config.aiFreeDailyTokens = 0;
+  PLANS.free.promptsPerDay = 0;
   const limited = await ask(alice);
   assert.equal(limited.status, 429);
 });

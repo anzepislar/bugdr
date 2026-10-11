@@ -71,7 +71,7 @@ export async function getSolved(userId, limit = null) {
 // Unknown or banned → 404. A private profile (D34) shows others only the username.
 usersRouter.get("/:username", optionalAuth, async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT u.id, u.username, coalesce(p.display_name, u.username) AS display_name, coalesce(p.headline, '') AS headline,
+    `SELECT u.id, u.username, u.plan, coalesce(p.display_name, u.username) AS display_name, coalesce(p.headline, '') AS headline,
        coalesce(p.languages, '{}') AS languages, coalesce(p.is_public, true) AS is_public
      FROM users u
      LEFT JOIN user_profiles p ON p.user_id = u.id
@@ -100,6 +100,7 @@ usersRouter.get("/:username", optionalAuth, async (req, res) => {
       languages: u.languages,
       isPublic: u.is_public,
       own,
+      plan: u.plan,
       stats,
       activity,
       solved,

@@ -217,6 +217,8 @@ export function Workspace({
       .catch((e) => {
         // A solved problem never reopens (R1): its detail page shows the result.
         if (e instanceof ApiError && e.code === "ALREADY_SOLVED") router.replace(`/problems/${slug}`);
+        // X2: a path problem on a plan without career paths: the career paths page shows the upgrade prompt.
+        else if (e instanceof ApiError && e.code === "PLAN_REQUIRED") router.replace("/career-paths");
         else setStartError(e instanceof ApiError ? e.message : "Could not start the problem. Try again.");
       });
   }, [slug, careerPath, router]);

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { pool } from "../../db.js";
 import { requireAuth } from "../auth/auth.service.js";
+import { PLANS, planRequired } from "../plans/plans.js";
 import { VISIBLE } from "../problems/problems.routes.js";
 import { loadThresholds, stageProgress } from "./careerPaths.js";
 
@@ -93,8 +94,9 @@ export async function checkUnlock(client, userId, role) {
 }
 
 // Every path with the user's stage, progress to the next stage and the assigned problem. The goal role (onboarding)
-// comes first, then the categories in their usual order.
+// comes first, then the categories in their usual order. X2: only on plans with career paths (else 403 PLAN_REQUIRED).
 careerPathsRouter.get("/", requireAuth, async (req, res) => {
+  if (!PLANS[req.user.plan].careerPaths) throw planRequired("Career paths");
   const { rows: roles } = await pool.query(
     `SELECT c.slug, coalesce(c.slug = up.goal_role, false) AS is_goal_role
      FROM problem_categories c LEFT JOIN user_profiles up ON up.user_id = $1

@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { config } from "../../config.js";
 import { pool } from "../../db.js";
 import { HttpError } from "../../errors.js";
 import { connectedKey, loadUserKey } from "../ai/apiKeys.js";
@@ -8,6 +7,7 @@ import { feedback } from "../ai/feedback.service.js";
 import { requireAuth } from "../auth/auth.service.js";
 import { checkUnlock } from "../careerPaths/careerPaths.routes.js";
 import { sendRankUpEmail } from "../email/rankUpEmail.js";
+import { PLANS } from "../plans/plans.js";
 import { runChecks, runTerminal, stopTerminal, validateFiles } from "../runner/runner.service.js";
 import { activeSeconds, efficiencyScore, finalPoints, lineChanges, pickBenchmark, timeMultiplier } from "../scoring/scoring.js";
 
@@ -228,7 +228,10 @@ async function solve(attemptId, userId, problem, finalCode) {
     await updateBenchmark(client, problem.problem_id, attemptId, seconds);
     // K2 (D66 e): a solve on a career path can open the path's next stage.
     if (problem.career_path) await checkUnlock(client, userId, problem.career_path);
-    await client.query("INSERT INTO solve_feedback (attempt_id) VALUES ($1) ON CONFLICT DO NOTHING", [attemptId]);
+    // X2: feedback and rank up emails only on plans that have them.
+    const { rows: [{ plan }] } = await client.query("SELECT plan FROM users WHERE id = $1", [userId]);
+    if (PLANS[plan].feedback)
+      await client.query("INSERT INTO solve_feedback (attempt_id) VALUES ($1) ON CONFLICT DO NOTHING", [attemptId]);
     // T2 (D18): a solve while the problem's contest is live adds its points to the entry; after ends_at it does not count.
     // Upsert: an attempt started before the contest went live has no entry yet.
     await client.query(
@@ -241,7 +244,7 @@ async function solve(attemptId, userId, problem, finalCode) {
     );
     await client.query("COMMIT");
     // Only here, after this request's award: a double click returns early above and sends nothing.
-    sendRankUpEmail(userId, points).catch((err) => console.error(`Rank up email: ${err.message}`));
+    if (PLANS[plan].rankUpEmails) sendRankUpEmail(userId, points).catch((err) => console.error(`Rank up email: ${err.message}`));
     return { pointsEarned: points, timeTakenSeconds: seconds, timeMultiplier: multiplier, efficiencyScore: efficiency };
   } catch (err) {
     await client.query("ROLLBACK");
@@ -285,10 +288,10 @@ attemptsRouter.post("/:id/terminal", async (req, res) => {
 
 const MAX_PROMPT_CHARS = 8000;
 
-// D62: platform tokens the user spent today (UTC day, D7) across all attempts. Own-key prompts (S6) never count.
-async function freeTokensUsedToday(userId) {
+// X2: platform-key prompts the user sent today (UTC day, D7) across all attempts. Own-key prompts (S6) never count.
+async function promptsUsedToday(userId) {
   const { rows } = await pool.query(
-    `SELECT coalesce(sum(pe.total_tokens), 0)::int AS used
+    `SELECT count(*)::int AS used
      FROM prompt_events pe
      JOIN solve_sessions s ON s.id = pe.session_id
      JOIN user_problem_attempts a ON a.id = s.attempt_id
@@ -331,6 +334,13 @@ const promptHistory = (attemptId) =>
     [attemptId],
   );
 
+/** X2: { plan, usedToday, limit } for the chat counter; limit null = unlimited (own key, or the Own Key plan). */
+const promptLimits = (plan, ownKey, usedToday) => ({
+  plan,
+  usedToday,
+  limit: ownKey ? null : PLANS[plan].promptsPerDay,
+});
+
 /**
  * S1: the attempt's chat so far (after a reload), the model in use and what is left of today's free limit (D51 e).
  * model = null when the server has no AI key. Only the owner (foreign = 404).
@@ -345,11 +355,11 @@ attemptsRouter.get("/:id/ai/messages", async (req, res) => {
   if (!rows[0]) throw notFound();
   const [history, used, own, efficiency] = await Promise.all([
     promptHistory(req.params.id),
-    freeTokensUsedToday(req.user.id),
+    promptsUsedToday(req.user.id),
     connectedKey(req.user.id),
     liveEfficiency(req.params.id),
   ]);
-  const platform = platformModel();
+  const platform = platformModel(req.user.plan);
   res.json({
     messages: history.rows.flatMap((r) => [
       { role: "user", text: r.prompt_text, at: r.sent_at },
@@ -358,7 +368,7 @@ attemptsRouter.get("/:id/ai/messages", async (req, res) => {
     model: own ? { keySource: "user", name: own.model } : platform && { keySource: "platform", name: platform.model },
     totalPrompts: rows[0].total_prompts ?? 0,
     totalTokens: rows[0].total_tokens_used ?? 0,
-    remainingTokens: Math.max(0, config.aiFreeDailyTokens - used),
+    prompts: promptLimits(req.user.plan, own, used),
     efficiency,
   });
 });
@@ -366,10 +376,10 @@ attemptsRouter.get("/:id/ai/messages", async (req, res) => {
 /**
  * S1: one prompt to the built-in AI. The AI sees the user's current files (sent like Test/terminal, over the original
  * files; hidden files never) and the earlier turns of this attempt. With the user's own key (S6): their provider and
- * model, no limit. Otherwise platform key + cheap model with a daily token limit (D62): over it → 429, solving goes on
- * without AI. The prompt is recorded with the provider's real token usage
- * in the attempt's session (one per attempt, across tries - D56).
- * ponytail: the limit is checked before the call, so the last prompt of the day can go over it by one answer.
+ * model, no limit. Otherwise the platform key with the plan's model and daily prompt limit (X2): at it → 429, solving
+ * goes on without AI; the Own Key plan without a connected key → 403. The prompt is recorded with the provider's real
+ * token usage in the attempt's session (one per attempt, across tries - D56).
+ * ponytail: prompts sent at the same moment all pass the limit check; lock per user if that gets abused.
  */
 attemptsRouter.post("/:id/ai/messages", async (req, res) => {
   if (!UUID.test(req.params.id)) throw notFound();
@@ -389,11 +399,15 @@ attemptsRouter.post("/:id/ai/messages", async (req, res) => {
   if (a.status !== "in_progress") throw new HttpError(409, "ATTEMPT_NOT_ACTIVE", "Start the problem again to use the AI");
   const userKey = await loadUserKey(req.user.id);
   const keySource = userKey ? "user" : "platform";
-  if (!userKey && !platformModel()) throw new HttpError(503, "AI_DISABLED", "The AI assistant is not set up on the server yet.");
+  const plan = PLANS[req.user.plan];
+  if (!userKey && !plan.models)
+    throw new HttpError(403, "API_KEY_REQUIRED", "Your Own Key plan uses your own API key. Connect it in Settings.");
+  if (!userKey && !platformModel(req.user.plan))
+    throw new HttpError(503, "AI_DISABLED", "The AI assistant is not set up on the server yet.");
 
-  const used = await freeTokensUsedToday(req.user.id);
-  if (!userKey && used >= config.aiFreeDailyTokens)
-    throw new HttpError(429, "AI_DAILY_LIMIT", "Daily free AI limit reached. Connect your own API key in Settings to keep going.");
+  const used = await promptsUsedToday(req.user.id);
+  if (!userKey && used >= plan.promptsPerDay)
+    throw new HttpError(429, "AI_DAILY_LIMIT", `You've used all ${plan.promptsPerDay} prompts for today.`);
 
   const history = await promptHistory(req.params.id);
   const answer = await chat.complete({
@@ -406,6 +420,7 @@ attemptsRouter.post("/:id/ai/messages", async (req, res) => {
       { role: "user", content: text },
     ],
     userKey,
+    plan: req.user.plan,
   });
   const tokens = answer.promptTokens + answer.responseTokens;
 
@@ -440,8 +455,8 @@ attemptsRouter.post("/:id/ai/messages", async (req, res) => {
     model: { keySource, name: answer.model },
     totalPrompts: session.total_prompts,
     totalTokens: session.total_tokens_used,
-    // Own-key prompts never use the free limit.
-    remainingTokens: Math.max(0, config.aiFreeDailyTokens - used - (userKey ? 0 : tokens)),
+    // Own-key prompts never count.
+    prompts: promptLimits(req.user.plan, userKey, used + (userKey ? 0 : 1)),
     efficiency: await liveEfficiency(req.params.id),
   });
 });
@@ -577,7 +592,8 @@ async function updateBenchmark(client, problemId, attemptId, seconds) {
 }
 
 /**
- * S8: the solve's AI feedback - { status: 'pending' | 'ready' | 'failed' | 'unavailable', content }. Only the owner
+ * S8: the solve's AI feedback - { status: 'pending' | 'ready' | 'failed' | 'unavailable' | 'locked', content }.
+ * locked = the user's plan has no feedback (X2). Only the owner
  * (foreign = 404); not solved → 409. 'unavailable' = solved before S8. A stuck pending one is started again, a failed
  * one at most every 30 s (a provider outage is not hit on every poll), never without an AI key on the server.
  */
@@ -592,6 +608,7 @@ attemptsRouter.get("/:id/feedback", async (req, res) => {
   const r = rows[0];
   if (!r) throw notFound();
   if (r.attempt_status !== "solved") throw new HttpError(409, "NOT_SOLVED", "Feedback comes after you solve the problem");
+  if (!PLANS[req.user.plan].feedback) return res.json({ status: "locked", content: null });
   if (!r.status) return res.json({ status: "unavailable", content: null });
   const restart = (r.status === "failed" && r.retry) || (r.status === "pending" && r.stale);
   if (restart && platformModel()) {

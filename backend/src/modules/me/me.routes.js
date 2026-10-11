@@ -36,7 +36,7 @@ meRouter.put("/onboarding", async (req, res) => {
   res.status(204).end();
 });
 
-// GET /me/profile → { username, email, settings: ProfileSettings } for /settings (D34). Empty optional fields are "".
+// GET /me/profile → { username, email, plan (X2), settings: ProfileSettings } for /settings (D34). Empty optional fields are "".
 meRouter.get("/profile", async (req, res) => {
   const { rows } = await pool.query(
     `SELECT display_name, headline, github_username, goal_role, experience_level, languages, is_public
@@ -47,6 +47,7 @@ meRouter.get("/profile", async (req, res) => {
   res.json({
     username: req.user.username,
     email: req.user.email,
+    plan: req.user.plan,
     settings: {
       displayName: p.display_name ?? req.user.username,
       headline: p.headline ?? "",

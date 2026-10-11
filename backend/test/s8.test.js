@@ -33,6 +33,7 @@ async function settled(id, cookie) {
 }
 async function signup(name) {
   const res = await request("POST", "/auth/signup", null, { email: `${name}@example.com`, username: name, password: "password1" });
+  await pool.query("UPDATE users SET plan = 'pro' WHERE username = $1", [name]); // X2: feedback needs a paid plan
   return res.headers.get("set-cookie").split(";")[0];
 }
 
@@ -49,7 +50,7 @@ before(async () => {
   );
   solution = { ...cb.files, ...cb.solution_files };
   [alice, bob] = [await signup("alice"), await signup("bobby")];
-  Object.assign(config, { aiProvider: "anthropic", anthropicApiKey: "sk-test", aiFreeDailyTokens: 1e9 });
+  Object.assign(config, { aiProvider: "anthropic", anthropicApiKey: "sk-test" });
 });
 beforeEach(() => {
   calls = [];
@@ -163,6 +164,14 @@ test("a solve from before S8 has no feedback → unavailable", async () => {
   const { attempt } = await (await request("POST", "/problems/payment-retries-disappear/start", cookie)).json();
   await pool.query("UPDATE user_problem_attempts SET status = 'solved', solved_at = now() WHERE id = $1", [attempt.id]);
   assert.deepEqual(await getFeedback(attempt.id, cookie), { status: "unavailable", content: null });
+});
+
+test("X2: on the Free plan feedback is locked", async () => {
+  const cookie = await signup("dave");
+  await pool.query("UPDATE users SET plan = 'free' WHERE username = 'dave'");
+  const { attempt } = await (await request("POST", "/problems/payment-retries-disappear/start", cookie)).json();
+  await pool.query("UPDATE user_problem_attempts SET status = 'solved', solved_at = now() WHERE id = $1", [attempt.id]);
+  assert.deepEqual(await getFeedback(attempt.id, cookie), { status: "locked", content: null });
 });
 
 test("with 8+ other solves the feedback compares with their top 25% by efficiency score", { skip }, async () => {

@@ -1,3 +1,4 @@
+import type { PlanId } from "@/lib/plans";
 import type { DashboardStats, ExperienceLevel, PlatformGoal } from "@/lib/types/dashboard";
 import type { CategorySlug, Difficulty } from "@/lib/types/problem";
 
@@ -11,6 +12,7 @@ export interface AdminUserListItem {
   joinedAt: string;
   lastActiveAt: string | null;
   isBanned: boolean;
+  plan: PlanId;
 }
 
 export type AttemptStatus = "in_progress" | "solved" | "abandoned";

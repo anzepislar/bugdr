@@ -73,7 +73,7 @@ before(async () => {
   ));
   solution = { ...original, ...solution };
   alice = await signup("alice");
-  Object.assign(config, { aiProvider: "anthropic", anthropicApiKey: "sk-test", aiFreeDailyTokens: 1e9 });
+  Object.assign(config, { aiProvider: "anthropic", anthropicApiKey: "sk-test" });
   // Each prompt costs 2000 tokens.
   chat.complete = async () => ({ text: "ok", model: "claude-haiku-4-5", promptTokens: 1500, responseTokens: 500 });
 });

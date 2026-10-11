@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { serverFetch } from "@/lib/serverApi";
 import type { CareerPath, StageMetric } from "@/lib/types/careerPath";
 import { CATEGORIES, DIFFICULTIES, DIFFICULTY_LABEL } from "@/lib/types/problem";
@@ -13,10 +14,12 @@ const METRIC: Record<StageMetric["key"], { label: string; show: (v: number) => s
 };
 
 // K2 (D66): one page, the paths as an accordion (user, 10. 10. 2026). The goal role comes first and starts open.
+// X2: on a plan without career paths the API answers 403 and the page shows the upgrade prompt instead.
 export default async function CareerPathsPage() {
   const res = await serverFetch("/career-paths");
-  if (!res.ok) throw new Error(`GET /career-paths failed: ${res.status}`);
-  const { paths } = (await res.json()) as { paths: CareerPath[] };
+  const locked = res.status === 403;
+  if (!res.ok && !locked) throw new Error(`GET /career-paths failed: ${res.status}`);
+  const paths = locked ? [] : ((await res.json()) as { paths: CareerPath[] }).paths;
   const openRole = (paths.find((p) => p.isGoalRole) ?? paths[0])?.role;
 
   return (
@@ -27,11 +30,15 @@ export default async function CareerPathsPage() {
         stage. Follow as many paths as you like.
       </p>
 
-      <div className="mt-8 space-y-3">
-        {paths.map((path) => (
-          <PathRow key={path.role} path={path} open={path.role === openRole} />
-        ))}
-      </div>
+      {locked ? (
+        <UpgradePrompt feature="career_paths" className="mt-8" />
+      ) : (
+        <div className="mt-8 space-y-3">
+          {paths.map((path) => (
+            <PathRow key={path.role} path={path} open={path.role === openRole} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { BanBadge } from "@/components/admin/BanBadge";
-import { cardClass, DifficultyBadge, primaryButton, secondaryButton } from "@/components/admin/problems/shared";
+import { cardClass, DifficultyBadge, inputClass, primaryButton, secondaryButton } from "@/components/admin/problems/shared";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Icon } from "@/components/Icon";
+import { Select } from "@/components/Select";
 import { api } from "@/lib/api";
 import { duration, formatDate, formatUtcDateTime } from "@/lib/format";
+import { PLANS, type PlanId } from "@/lib/plans";
 import type { AdminUserDetail, AttemptStatus } from "@/lib/types/adminUser";
 import { EXPERIENCE_LABEL } from "@/lib/types/dashboard";
 import { CATEGORIES } from "@/lib/types/problem";
@@ -18,6 +20,8 @@ const STATUS: Record<AttemptStatus, { label: string; className: string }> = {
   in_progress: { label: "In progress", className: "text-pending" },
   abandoned: { label: "Gave up", className: "text-muted" },
 };
+const PLAN_OPTIONS = Object.values(PLANS).map((p) => ({ value: p.id, label: `${p.name} · ${p.price}` }));
+
 const GOAL = {
   get_hired: "Get hired",
   improve_skills: "Improve skills",
@@ -31,6 +35,7 @@ export default function AdminUserPage() {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [planError, setPlanError] = useState("");
 
   const load = useCallback(
     () =>
@@ -57,6 +62,19 @@ export default function AdminUserPage() {
       setError("That did not work. Try again.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  // X2: the admin sets the plan by hand until payments exist; it applies on the user's next request.
+  async function changePlan(plan: PlanId) {
+    if (!user) return;
+    setPlanError("");
+    setUser({ ...user, plan });
+    try {
+      await api(`/admin/users/${user.id}/plan`, { method: "PUT", body: JSON.stringify({ plan }) });
+    } catch {
+      setPlanError("Could not change the plan. Try again.");
+      await load();
     }
   }
 
@@ -150,6 +168,15 @@ export default function AdminUserPage() {
                 >
                   {user.isBanned ? "Unban user" : "Ban user"}
                 </button>
+                <label htmlFor="user-plan" className="mt-5 block text-sm text-muted">
+                  Plan
+                </label>
+                <Select id="user-plan" value={user.plan} onChange={changePlan} options={PLAN_OPTIONS} className={`${inputClass} mt-1.5`} />
+                {planError ? (
+                  <p role="alert" className="mt-2 text-xs text-failed">
+                    {planError}
+                  </p>
+                ) : null}
                 <dl className="mt-5 space-y-3 text-sm">
                   {[
                     ["Display name", user.profile.displayName ?? "—"],

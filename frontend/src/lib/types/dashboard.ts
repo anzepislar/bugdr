@@ -1,3 +1,4 @@
+import type { PlanId } from "@/lib/plans";
 import type { Contest } from "@/lib/types/contest";
 import type { CategorySlug, Difficulty, ProblemListItem } from "@/lib/types/problem";
 
@@ -32,6 +33,7 @@ export interface Me {
   /** null = "Exploring my path" (D41). */
   goalRole: CategorySlug | null;
   experienceLevel: ExperienceLevel;
+  plan: PlanId;
 }
 
 export type ContestType = "daily" | "weekly" | "monthly";

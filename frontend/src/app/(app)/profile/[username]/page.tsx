@@ -7,8 +7,16 @@ import { Icon } from "@/components/Icon";
 import { RankBadge, type Rank } from "@/components/RankBadge";
 import { ShareProfileButton } from "@/components/profile/ShareProfileButton";
 import { SolvedProblems } from "@/components/profile/SolvedProblems";
+import { PLANS, type PlanId } from "@/lib/plans";
 import { serverFetch } from "@/lib/serverApi";
 import type { PrivateProfile, Profile } from "@/lib/types/profile";
+
+// X2: plan pill next to the name; Free has none. Literal classes so Tailwind picks them up.
+const PLAN_PILL: Partial<Record<PlanId, string>> = {
+  pro: "border-[#8BACFF]/40 bg-[#8BACFF]/10 text-[#8BACFF]",
+  own_key: "border-[#2dd4bf]/40 bg-[#2dd4bf]/10 text-[#2dd4bf]",
+  max: "border-[#c084fc]/40 bg-[#c084fc]/10 text-[#c084fc]",
+};
 
 const TABS = { overview: "Overview", solved: "Solved problems", contests: "Contest history" } as const;
 type Tab = keyof typeof TABS;
@@ -46,7 +54,14 @@ export default async function ProfilePage({
           {profile.displayName[0]}
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="text-3xl font-semibold text-text">{profile.displayName}</h1>
+          <h1 className="flex flex-wrap items-center gap-x-3 gap-y-1 text-3xl font-semibold text-text">
+            <span className="min-w-0 break-words">{profile.displayName}</span>
+            {"plan" in profile && PLAN_PILL[profile.plan] ? (
+              <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${PLAN_PILL[profile.plan]}`}>
+                {PLANS[profile.plan].name}
+              </span>
+            ) : null}
+          </h1>
           {"stats" in profile ? (
             <p className="mt-2 text-muted">
               {[profile.headline, profile.languages.join(", ")].filter(Boolean).join(" · ")}

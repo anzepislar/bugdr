@@ -64,6 +64,7 @@ export const toUser = (row) => ({
   email: row.email,
   username: row.username,
   avatarUrl: row.avatar_url,
+  plan: row.plan,
   onboardingCompleted: row.onboarding_completed ?? false,
 });
 
