@@ -2256,3 +2256,12 @@ sledljivost), `00` (Career Paths, pragovi, brezplačna raven), `03`, `04`,
   sliko s ⌘V / Ctrl+V. Blokiran zavihek → povezava "Open Twitter"; neuspelo
   kopiranje → napaka + povezava. Preverjeno v Chromu: odložišče ima PNG
   1080×1080, zavihek z besedilom, obe rezervi.
+- **E6 opomnik za opuščeno karierno pot** (želja uporabnika): če na začeti poti
+  (razen Get a job) 30 dni ni aktivnosti (začetek poskusa, nov poskus, poziv AI,
+  rešitev), gre e-pošta "Your X path is waiting" z gumbom na `/career-paths`;
+  enkrat na obdobje neaktivnosti (migracija 0027
+  `career_path_progress.reminder_sent_at`). Preverjanje ob zagonu strežnika in
+  vsako uro (`server.js`, ob sinhronizaciji predala). Test `k4.test.js`; testi
+  219/219.
+- **X2 paketi** (specifikacija uporabnika; odločitvi: pravi paketi na strežniku namesto lažnih podatkov v frontendu, nova stran `/pricing`): `users.plan` (migracija 0028), Free / Pro / Own Key / Max v `plans/plans.js` in `lib/plans.ts`. Dnevna omejitev klepeta je zdaj število pozivov (30 / 150 / neomejeno / 150, dan po UTC) namesto 20.000 žetonov; model po paketu (Haiku / Sonnet / lasten / Opus). Karierne poti in AI povratna informacija samo na plačanih paketih (403 `PLAN_REQUIRED`, `locked`), e-pošta ob napredovanju tudi. Admin nastavi paket na `/admin/users/[id]`. Frontend: `UpgradePrompt`, `usePlan`, števec pozivov v AI panelu, značka paketa na profilu, `/pricing`. Odstopanja od specifikacije: `usePlan` vrne samo paket (pozive šteje strežnik in jih vrne klepet), `/dashboard` ni bil spremenjen (specifikacija zanj ni nič zahtevala), "Connect API key" vodi na `/settings?tab=account`, povratna informacija je zaklenjena v `SolveFeedback` (SolveModal je datoteka kartic za deljenje). Testi 223/223; lint, typecheck, build OK. Preverjeno v brskalniku (začasen uporabnik, kopija API na drugih vratih, nato izbrisano): `/pricing`, zaklenjene in odklenjene karierne poti, značka na profilu (6 širin, brez vodoravnega drsenja), izbira paketa v adminu. Števec pozivov in zaklenjena povratna informacija nista preverjena v brskalniku (razvojna baza nima problemov). **Napaka med preverjanjem**: vrata 4100 je uporabljal API druge seje (baza `bugdr_demo`) - začasen uporabnik je nastal tam in je bil takoj izbrisan.
+- **E6 + X2**: opomnik za karierno pot gre samo uporabnikom, katerih paket ima karierne poti. Prej bi ga dobil uporabnik, ki je pot začel na plačanem paketu (ali pred X2) in je zdaj na Free, čeprav na pot ne more nazaj. Test v `k4.test.js`.

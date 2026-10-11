@@ -24,7 +24,7 @@ This defines the next generation of engineering skill — not "can you code" but
 | Problem execution | Docker containers |
 | Auth | JWT |
 | Email | Resend (sending + receiving on mail.bugdr.app, D68); welcome + rank up emails, rank card PNG via satori + resvg |
-| AI | Claude API or OpenAI (by key, A9.1) for problem analysis; built-in AI chat = platform key with a cheap model + daily limit, or the user's own encrypted key (S1, S6; D62/D63) — server-side only |
+| AI | Claude API or OpenAI (by key, A9.1) for problem analysis; built-in AI chat = platform key with the plan's model + daily prompt limit (X2), or the user's own encrypted key (S1, S6; D63) — server-side only |
 
 ---
 
@@ -128,24 +128,28 @@ Detailed status: CLAUDE.md "Current Status" and 06_backend_slices.md "Stanje"
 
 ## Monetization Model
 
-### Free tier
-- During development everything is open to everyone (D67); later career paths and AI feedback go behind a paywall
-- Access to Easy problems (planned, not enforced yet)
-- AI assistant powered by a cheap model (Claude Haiku or GPT-3.5 equivalent)
-- Basic efficiency scoring
-- Public leaderboard
-- Daily free AI limit (20,000 tokens, resets at midnight UTC) is the trial - no separate trial problem (D62)
-- Feedback after every solve
+### Plans (X2)
+Every user has one plan (`users.plan`). Until payments exist (no Stripe yet) the admin sets it on `/admin/users/[id]`; `/pricing` shows the four side by side. Prompt limits count platform-key prompts and reset at midnight UTC.
 
-### Connect API key (free upgrade)
-- User connects their own Anthropic or OpenAI API key
-- Unlocks powerful model - the user picks it from a fixed list (Claude Sonnet / Opus / Haiku, GPT-4o / GPT-4o-mini); the key is tested on save (D63)
-- Their credits, their bill — platform pays nothing beyond the free trial
+| Plan | Price | AI prompts/day | Model | Career paths | AI feedback | Rank up emails |
+|------|-------|----------------|-------|--------------|-------------|----------------|
+| Free | €0 | 30 | Claude Haiku / GPT-4o-mini | no | no | no |
+| Pro | €12.99/month | 150 | Claude Sonnet / GPT-4o | yes | yes | yes |
+| Own Key | €9.99/month | unlimited | the user's own key | yes | yes | yes |
+| Max | €199/month | 150 (hard cap) | Claude Opus / GPT-4o | yes | yes | yes |
+
+- All plans: all problems, efficiency scoring, public leaderboard
+- Locked features show an upgrade prompt ("Upgrade to Pro" → `/pricing`, "Connect API key" → Settings)
+
+### Connect API key
+- Any user can connect their own Anthropic or OpenAI API key, on any plan; own-key prompts never count toward the daily limit
+- The user picks the model from a fixed list (Claude Sonnet / Opus / Haiku, GPT-4o / GPT-4o-mini); the key is tested on save (D63)
+- Their credits, their bill — platform pays nothing for those prompts
 - Efficiency scores improve with better model — natural conversion incentive
 - Framing: "Connect your API key to use a more powerful AI and improve your efficiency score"
 
 ### Career paths (earned progression)
-- Free to follow, locked by efficiency threshold not payment
+- Pro / Own Key / Max only (X2); inside a path, stages unlock by efficiency threshold
 - Must hit efficiency benchmark to unlock next difficulty tier
 - Career paths cover all problem types an engineer in that role would encounter — not just role-labeled problems
 - Example: AI Engineer path includes AI/ML core + backend + database + occasional frontend

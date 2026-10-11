@@ -128,6 +128,7 @@ Schema impact: `contests.starts_at` / `ends_at` must allow NULL (drafts).
 - Profile info
 - Stats
 - All attempts (solved, abandoned, in progress), each with its tries (`attempt_tries`: start, end, outcome, duration)
+- Plan picker (Free / Pro / Own Key / Max, X2): applies on the user's next request; the only way to change a plan until payments exist
 - Ban / unban toggle (with a confirmation). A ban applies on the user's next request and hides the public profile.
 
 Built in A8: list `/admin/users` (server-side search), detail page `/admin/users/[id]`, "Users" in the admin sidebar.

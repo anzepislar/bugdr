@@ -267,7 +267,7 @@ Each check shows:
 
 ## Post-Solve Feedback
 
-After every successful solve, the platform generates a personalized AI feedback report for the engineer.
+After every successful solve on a Pro, Own Key or Max plan, the platform generates a personalized AI feedback report for the engineer. On Free the solved page shows a blurred placeholder with an upgrade prompt (X2).
 
 ### What it analyzes
 Using the solve_session and prompt_events data, Claude generates a debrief covering:
@@ -317,7 +317,7 @@ the server on Submit.
 - Total test runs before solving
 
 **AI tools supported:**
-Users can use any AI tool. The editor has a built-in AI chat panel (connected to an AI API server-side: the platform key with a cheap model and a daily token limit, or the user's own Anthropic/OpenAI key from Settings - see `00` "Monetization Model", slices S1/S6, D62/D63). If they use an external tool and paste the result, that counts as a manual edit. If they use the built-in panel, every prompt is automatically captured.
+Users can use any AI tool. The editor has a built-in AI chat panel (connected to an AI API server-side: the platform key with the model and daily prompt limit of the user's plan, or the user's own Anthropic/OpenAI key from Settings - see `00` "Monetization Model", slices S1/S6/X2, D63). If they use an external tool and paste the result, that counts as a manual edit. If they use the built-in panel, every prompt is automatically captured.
 
 **Why this matters:**
 - Fewer prompts + fewer tokens + fewer iterations = higher efficiency

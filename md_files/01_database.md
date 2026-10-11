@@ -64,7 +64,9 @@ CREATE TABLE users (
   is_banned       BOOLEAN DEFAULT FALSE,
   created_at      TIMESTAMP DEFAULT NOW(),
   last_active_at  TIMESTAMP DEFAULT NOW(),  -- refreshed at most once a minute
-  password_changed_at TIMESTAMP              -- X5: sessions issued before it stop working (migration 0026)
+  password_changed_at TIMESTAMP,             -- X5: sessions issued before it stop working (migration 0026)
+  plan            VARCHAR(20) NOT NULL DEFAULT 'free'
+                  CHECK (plan IN ('free', 'pro', 'own_key', 'max'))  -- X2: set by the admin until payments (migration 0028)
 );
 CREATE UNIQUE INDEX users_username_lower_key ON users (lower(username));
 ```
