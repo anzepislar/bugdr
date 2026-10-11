@@ -271,7 +271,7 @@ After every successful solve on a Pro, Own Key or Max plan, the platform generat
 
 ### What it analyzes
 Using the solve_session and prompt_events data, Claude generates a debrief covering:
-- Efficiency comparison: how their metrics compared to top performers on this problem
+- Efficiency comparison: how their metrics compared to top performers on this problem (or to typical values for the difficulty, named as typical, while the problem has fewer than 8 solves)
 - Prompt quality: were prompts precise and targeted or broad and exploratory
 - Token usage: did they use the model efficiently or dump large context
 - Test run pattern: did they diagnose before prompting or fire prompts blindly
@@ -286,6 +286,9 @@ created in the solve transaction and the text is written right after the commit 
 comparison is the top 25% of the problem's other solves by efficiency score once it has 8, typical values for the
 difficulty before that (D65). Shown as "AI feedback" above Validation results on the solved problem page, only to
 its owner; the profile links each solved problem to that page. No rating of the feedback (D65).
+The instructions tell the model how scoring works: fewer prompts, tokens and test-fix iterations score higher, so
+being under the comparison is better, and it never suggests sending more prompts (fixed 11. 10. 2026 after a real
+OpenAI run advised more prompts).
 
 - Triggered automatically after attempt status changes to 'solved'
 - Single Claude API call (cheap model sufficient — Haiku)
