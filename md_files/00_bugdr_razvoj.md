@@ -84,7 +84,7 @@ Backend: Milestones M0 (F0-F4: skeleton, levels, auth, route protection, onboard
   S7 per-problem benchmark, S8 post-solve feedback, S4 public leaderboard, S5 admin AI analytics) and M9 (career
   paths: K1 path problems in the admin, K2 progress + assignment + unlock + /career-paths, K3 admin thresholds +
   metrics) and M10 (email through Resend: E1 email module, E2 Help & feedback + /admin/inbox with replies by
-  email, E3 password reset) done; next M7 (Z1, Z2)
+  email, E3 password reset, E4 welcome email, E5 rank up email with the share card as a PNG) done; next M7 (Z1, Z2)
 Database: PostgreSQL 17 in Docker; migrations 0001-0026 (levels, users, profiles, problems, problem detail,
   problem brief, attempt tries, check results + points ledger, comment replies + helpful, profile fields, contests,
   contest entries, drop users.is_admin, bug summary, codebase hash, dry-run version, contest reward sent,

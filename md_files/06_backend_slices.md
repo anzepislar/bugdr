@@ -18,14 +18,14 @@ povezala na API.
 
 ```
 Zadnja posodobitev: 10. 10. 2026
-Backend: M10 ✅ (E1-E3, e-pošta), M9 ✅ (K1-K3), M8 ✅ (S1-S8), M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2), M6 ✅ (A1-A10 + A9.1)
+Backend: M10 ✅ (E1-E5, e-pošta), M9 ✅ (K1-K3), M8 ✅ (S1-S8), M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2), M6 ✅ (A1-A10 + A9.1)
 Frontend: 26 zaslonov (večina na API) - /login, /signup, /forgot-password, /reset-password, /onboarding, / (dashboard),
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit,
           /admin/login, /admin/problems, /admin/problems/[id]/edit, /admin/users (+ [id]), /admin/analytics,
           /leaderboard, /career-paths, /admin/career-paths, /admin/inbox (+ okno Help & feedback)
-Naslednja rezina: M10 ✅ 10. 10. 2026 (E1-E3: Resend, Help & feedback, /admin/inbox, ponastavitev gesla; testi 215/215); M6 ✅ (A1-A10 + A9.1 ✅ 9. 10. 2026); M8 ✅ 9. 10. 2026 (S1-S8; odloženo: AI statistike profila iz `03`, področja izboljšav v S5); M9 ✅ 10. 10. 2026 (K1-K3); naprej M7 (Z1, Z2); za pravo analizo `ANTHROPIC_API_KEY` v `backend/.env`; odločitve M6 D20, D21, D22, D45, D46, D48, D50 rešene); testi 204/204 (10. 10. 2026: + test časovnih pasov v f0); nove funkcije 9. 10. 2026 (brezplačni model, lasten API ključ, povratna informacija, benchmark, karierne poti) so rezine S6-S8 in M9 (K1-K3)
+Naslednja rezina: M10 ✅ 10. 10. 2026 (E1-E3: Resend, Help & feedback, /admin/inbox, ponastavitev gesla; 11. 10. 2026 E4 pozdravna e-pošta, E5 e-pošta ob napredovanju s kartico; testi 217/217); M6 ✅ (A1-A10 + A9.1 ✅ 9. 10. 2026); M8 ✅ 9. 10. 2026 (S1-S8; odloženo: AI statistike profila iz `03`, področja izboljšav v S5); M9 ✅ 10. 10. 2026 (K1-K3); naprej M7 (Z1, Z2); za pravo analizo `ANTHROPIC_API_KEY` v `backend/.env`; odločitve M6 D20, D21, D22, D45, D46, D48, D50 rešene); testi 204/204 (10. 10. 2026: + test časovnih pasov v f0); nove funkcije 9. 10. 2026 (brezplačni model, lasten API ključ, povratna informacija, benchmark, karierne poti) so rezine S6-S8 in M9 (K1-K3)
 ```
 
 Oznake: ⬜ ni začeto · 🟨 v delu · ✅ narejeno (z datumom) · ⏸ odloženo
@@ -201,7 +201,7 @@ seznam sprememb za tabele, ki še niso zgrajene. Narejeno v `01`: `users`
 | M6 Admin | A1 → A2 → A10 → A3 → A4 → A5 → A6-A9 → A9.1 | Upravljanje problemov, tekmovanj, uporabnikov, statistika |
 | M8 AI seja | S1 → S6 → S2 → S3 → S7 → S8 → S4, S5 | Vgrajeni AI klepet (brezplačni model / lasten ključ), zajem seje, ocena učinkovitosti v točkah, benchmark problema, povratna informacija po rešitvi, lestvica, AI analitika |
 | M9 Karierne poti | K1 → K2 → K3 | Problemi poti v adminu, 5 poti z lastnimi problemi in stopnjami, odklep s pragom, pragovi v adminu |
-| M10 E-pošta | E1 → E2 → E3 | Vsa e-pošta prek Resend, Help & feedback, admin predal z odgovori, ponastavitev gesla |
+| M10 E-pošta | E1 → E2 → E3 → E4 → E5 | Vsa e-pošta prek Resend, Help & feedback, admin predal z odgovori, ponastavitev gesla, pozdravna e-pošta, e-pošta ob napredovanju |
 | M7 Produkcija | Z1 → Z2 | Seed zaklenjen v produkciji, varna namestitev |
 
 M3-M6 so med seboj neodvisni (razen naštetih odvisnosti). Admin za probleme
@@ -571,6 +571,15 @@ Vsa e-pošta gre prek Resend. Uporabnik nastavi `RESEND_API_KEY` (poln dostop) i
 - `requireAuth` zavrne JWT z `iat` pred `password_changed_at` - sprememba gesla odjavi vse stare seje.
 - Frontend: `/forgot-password` obrazec + "If an account exists…", nova stran `/reset-password?token=` (geslo dvakrat, povezava za novo povezavo ob poteku). Javni strani (ni v `proxy.ts`).
 - Testi: `test/x5.test.js` (enak odgovor za neznan naslov, e-pošta samo pravemu računu, hranjen samo hash, omejitev 2 min, kratko geslo, napačen / porabljen / potekel žeton, stara seja 401, prijava s starim geslom 401).
+
+**E4 · Pozdravna e-pošta** `S` · odvisno od: E1 · ✅ 11. 10. 2026
+- Po `POST /auth/signup` (po odgovoru, brez čakanja; napaka samo v log) gre "Hello from bug.dr 👋": temno HTML sporočilo (pozdrav z uporabniškim imenom, 3 točke, gumb na `APP_URL`, začetni čin Intern, Unsubscribe kot `mailto:`) + besedilo. Predloga `email/welcomeEmail.js`; `sendEmail` sprejme `html`.
+- Test: `x5.test.js` (lažni Resend dobi sporočilo). Pravo pošiljanje preverjeno na Gmail.
+
+**E5 · E-pošta ob napredovanju** `S` · odvisno od: E1, R4 · ✅ 11. 10. 2026
+- Po commitu rešitve (samo ob dejanski podelitvi točk; dvojni klik ne pošlje dvakrat) `sendRankUpEmail(userId, točke)` primerja nivo pred/po (`levelFor`); ob prehodu pošlje "You just reached X on bug.dr 🐛" s kartico 1080×1080 PNG v telesu (`cid:rank-card`) in kot priponko. Brez čakanja, napaka v log.
+- PNG na strežniku (`email/rankCard.js`): satori (besedilo kot poti, strežnik ne rabi pisav) + `@resvg/resvg-js`, pisava JetBrains Mono iz `@fontsource/jetbrains-mono` (woff; podmnožica brez "→", puščica narisana). `sendEmail` sprejme `attachments` (`content_id` = vgrajena slika). npm audit: 2 moderate v fflate (satori) - samo razpakiranje ZIP, tu ni v uporabi.
+- Test: `x5.test.js` (brez prehoda nič, ob prehodu sporočilo, `cid`, priponka PNG 1080). Pravo pošiljanje na Gmail 11. 10. 2026.
 
 ### M7 - Produkcija
 

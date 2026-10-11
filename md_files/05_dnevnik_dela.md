@@ -2198,3 +2198,55 @@ sledljivost), `00` (Career Paths, pragovi, brezplačna raven), `03`, `04`,
     odgovoru. Dokumenti 01, 04, 06 posodobljeni.
   - **Preverjeno v živo** (uporabnik): e-pošta iz Gmaila → `/admin/inbox`,
     odgovor iz predala → Gmail, odgovor nanj → ista nit kot New.
+
+## 11. 10. 2026 — Seja 25: pozdravna e-pošta, značke težavnosti, kartice za deljenje, e-pošta ob napredovanju
+
+- **E4 pozdravno e-sporočilo**: po uspešni registraciji (`POST /auth/signup`)
+  gre novemu uporabniku "Hello from bug.dr 👋" (temno HTML sporočilo v barvah
+  Graphite Signal: pozdrav, 3 točke, gumb "Start debugging →" na `APP_URL`,
+  začetni čin Intern z značko, noga z Unsubscribe kot `mailto:`) + besedilna
+  različica. Pošilja se po odgovoru (fire and forget), napaka se samo zapiše v
+  log, registracija vedno uspe.
+- Brez paketa `resend`: uporabljen obstoječi `sendEmail` (D68, plain fetch),
+  ki je dobil neobvezen `html`. Predloga: `backend/src/modules/email/welcomeEmail.js`.
+  Ime = uporabniško ime (ob registraciji ni drugega imena).
+- Test v `x5.test.js` (lažni Resend dobi pozdravno sporočilo); testi 216/216.
+  Pravo pošiljanje preverjeno prek Resend na uporabnikov naslov.
+- **DifficultyBadge** (`frontend/src/components/DifficultyBadge.tsx`): značke
+  težavnosti kot terminalsko okno (po `bugdr_difficulty_badges_v2.svg`),
+  velikosti sm (oznaka `[EASY]`), md 130 px, lg 180 px, `showLabel`; pomožne
+  `getDifficultyColor`, `getDifficultyLabel`, `getDifficultyExitCode`. Še nikjer
+  uporabljena (obstoječi `DifficultyPill` ostaja). Lint, typecheck, build OK.
+- **Kartice za deljenje** (`frontend/src/components/ShareCard/`): `ProblemSolvedCard`
+  in `RankUpCard` kot SVG 1080×1080 (monospace), `useCardDownload` jih izvozi v
+  PNG prek canvasa (brez html2canvas); `SolveModal` (konfeti, štetje
+  učinkovitosti, utrip gumba) in `RankUpModal` (značka, zlati delci, tipkan
+  "RANKED UP", štetje statistik, kopiranje tweeta) na `<dialog>` z Web
+  Animations API (brez framer-motion, upošteva reduced motion). Na strani za
+  reševanje po rešitvi namesto preusmeritve: podatki iz API (`/ai/messages`,
+  `/auth/me`, `/users/:username`), rank up iz točk pred/po; Continue → stran
+  problema. Percentil skrit (API ga še nima). `RankBadge` dobil `bare` + x/y,
+  `DifficultyBadge` `getDifficultyTint`.
+- **E5 e-pošta ob napredovanju**: po commitu rešitve (samo ob dejanski podelitvi,
+  dvojni klik ne pošlje dvakrat) `sendRankUpEmail` primerja nivo pred/po točkah
+  (`levelFor`) in ob prehodu pošlje "You just reached X on bug.dr 🐛" s kartico
+  napredovanja kot PNG 1080×1080 - v telesu (`cid:rank-card`) in kot priponka.
+  PNG na strežniku: satori + @resvg/resvg-js, pisava JetBrains Mono
+  (@fontsource, woff; podmnožica nima "→", puščica narisana kot SVG).
+  `sendEmail` sprejme `attachments`. Brez paketa `resend` (D68). Test v
+  `x5.test.js`; testi 217/217. npm audit: 2 moderate (fflate prek satori, samo
+  razpakiranje ZIP - tu se ne uporablja).
+- **Preverjanje vsega iz seje** (začasna stran `/share-preview` z lažnimi
+  podatki v razvojnem strežniku, puppeteer-core iz scratchpada s sistemskim
+  Chromom; stran pred commitom izbrisana): značke, oba modala med animacijo in
+  na koncu, 1440 / 390 / 320 px brez vodoravnega drsenja; zapiranje s
+  Continue, Esc in klikom na ozadje (klik na kartico ne zapre); Download počaka
+  na štetje, gumb da PNG 1080×1080 za obe kartici; tweet kopiran; reduced
+  motion brez delcev in s končnimi vrednostmi takoj. Obe e-pošti izrisani
+  (700 / 375 px), e-pošta ob napredovanju poslana prek Resend na Gmail.
+  **Popravki med preverjanjem**: štetje se je začelo negativno ("-0.1x", prvi
+  okvir pred t0) → omejeno na 0; konfeti so prehitro bledeli (easing na celi
+  animaciji) → easing po segmentih; kartica v e-pošti brez desnega/spodnjega
+  roba (satori je 3 px rob dodal izven 1080) → `boxSizing: border-box`.
+  Lint, typecheck, build OK; testi 217/217. Integracija v `Workspace` (prava
+  rešitev s Docker preverjanji) ni bila preizkušena od začetka do konca.
