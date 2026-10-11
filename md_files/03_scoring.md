@@ -177,6 +177,10 @@ LIMIT 1;
 
 Level is recalculated and stored in `user_stats.current_level` after every solve.
 
+**Rank up:** when a solve's points cross a level threshold, the solve page shows the rank up card after the solve
+card, and the user gets a rank up email with the card as a PNG, inline and attached (E5, after the commit, never
+blocking the solve).
+
 ---
 
 ## Contest Scoring

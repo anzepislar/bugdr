@@ -23,7 +23,7 @@ This defines the next generation of engineering skill — not "can you code" but
 | Code editor | Monaco Editor (@monaco-editor/react) |
 | Problem execution | Docker containers |
 | Auth | JWT |
-| Email | Resend (sending + receiving on mail.bugdr.app, D68) |
+| Email | Resend (sending + receiving on mail.bugdr.app, D68); welcome + rank up emails, rank card PNG via satori + resvg |
 | AI | Claude API or OpenAI (by key, A9.1) for problem analysis; built-in AI chat = platform key with a cheap model + daily limit, or the user's own encrypted key (S1, S6; D62/D63) — server-side only |
 
 ---

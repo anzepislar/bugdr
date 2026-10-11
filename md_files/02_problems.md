@@ -230,7 +230,7 @@ When user clicks Start:
 - Center: Monaco Editor with the buggy codebase, one tab per file (sorted by path) + language selector; unsaved edits
   are kept in the browser per try (D14)
 - Bottom of the editor: Terminal (real commands, R5) and Test Results (live per check, R6) tabs
-- Right: AI chat panel (open on load, resizable, collapsible): AI tool selector, live session stats (prompts, tokens, test runs), "Session Efficiency" vs. the difficulty benchmark — see "AI Session Capture"
+- Right: AI chat panel (open on load, resizable, collapsible): model label (free model or your key, S1/S6), live session stats (prompts, tokens, test runs), "Session Efficiency" vs. the difficulty benchmark — see "AI Session Capture"
 
 ### Check Panel States
 
@@ -253,6 +253,10 @@ Each check shows:
 - User can run the app in the terminal at any time
 - Clicking Submit runs all checks — partial results shown in real time
 - If all checks pass → solved, timer stops, points calculated
+- After the solve a share card opens over the solve page (`components/ShareCard/SolveModal`): title, difficulty,
+  prompts, tokens, time, efficiency score, username + rank, with confetti and a "Download card" (1080×1080 PNG).
+  If the solve crossed a level, the rank up card follows (`RankUpModal`, with "Share on Twitter" = copy tweet text).
+  Continue goes to the problem detail page. The "top X%" percentile is hidden until the API provides it
 - Can only solve each general problem once (enforced in DB). A career path problem (D66) is assigned by its path and
   can come back 3 months after it was last finished there; each path counts its own solves
 - Give up → the attempt is abandoned; starting again opens the next try with the original code. Every try is stored
