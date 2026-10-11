@@ -18,10 +18,11 @@ async function resend(method, path, body) {
 }
 
 /**
- * Sends a plain-text email from EMAIL_FROM. Returns the Resend id, or null when no key is set outside production
+ * Sends an email from EMAIL_FROM (plain text, plus an optional HTML version and attachments:
+ * [{ filename, content (base64), content_id? }] - a content_id makes it an inline image for <img src="cid:…">). Returns the Resend id, or null when no key is set outside production
  * (the email is printed instead). Throws when Resend refuses it.
  */
-export async function sendEmail({ to, subject, text, replyTo, headers }) {
+export async function sendEmail({ to, subject, text, html, replyTo, headers, attachments }) {
   if (!config.resendApiKey) {
     if (config.production) throw new Error("RESEND_API_KEY is not set");
     console.log(`[email not sent: no RESEND_API_KEY] to=${to} subject=${subject}\n${text}`);
@@ -32,6 +33,8 @@ export async function sendEmail({ to, subject, text, replyTo, headers }) {
     to: [to],
     subject,
     text,
+    ...(html && { html }),
+    ...(attachments && { attachments }),
     ...(replyTo && { reply_to: replyTo }),
     ...(headers && { headers }),
   });

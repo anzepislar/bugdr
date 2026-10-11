@@ -7,6 +7,7 @@ import { chat, platformModel, systemPrompt } from "../ai/chat.service.js";
 import { feedback } from "../ai/feedback.service.js";
 import { requireAuth } from "../auth/auth.service.js";
 import { checkUnlock } from "../careerPaths/careerPaths.routes.js";
+import { sendRankUpEmail } from "../email/rankUpEmail.js";
 import { runChecks, runTerminal, stopTerminal, validateFiles } from "../runner/runner.service.js";
 import { activeSeconds, efficiencyScore, finalPoints, lineChanges, pickBenchmark, timeMultiplier } from "../scoring/scoring.js";
 
@@ -239,6 +240,8 @@ async function solve(attemptId, userId, problem, finalCode) {
       [userId, problem.problem_id, points],
     );
     await client.query("COMMIT");
+    // Only here, after this request's award: a double click returns early above and sends nothing.
+    sendRankUpEmail(userId, points).catch((err) => console.error(`Rank up email: ${err.message}`));
     return { pointsEarned: points, timeTakenSeconds: seconds, timeMultiplier: multiplier, efficiencyScore: efficiency };
   } catch (err) {
     await client.query("ROLLBACK");

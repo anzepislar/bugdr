@@ -5,6 +5,7 @@ import { app } from "../src/app.js";
 import { config } from "../src/config.js";
 import { pool } from "../src/db.js";
 import { migrate } from "../src/migrate.js";
+import { sendRankUpEmail } from "../src/modules/email/rankUpEmail.js";
 
 const server = app.listen(0);
 const base = `http://localhost:${server.address().port}/api/v1`;
@@ -47,6 +48,15 @@ after(async () => {
   server.close();
   resend.close();
   await pool.end();
+});
+
+test("signup sends a welcome email without holding up the response", async () => {
+  const email = await nextEmail();
+  assert.deepEqual(email.body.to, ["ana@example.com"]);
+  assert.equal(email.body.subject, "Hello from bug.dr 👋");
+  assert.equal(email.body.reply_to, "hello@mail.bugdr.app");
+  assert.match(email.body.html, /Hey ana,/);
+  assert.match(email.body.html, /href="https:\/\/bugdr.app"/);
 });
 
 test("forgot-password answers 204 for any address and emails a link only to real accounts", async () => {
@@ -106,4 +116,26 @@ test("an expired link does not work", async () => {
   await pool.query("UPDATE password_reset_tokens SET expires_at = now() - interval '1 second'");
   const res = await call("POST", "/auth/reset-password", { token, password: "new password 2" });
   assert.equal((await res.json()).error.code, "INVALID_TOKEN");
+});
+
+test("a solve that crosses a level threshold emails the rank card inline and as an attachment", async () => {
+  sent = [];
+  const { rows } = await pool.query("UPDATE user_stats SET total_points = 600 FROM users u WHERE u.id = user_id AND u.username = 'ana' RETURNING user_id");
+  const userId = rows[0].user_id;
+
+  await sendRankUpEmail(userId, 50); // 550 → 600: still Junior
+  assert.equal(sent.length, 0);
+
+  await sendRankUpEmail(userId, 200); // 400 → 600: Intern → Junior
+  const email = await nextEmail();
+  assert.deepEqual(email.body.to, ["ana@example.com"]);
+  assert.equal(email.body.subject, "You just reached Junior on bug.dr 🐛");
+  assert.match(email.body.html, /src="cid:rank-card"/);
+  assert.match(email.body.html, /Intern → Junior/);
+  const [card] = email.body.attachments;
+  assert.equal(card.filename, "bugdr-junior-rank.png");
+  assert.equal(card.content_id, "rank-card");
+  const png = Buffer.from(card.content, "base64");
+  assert.equal(png.subarray(1, 4).toString(), "PNG");
+  assert.equal(png.readUInt32BE(16), 1080); // width
 });

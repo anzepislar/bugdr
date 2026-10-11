@@ -14,6 +14,7 @@ import {
   verifyPassword,
 } from "./auth.service.js";
 import { sendEmail } from "../email/email.service.js";
+import { welcomeEmail } from "../email/welcomeEmail.js";
 
 export const authRouter = Router();
 
@@ -64,6 +65,10 @@ authRouter.post("/signup", async (req, res) => {
 
   setSession(res, user.id, false);
   res.status(201).json({ user });
+  // Fire and forget: a failed welcome email never fails the signup.
+  sendEmail({ to: user.email, ...welcomeEmail(user.username) }).catch((err) =>
+    console.error(`Welcome email: ${err.message}`),
+  );
 });
 
 authRouter.post("/login", async (req, res) => {
