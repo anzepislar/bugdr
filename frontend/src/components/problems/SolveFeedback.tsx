@@ -86,9 +86,9 @@ function SectionLabel({ icon, className, children }: { icon: "check" | "ranking"
   );
 }
 
-function StatChip({ label, value }: { label: string; value: string }) {
+function StatChip({ label, value, delay }: { label: string; value: string; delay: number }) {
   return (
-    <div>
+    <div className="anim-chip" style={{ animationDelay: `${delay}ms` }}>
       <p className="text-[10px] text-muted">{label}</p>
       <p className="mt-1 rounded-[8px] border border-white/10 bg-white/6 px-2.5 py-1 text-xs font-medium text-text">{value}</p>
     </div>
@@ -102,17 +102,20 @@ function PerformanceBar({ efficiency }: { efficiency: number }) {
   return (
     <div role="img" aria-label={`Efficiency ${efficiency}×: 1.0× is typical, 2.0× is the top.`} className="mt-4">
       <div className="relative h-4">
-        <span className="absolute bottom-0 -translate-x-1/2 text-[10px] font-medium text-text" style={{ left: at }}>
+        <span
+          className="anim-fade absolute bottom-0 -translate-x-1/2 text-[10px] font-medium text-text"
+          style={{ left: at, animationDelay: "1100ms" }}
+        >
           You
         </span>
       </div>
       <div className="relative mt-1 h-1 rounded-[2px] bg-white/8">
         <div
-          className="h-full rounded-[2px] bg-[linear-gradient(90deg,#8BACFF,#22c55e)]"
+          className="anim-bar-fill h-full rounded-[2px] bg-[linear-gradient(90deg,#8BACFF,#22c55e)]"
           style={{ width: `${pct}%` }}
         />
         <span
-          className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-canvas bg-text"
+          className="anim-dot absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-canvas bg-text"
           style={{ left: `${pct}%` }}
         />
       </div>
@@ -141,7 +144,8 @@ function FeedbackSections({ content }: { content: string }) {
   return (
     <div className="space-y-3">
       {well.length > 0 && (
-        <div className="rounded border-l-2 border-passed/50 bg-passed/5 px-4 py-3">
+        <div className="anim-section relative overflow-hidden rounded bg-passed/5 py-3 pl-[18px] pr-4" style={{ animationDelay: "200ms" }}>
+          <span aria-hidden className="anim-grow absolute left-0 top-0 h-full w-0.5 bg-passed/50" style={{ animationDelay: "200ms" }} />
           <SectionLabel icon="check" className="text-passed">
             What you did well
           </SectionLabel>
@@ -150,14 +154,14 @@ function FeedbackSections({ content }: { content: string }) {
       )}
 
       {compare.length > 0 && (
-        <div className="rounded bg-white/3 px-4 py-3">
+        <div className="anim-section rounded bg-white/3 px-4 py-3" style={{ animationDelay: "350ms" }}>
           <SectionLabel icon="ranking" className="text-muted">
             How you compare
           </SectionLabel>
           {chips.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
-              {chips.map((c) => (
-                <StatChip key={c.label} {...c} />
+              {chips.map((c, i) => (
+                <StatChip key={c.label} {...c} delay={400 + i * 40} />
               ))}
             </div>
           )}
@@ -167,7 +171,7 @@ function FeedbackSections({ content }: { content: string }) {
       )}
 
       {next.length > 0 && (
-        <div className="rounded border-l-2 border-action/30 bg-action/4 px-4 py-3">
+        <div className="anim-section rounded border-l-2 border-action/30 bg-action/4 px-4 py-3" style={{ animationDelay: "500ms" }}>
           <SectionLabel icon="arrowRight" className="text-action">
             Next time
           </SectionLabel>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DifficultyPill } from "@/components/DifficultyPill";
 import { Icon } from "@/components/Icon";
+import { CountUp } from "@/components/problems/CountUp";
 import { Discussion } from "@/components/problems/Discussion";
 import { AcceptanceChecks, Description } from "@/components/problems/ProblemOverview";
 import { RateProblem } from "@/components/problems/RateProblem";
@@ -165,12 +166,32 @@ function Tries({ tries, total }: { tries: SolveResult["tries"]; total: number })
 
 function SolvedSummary({ problem, result }: { problem: ProblemDetail; result: SolveResult }) {
   const stats = [
-    { value: duration(result.timeTakenSeconds), label: "Time to solve" },
-    { value: `${result.checksPassed} / ${result.checksTotal}`, label: "Scenario checks passed" },
-    { value: `+${result.linesAdded} / −${result.linesDeleted}`, label: "Lines changed" },
+    // Numbers count up on mount, staggered by 100 ms; the points pop once their count lands (1100 ms).
+    { value: <CountUp to={result.timeTakenSeconds} format="time" />, label: "Time to solve" },
+    {
+      value: (
+        <>
+          <CountUp to={result.checksPassed} delay={100} /> / {result.checksTotal}
+        </>
+      ),
+      label: "Scenario checks passed",
+    },
+    {
+      value: (
+        <>
+          +<CountUp to={result.linesAdded} delay={200} /> / −<CountUp to={result.linesDeleted} delay={200} />
+        </>
+      ),
+      label: "Lines changed",
+    },
     { value: DIFFICULTY_LABEL[problem.difficulty], label: "Difficulty" },
     {
-      value: `+${result.pointsEarned.toLocaleString("en-US")}`,
+      value: (
+        <>
+          +<CountUp to={result.pointsEarned} delay={300} format="number" />
+        </>
+      ),
+      pop: true,
       label:
         result.efficiencyScore === null
           ? `Points earned · ${result.timeMultiplier}x time bonus`
@@ -214,7 +235,12 @@ function SolvedSummary({ problem, result }: { problem: ProblemDetail; result: So
         {stats.map((s) => (
           <div key={s.label} className="flex min-w-0 flex-col-reverse justify-end">
             <dt className="mt-2 text-sm text-muted">{s.label}</dt>
-            <dd className="text-3xl font-semibold tabular-nums text-text">{s.value}</dd>
+            <dd
+              className={`text-3xl font-semibold tabular-nums text-text ${"pop" in s ? "anim-spring origin-left" : ""}`}
+              style={"pop" in s ? { animationDelay: "1100ms" } : undefined}
+            >
+              {s.value}
+            </dd>
           </div>
         ))}
       </dl>
@@ -227,11 +253,26 @@ function SolvedSummary({ problem, result }: { problem: ProblemDetail; result: So
             Validation results
           </h2>
           <ul className="mt-4">
-            {problem.checks.map((c) => (
+            {problem.checks.map((c, i) => (
               <li key={c} className="flex items-center gap-4 border-b border-border py-3.5 text-sm">
-                <Icon name="check" className="h-4 w-4 shrink-0 text-action" />
+                {/* Draws itself (pathLength 1 = dash of 1); rows 150 ms apart, the pill 100 ms after its check. */}
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.75}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                  className="anim-draw h-4 w-4 shrink-0 text-action"
+                  style={{ animationDelay: `${100 + i * 150}ms` }}
+                >
+                  <path d="M20 6 9 17l-5-5" pathLength={1} />
+                </svg>
                 <span className="min-w-0 flex-1 text-text">{c}</span>
-                <span className="text-xs text-action">Passed</span>
+                <span className="anim-fade text-xs text-action" style={{ animationDelay: `${500 + i * 150}ms` }}>
+                  Passed
+                </span>
               </li>
             ))}
           </ul>

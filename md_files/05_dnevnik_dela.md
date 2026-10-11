@@ -2266,3 +2266,52 @@ sledljivost), `00` (Career Paths, pragovi, brezplačna raven), `03`, `04`,
 - **X2 paketi** (specifikacija uporabnika; odločitvi: pravi paketi na strežniku namesto lažnih podatkov v frontendu, nova stran `/pricing`): `users.plan` (migracija 0028), Free / Pro / Own Key / Max v `plans/plans.js` in `lib/plans.ts`. Dnevna omejitev klepeta je zdaj število pozivov (30 / 150 / neomejeno / 150, dan po UTC) namesto 20.000 žetonov; model po paketu (Haiku / Sonnet / lasten / Opus). Karierne poti in AI povratna informacija samo na plačanih paketih (403 `PLAN_REQUIRED`, `locked`), e-pošta ob napredovanju tudi. Admin nastavi paket na `/admin/users/[id]`. Frontend: `UpgradePrompt`, `usePlan`, števec pozivov v AI panelu, značka paketa na profilu, `/pricing`. Odstopanja od specifikacije: `usePlan` vrne samo paket (pozive šteje strežnik in jih vrne klepet), `/dashboard` ni bil spremenjen (specifikacija zanj ni nič zahtevala), "Connect API key" vodi na `/settings?tab=account`, povratna informacija je zaklenjena v `SolveFeedback` (SolveModal je datoteka kartic za deljenje). Testi 223/223; lint, typecheck, build OK. Preverjeno v brskalniku (začasen uporabnik, kopija API na drugih vratih, nato izbrisano): `/pricing`, zaklenjene in odklenjene karierne poti, značka na profilu (6 širin, brez vodoravnega drsenja), izbira paketa v adminu. Števec pozivov in zaklenjena povratna informacija nista preverjena v brskalniku (razvojna baza nima problemov). **Napaka med preverjanjem**: vrata 4100 je uporabljal API druge seje (baza `bugdr_demo`) - začasen uporabnik je nastal tam in je bil takoj izbrisan.
 - **E6 + X2**: opomnik za karierno pot gre samo uporabnikom, katerih paket ima karierne poti. Prej bi ga dobil uporabnik, ki je pot začel na plačanem paketu (ali pred X2) in je zdaj na Free, čeprav na pot ne more nazaj. Test v `k4.test.js`.
 - **S8 povratna informacija preizkušena s pravim OpenAI ključem** (začasna baza, nato izbrisana): klepet na Pro (gpt-4o), rešitev v Dockerju, povratna informacija v ~4 s (gpt-4o-mini). **Popravek**: model je tipične vrednosti za težavnost imenoval "top performers" in svetoval *več* pozivov, kar je v nasprotju s točkovanjem. Navodila v `feedback.service.js` zdaj povedo, da manj pozivov, žetonov in iteracij pomeni višjo oceno, da tipične vrednosti niso najboljši reševalci in da naj nikoli ne predlaga več pozivov; test v `s8`. Ponovni preizkus z OpenAI: pravilno.
+
+## 11. 10. 2026 — Seja 26: steklena preobleka, kartica AI povratne informacije, animacije rezultata
+
+- **Steklena preobleka (glassmorphism)**, paleta Graphite Signal nespremenjena.
+  Komponent `ui/Button`, `Modal`, `Panel`, `Badge` ni (vse so Tailwind razredi
+  v ~100 datotekah), zato je jedro v `globals.css`: `bg-surface` = 5 % bele +
+  blur 16 px + svetla zgornja robna črta (inset senca, ne `::before` - ta bi
+  potreboval `position: relative` in pokvaril spustne menije), `border-border`
+  = 9 % bele, polja (`input`/`textarea`/`Select` z `bg-canvas`) 4 % bele in
+  modra obroba ob fokusu, primarni gumbi ostanejo polni (dvig 1 px ob hoverju,
+  samo brez reduced motion), obrobljeni gumbi stekleni, prehodi na vseh
+  interaktivnih elementih. Zaobljenost: `rounded` 10, `-md` 12, `-lg` 16,
+  `-xl` 20 px. Ozadje: tri barvne lise kot `body::before` (fixed, z-index -1,
+  brez sprememb strani). Nov pripomoček `glass-modal` za dialoga
+  (ConfirmDialog, FeedbackDialog) in spustne menije (Select, meni v
+  /admin/contests). Stranska vrstica in zgornja vrstica (AppShell, AdminShell,
+  stran za reševanje) 80 % canvas + blur 20 px, aktivna povezava modro
+  obarvana. Ozadje prekrivnega sloja ostaja canvas 70 % (ne črna - pravilo
+  "nikoli čisto črno") + blur 4 px. DifficultyPill in mala DifficultyBadge:
+  10 % barve, 25 % obroba, 8 px; Pro značka in UpgradePrompt modro steklo;
+  na strani za reševanje okvir urejevalnika zaobljen, AI klepet steklen.
+  Commit uporabnika "redesign".
+- **Kartica AI povratne informacije** (`SolveFeedback.tsx`): API vrne en niz,
+  zato ga kartica razdeli po stavkih v tri dele - "What you did well" do prve
+  primerjalne besede (typical, average, compared ...), "How you compare" do
+  "Next time" ali oštevilčenega nasveta, "Next time" do konca; noben stavek se
+  ne izgubi. Številke za čipe (tvoji in tipični prompti, žetoni,
+  učinkovitost) iz celotnega besedila; čip se pokaže samo, če je številka
+  najdena. Vrstica učinkovitosti (0 levo, 1.0× sredina, 2.0× desno) samo, če
+  besedilo omenja učinkovitost. Nova ikona `sparkle` v `Icon.tsx`. Razčlenjevalnik
+  preverjen s skripto v scratchpadu (ujela izgubo besedila pri decimalkah, popravljeno).
+  Posnetki z začasno stranjo in lažnim odgovorom (stran izbrisana) v
+  `~/Desktop/check-screenshots/feedback-1440.png` in `feedback-500.png`
+  (headless Chrome ne gre pod ~500 px).
+- **Animacije ob prikazu rešenega rezultata** (enkrat, brez knjižnice): nov
+  `hooks/useCountUp.ts` + `components/problems/CountUp.tsx` (stran je
+  strežniška). Statistike štejejo od 0 (0/100/200/300 ms, čas kot MM:SS,
+  pri preverjanjih šteje samo število uspešnih), točke ob koncu štetja (1100 ms)
+  "poskočijo"; kljukice v Validation results se narišejo (pathLength 1, vrstice
+  150 ms narazen), "Passed" 100 ms za kljukico. V kartici povratnih informacij
+  deli drsijo navzgor (200/350/500 ms), zeleni rob raste (namesto
+  `border-l` je 2 px črta v okvirju), čipi 40 ms narazen od 400 ms, vrstica se
+  polni od 400 ms, "You" + pika ob 1100 ms, en utrip ob 1200 ms. Keyframe
+  `pingOnce` (Tailwindov `ping` uporablja živa pika v /admin/contests). Vse v
+  `@media (prefers-reduced-motion: no-preference)`. Lint, typecheck, build OK;
+  animacije v brskalniku še niso preverjene.
+- Odprto: oznake vrstice ("Average" levo, čeprav je 1.0× na sredini); prompt
+  za povratne informacije ne zahteva omembe učinkovitosti, zato vrstica pogosto
+  manjka.

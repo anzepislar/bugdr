@@ -165,3 +165,105 @@ body::before {
     opacity: 1;
   }
 }
+
+/* Solved result entrance (problem page + AI feedback card). Plays once; delays are inline styles.
+   Only with motion allowed - otherwise everything shows at once. */
+@media (prefers-reduced-motion: no-preference) {
+  .anim-section {
+    animation: fadeSlideUp 400ms ease-out both;
+  }
+  .anim-grow {
+    animation: growHeight 400ms ease-out both;
+  }
+  .anim-chip {
+    animation: chipIn 250ms ease-out both;
+  }
+  .anim-fade {
+    animation: fadeIn 200ms ease both;
+  }
+  .anim-bar-fill {
+    animation: barFill 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94) 400ms both;
+  }
+  .anim-dot {
+    animation: fadeIn 200ms ease 1100ms both;
+  }
+  .anim-dot::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: var(--color-text);
+    animation: pingOnce 600ms ease-out 1200ms 1 both;
+  }
+  .anim-draw {
+    stroke-dasharray: 1;
+    animation: draw 300ms ease-in-out both;
+  }
+  .anim-spring {
+    animation: springPop 350ms ease-out 1 both;
+  }
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes growHeight {
+  from {
+    height: 0;
+  }
+}
+@keyframes chipIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes barFill {
+  from {
+    width: 0;
+  }
+}
+@keyframes pingOnce {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes springPop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.06);
+  }
+  70% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
