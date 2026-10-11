@@ -255,7 +255,8 @@ Each check shows:
 - If all checks pass → solved, timer stops, points calculated
 - After the solve a share card opens over the solve page (`components/ShareCard/SolveModal`): title, difficulty,
   prompts, tokens, time, efficiency score, username + rank, with confetti and a "Download card" (1080×1080 PNG).
-  If the solve crossed a level, the rank up card follows (`RankUpModal`, with "Share on Twitter" = copy tweet text).
+  If the solve crossed a level, the rank up card follows (`RankUpModal`; "Share on Twitter" copies the card PNG to the clipboard and opens the Twitter post page with the
+  text filled in - the user pastes the image with ⌘V / Ctrl+V; a blocked tab shows an "Open Twitter" link).
   Continue goes to the problem detail page. The "top X%" percentile is hidden until the API provides it
 - Can only solve each general problem once (enforced in DB). A career path problem (D66) is assigned by its path and
   can come back 3 months after it was last finished there; each path counts its own solves

@@ -17,11 +17,11 @@ export function RankUpModal({ card, onClose }: { card: Omit<RankUpCardProps, "cl
   const nameRef = useRef<HTMLParagraphElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const buttonsRef = useRef<HTMLDivElement>(null);
-  const { download } = useCardDownload(svgRef);
+  const { download, copy } = useCardDownload(svgRef);
   const [typed, setTyped] = useState(0);
   const [counting, setCounting] = useState(false);
   const [ready, setReady] = useState(false);
-  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
+  const [message, setMessage] = useState<{ text: string; error: boolean; href?: string } | null>(null);
   const problems = useCountUp(card.problemsSolved, T.countMs, counting);
   const points = useCountUp(card.totalPoints, T.countMs, counting);
   const streak = useCountUp(card.currentStreak, T.countMs, counting);
@@ -72,16 +72,27 @@ export function RankUpModal({ card, onClose }: { card: Omit<RankUpCardProps, "cl
     }
   }
 
-  async function copyTweet() {
+  // Twitter's post page takes text only, so the card goes on the clipboard and the user pastes it into the post.
+  async function shareOnTwitter() {
+    setMessage(null);
     const text =
       `Just reached ${card.newRank} on bug.dr 🐛 Fixed real production bugs using AI — ` +
       `${card.problemsSolved} problems solved, ${card.totalPoints.toLocaleString("en-US")} pts. bugdr.app #bugdr`;
+    const href = `https://x.com/intent/post?text=${encodeURIComponent(text)}`;
     try {
-      await navigator.clipboard.writeText(text);
-      setMessage({ text: "Tweet copied - paste it on Twitter.", error: false });
+      await copy();
     } catch {
-      setMessage({ text: "Could not copy to the clipboard.", error: true });
+      setMessage({ text: "Could not copy the card - download it and add it to the post.", error: true, href });
+      return;
     }
+    // Not "noopener" in the features: with it window.open always returns null and a blocked tab can't be told apart.
+    const tab = window.open(href, "_blank");
+    if (tab) tab.opener = null;
+    setMessage(
+      tab
+        ? { text: "Card copied - press ⌘V / Ctrl+V in the post to add it.", error: false }
+        : { text: "Card copied - open Twitter and press ⌘V / Ctrl+V in the post.", error: false, href },
+    );
   }
 
   return (
@@ -114,7 +125,7 @@ export function RankUpModal({ card, onClose }: { card: Omit<RankUpCardProps, "cl
         >
           Download your rank card
         </button>
-        <button type="button" onClick={copyTweet} className="rounded border border-action px-5 py-2 text-sm text-action hover:bg-action/10">
+        <button type="button" onClick={shareOnTwitter} className="rounded border border-action px-5 py-2 text-sm text-action hover:bg-action/10">
           Share on Twitter
         </button>
         <button type="button" onClick={onClose} className="rounded border border-border px-5 py-2 text-sm text-muted hover:border-action hover:text-text">
@@ -124,6 +135,14 @@ export function RankUpModal({ card, onClose }: { card: Omit<RankUpCardProps, "cl
       {message ? (
         <p role={message.error ? "alert" : "status"} className={`relative mt-3 text-sm ${message.error ? "text-failed" : "text-passed"}`}>
           {message.text}
+          {message.href ? (
+            <>
+              {" "}
+              <a href={message.href} target="_blank" rel="noopener noreferrer" className="text-action underline">
+                Open Twitter
+              </a>
+            </>
+          ) : null}
         </p>
       ) : null}
     </CelebrationDialog>

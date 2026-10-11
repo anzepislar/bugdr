@@ -2250,3 +2250,9 @@ sledljivost), `00` (Career Paths, pragovi, brezplačna raven), `03`, `04`,
   roba (satori je 3 px rob dodal izven 1080) → `boxSizing: border-box`.
   Lint, typecheck, build OK; testi 217/217. Integracija v `Workspace` (prava
   rešitev s Docker preverjanji) ni bila preizkušena od začetka do konca.
+- **Share on Twitter** (želja uporabnika): namesto kopiranja besedila gre kartica
+  (PNG) v odložišče (`useCardDownload` → `copy()`, `ClipboardItem` z obljubo
+  zaradi Safarija) in odpre se `x.com/intent/post` z besedilom; uporabnik prilepi
+  sliko s ⌘V / Ctrl+V. Blokiran zavihek → povezava "Open Twitter"; neuspelo
+  kopiranje → napaka + povezava. Preverjeno v Chromu: odložišče ima PNG
+  1080×1080, zavihek z besedilom, obe rezervi.
