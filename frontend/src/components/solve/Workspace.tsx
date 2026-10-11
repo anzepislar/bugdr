@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { getRankFromPoints } from "@/components/RankBadge";
+import { RankUpModal, SolveModal } from "@/components/ShareCard";
 import { Icon } from "@/components/Icon";
 import { Select } from "@/components/Select";
 import { AcceptanceChecks, Description } from "@/components/problems/ProblemOverview";
@@ -13,10 +15,61 @@ import { AiChatPanel } from "@/components/solve/AiChatPanel";
 import { ChecksPanel } from "@/components/solve/ChecksPanel";
 import { useSessionTracker } from "@/hooks/useSessionTracker";
 import { api, ApiError, apiStream } from "@/lib/api";
-import type { Attempt, CheckRunResult, CheckStatus, TestRunEvent } from "@/lib/types/attempt";
+import type { Attempt, CheckRunResult, CheckStatus, SolvedRun, TestRunEvent } from "@/lib/types/attempt";
+import type { DashboardStats } from "@/lib/types/dashboard";
 import type { Difficulty } from "@/lib/types/problem";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Solve time for the share card: "45s", "18m", "1h 4m". */
+const shortDuration = (s: number) =>
+  s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m` : `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+
+type Celebration = {
+  step: "solve" | "rankUp";
+  solve: React.ComponentProps<typeof SolveModal>["card"];
+  /** Set when this solve crossed a level threshold: shown after the solve modal closes. */
+  rankUp: React.ComponentProps<typeof RankUpModal>["card"] | null;
+};
+
+/** The share cards' data from the API: the chat totals, the username and the stats after the solve. */
+async function loadCelebration(attempt: Attempt, difficulty: Difficulty, solved: SolvedRun): Promise<Celebration> {
+  const [usage, me] = await Promise.all([
+    api<{ totalPrompts: number; totalTokens: number }>(`/attempts/${attempt.id}/ai/messages`),
+    api<{ user: { username: string } }>("/auth/me"),
+  ]);
+  const { username } = me.user;
+  const { profile } = await api<{ profile: { stats?: DashboardStats } }>(`/users/${encodeURIComponent(username)}`);
+  const stats = profile.stats!;
+  const rank = getRankFromPoints(stats.totalPoints);
+  const previousRank = getRankFromPoints(stats.totalPoints - solved.pointsEarned);
+  return {
+    step: "solve",
+    solve: {
+      problemTitle: attempt.problemTitle,
+      difficulty,
+      prompts: usage.totalPrompts,
+      tokens: usage.totalTokens,
+      timeTaken: shortDuration(solved.timeTakenSeconds),
+      efficiencyScore: solved.efficiencyScore,
+      percentile: null, // no percentile from the API yet
+      username,
+      rank: stats.level.name,
+      points: stats.totalPoints,
+    },
+    rankUp:
+      rank === previousRank
+        ? null
+        : {
+            newRank: rank,
+            previousRank,
+            problemsSolved: stats.problemsSolved,
+            totalPoints: stats.totalPoints,
+            currentStreak: stats.currentStreak,
+            username,
+          },
+  };
+}
 const pad = (n: number) => String(n).padStart(2, "0");
 const clock = (seconds: number) =>
   seconds >= 3600
@@ -142,6 +195,8 @@ export function Workspace({
   const [dragging, setDragging] = useState<"description" | "chat" | null>(null);
   // Entry animation: the description starts full width (like the detail page) and the editor slides in.
   const [opening, setOpening] = useState(true);
+  // After a solve: the share card, then the rank up card when a level was crossed; closing goes to the detail page.
+  const [celebration, setCelebration] = useState<Celebration | null>(null);
   const splitRef = useRef<HTMLDivElement>(null);
   const descriptionRef = useRef<HTMLElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -317,9 +372,18 @@ export function Workspace({
     } catch {
       // Blocked storage: a solved problem never reopens, so the draft is never read again.
     }
-    // The detail page now shows the result (R4).
-    await delay(1200);
-    router.push(`/problems/${slug}`);
+    try {
+      setCelebration(await loadCelebration(attempt, difficulty, response.solved));
+    } catch {
+      // No share card without its data: the detail page still shows the result (R4).
+      await delay(1200);
+      router.push(`/problems/${slug}`);
+    }
+  }
+
+  function closeCelebration() {
+    if (celebration?.step === "solve" && celebration.rankUp) setCelebration({ ...celebration, step: "rankUp" });
+    else router.push(`/problems/${slug}`); // the detail page now shows the result (R4)
   }
 
   // R5: runs the command in the attempt's terminal container on the editor's current files; output streams in.
@@ -657,6 +721,10 @@ export function Workspace({
         onConfirm={() => void giveUp()}
         onCancel={() => setGiveUpState(null)}
       />
+      {celebration?.step === "solve" ? <SolveModal card={celebration.solve} onClose={closeCelebration} /> : null}
+      {celebration?.step === "rankUp" && celebration.rankUp ? (
+        <RankUpModal card={celebration.rankUp} onClose={closeCelebration} />
+      ) : null}
     </div>
   );
 }

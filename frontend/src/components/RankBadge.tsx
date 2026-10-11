@@ -156,6 +156,10 @@ interface RankBadgeProps {
   /** Rank name below the badge in the accent color. */
   showLabel?: boolean;
   className?: string;
+  /** Only the <svg>, to nest in another SVG (share cards); x and y place it there. */
+  bare?: boolean;
+  x?: number;
+  y?: number;
 }
 
 function Gradient({ id, colors }: { id: string; colors: string[] }) {
@@ -168,7 +172,7 @@ function Gradient({ id, colors }: { id: string; colors: string[] }) {
   );
 }
 
-export function RankBadge({ rank, size = 48, showLabel = false, className = "" }: RankBadgeProps) {
+export function RankBadge({ rank, size = 48, showLabel = false, className = "", bare = false, x, y }: RankBadgeProps) {
   const id = `${rank.toLowerCase()}-grad`;
   const distinguished = rank === "Distinguished";
   const width = distinguished ? size * DISTINGUISHED_SCALE : size;
@@ -178,7 +182,7 @@ export function RankBadge({ rank, size = 48, showLabel = false, className = "" }
   const a11y = showLabel ? { "aria-hidden": true } : { role: "img", "aria-label": `${rank} rank` };
 
   const svg = distinguished ? (
-    <svg width={width} height={height} viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`} {...a11y}>
+    <svg x={x} y={y} width={width} height={height} viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`} {...a11y}>
       <defs>
         <Gradient id={id} colors={DISTINGUISHED_GRADIENT} />
       </defs>
@@ -191,7 +195,7 @@ export function RankBadge({ rank, size = 48, showLabel = false, className = "" }
       />
     </svg>
   ) : (
-    <svg width={width} height={height} viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`} {...a11y}>
+    <svg x={x} y={y} width={width} height={height} viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`} {...a11y}>
       <defs>
         <Gradient id={id} colors={STYLES[rank].gradient} />
       </defs>
@@ -201,6 +205,7 @@ export function RankBadge({ rank, size = 48, showLabel = false, className = "" }
     </svg>
   );
 
+  if (bare) return svg;
   if (!showLabel) return <span className={`inline-flex shrink-0 ${className}`}>{svg}</span>;
   return (
     <span className={`inline-flex shrink-0 flex-col items-center gap-1 ${className}`}>
