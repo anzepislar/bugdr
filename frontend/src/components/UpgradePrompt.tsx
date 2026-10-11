@@ -36,7 +36,7 @@ export function UpgradePrompt({ feature, className = "", limit = Number(PLANS.fr
   const paid = planId !== "free";
   const { heading, description } = COPY[feature](limit);
   return (
-    <div className={`rounded-lg border border-border bg-surface p-6 text-center ${className}`}>
+    <div className={`rounded-lg border border-action/25 bg-action/8 p-6 backdrop-blur-md text-center ${className}`}>
       <Icon name="lock" className="mx-auto h-5 w-5 text-muted" />
       <p className="mt-3 font-semibold text-text">{heading}</p>
       <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">

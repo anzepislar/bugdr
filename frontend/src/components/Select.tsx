@@ -170,7 +170,7 @@ export function Select<T extends string>({
             role="listbox"
             aria-label={ariaLabel}
             style={position}
-            className="fixed z-50 max-w-[calc(100vw-2rem)] overflow-y-auto rounded border border-border bg-surface py-1 text-sm shadow-lg shadow-black/40"
+            className="fixed z-50 max-w-[calc(100vw-2rem)] overflow-y-auto glass-modal rounded border py-1 text-sm"
           >
             {options.map((o, i) => {
               const selected = i === selectedIndex;

@@ -62,7 +62,7 @@ export function AppShell({ children, liveContests }: { children: ReactNode; live
 
   return (
     <div className="flex min-h-screen flex-1">
-      <aside className="sticky top-0 hidden h-screen w-[220px] shrink-0 flex-col border-r border-border bg-canvas px-3 py-4 lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-[220px] shrink-0 flex-col border-r border-white/7 bg-canvas/80 px-3 py-4 backdrop-blur-[20px] lg:flex">
         <Link href="/" className="mb-6 px-2">
           <Image src="/logo/bugdr-logo.png" alt="Bugdr" width={447} height={126} priority className="h-10 w-auto" />
         </Link>
@@ -77,7 +77,7 @@ export function AppShell({ children, liveContests }: { children: ReactNode; live
               href={item.href}
               aria-current={isActive(item.href) ? "page" : undefined}
               className={`flex items-center gap-3 rounded px-3 py-2.5 text-sm ${
-                isActive(item.href) ? "bg-surface font-semibold text-text" : "text-muted hover:text-text"
+                isActive(item.href) ? "bg-action/10 font-semibold text-text" : "text-muted hover:bg-white/6 hover:text-text"
               }`}
             >
               <Icon name={item.icon} className={`h-5 w-5 ${isActive(item.href) ? "text-action" : ""}`} />
@@ -117,7 +117,7 @@ export function AppShell({ children, liveContests }: { children: ReactNode; live
                 href="/settings"
                 aria-current={isActive("/settings") ? "page" : undefined}
                 className={`flex items-center gap-3 rounded px-3 py-2 text-sm ${
-                  isActive("/settings") ? "bg-surface font-semibold text-text" : "text-muted hover:text-text"
+                  isActive("/settings") ? "bg-action/10 font-semibold text-text" : "text-muted hover:bg-white/6 hover:text-text"
                 }`}
               >
                 <Icon name="settings" className={`h-5 w-5 ${isActive("/settings") ? "text-action" : ""}`} /> Settings
@@ -170,7 +170,7 @@ export function AppShell({ children, liveContests }: { children: ReactNode; live
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-4 border-b border-border px-4 py-3 sm:px-8">
+        <header className="flex items-center gap-4 border-b border-white/7 bg-canvas/80 px-4 py-3 backdrop-blur-[20px] sm:px-8">
           <Link href="/" className="lg:hidden">
             <Image src="/logo/bugdr-mark.png" alt="Bugdr" width={90} height={126} className="h-8 w-auto" />
           </Link>
@@ -212,14 +212,14 @@ export function AppShell({ children, liveContests }: { children: ReactNode; live
         </header>
 
         {/* Below lg the sidebar collapses into this strip. */}
-        <nav className="flex gap-1 overflow-x-auto border-b border-border px-4 py-2 lg:hidden">
+        <nav className="flex gap-1 overflow-x-auto border-b border-white/7 px-4 py-2 lg:hidden">
           {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               aria-current={isActive(item.href) ? "page" : undefined}
               className={`shrink-0 rounded px-3 py-1.5 text-sm ${
-                isActive(item.href) ? "bg-surface font-semibold text-text" : "text-muted"
+                isActive(item.href) ? "bg-action/10 font-semibold text-text" : "text-muted hover:bg-white/6"
               }`}
             >
               {item.label}

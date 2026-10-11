@@ -245,7 +245,7 @@ function ContestRow({ contest: c, status, actions }: { contest: AdminContest; st
               <Icon name="more" className="h-5 w-5 stroke-[3]" />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 z-10 mt-1 w-52 rounded border border-border bg-surface py-1 shadow-lg">
+              <div className="absolute right-0 z-10 mt-1 w-52 glass-modal rounded border py-1">
                 {(status === "draft" || status === "scheduled") && (
                   <Link href={`/admin/contests/${c.id}/edit`} className={`${item} text-text`}>
                     Edit

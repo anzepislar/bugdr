@@ -64,7 +64,7 @@ export function FeedbackDialog({ open, email, onClose }: { open: boolean; email:
         close();
       }}
       onClick={(e) => e.target === e.currentTarget && close()}
-      className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-md border border-border bg-surface p-6 text-text backdrop:bg-canvas/70"
+      className="m-auto w-[calc(100%-2rem)] max-w-lg glass-modal rounded-xl border p-6 text-text backdrop:bg-canvas/70 backdrop:backdrop-blur-[4px]"
     >
       <h2 id="feedback-title" className="text-lg font-semibold">
         Help &amp; feedback

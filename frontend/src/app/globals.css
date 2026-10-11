@@ -19,7 +19,11 @@
   --color-get-a-job: #ef4444;
 
   --font-sans: var(--font-inter);
-  --radius: 6px;
+  /* Glass redesign: rounded 10, rounded-md 12, rounded-lg 16, rounded-xl 20. */
+  --radius: 10px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
 
   /* Page containers center from here (CLAUDE.md "UI Rules"). */
   --breakpoint-wide: 1400px;
@@ -30,12 +34,91 @@ body {
   color: var(--color-text);
 }
 
+/* Decorative background blobs, fixed behind all content (z-index -1 keeps every page above it
+   without touching page markup). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle 350px at 0 0, rgb(139 172 255 / 0.06), transparent),
+    radial-gradient(circle 300px at 100% 100%, rgb(235 165 153 / 0.05), transparent),
+    radial-gradient(circle 250px at 50% 50%, rgb(34 197 94 / 0.03), transparent);
+}
+
+/* Modals and popovers: denser glass so text over page content stays readable. */
+@utility glass-modal {
+  background-color: rgb(28 30 34 / 0.85);
+  backdrop-filter: blur(24px);
+  border-color: rgb(255 255 255 / 0.09);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+
+/* Glass versions of the existing utilities. Same layer as Tailwind's and declared later, so they win;
+   the palette tokens in @theme stay untouched. The inset shadow is the top-edge highlight. */
+@layer utilities {
+  .bg-surface {
+    background-color: rgb(255 255 255 / 0.05);
+    backdrop-filter: blur(16px);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
+  }
+  .border-border {
+    border-color: rgb(255 255 255 / 0.09);
+  }
+
+  /* Inputs, textareas and Select triggers. */
+  :is(input, textarea, [role="combobox"]).bg-canvas {
+    background-color: rgb(255 255 255 / 0.04);
+    border-color: rgb(255 255 255 / 0.1);
+  }
+  :is(input, textarea, [role="combobox"]).bg-canvas:focus {
+    background-color: rgb(139 172 255 / 0.05);
+    border-color: rgb(139 172 255 / 0.5);
+  }
+
+  /* Primary buttons stay solid; secondary (outlined) buttons turn to glass. */
+  :is(a, button).rounded:is(.bg-action, .border-border) {
+    border-radius: var(--radius-md);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    :is(a, button).bg-action:not(:disabled):hover {
+      transform: translateY(-1px);
+    }
+  }
+  :is(a, button).bg-action:active {
+    transform: translateY(0);
+  }
+  :is(a, button).border-border:not(.bg-surface, .bg-canvas, [role="combobox"]) {
+    background-color: rgb(255 255 255 / 0.06);
+    backdrop-filter: blur(12px);
+    border-color: rgb(255 255 255 / 0.1);
+  }
+  :is(a, button).border-border:not(.bg-surface, .bg-canvas, [role="combobox"], :disabled):hover {
+    background-color: rgb(255 255 255 / 0.1);
+    border-color: rgb(255 255 255 / 0.18);
+  }
+}
+
 /* Native controls in Graphite Signal. Base layer, so utilities (h-4 w-4, sr-only) still win.
    Dropdowns use components/Select.tsx: the native <select> popup cannot be styled. */
 @layer base {
   /* Dark scrollbars and dark native pickers (date/time). */
   :root {
     color-scheme: dark;
+  }
+
+  a,
+  button,
+  input,
+  textarea,
+  [role="button"],
+  [role="combobox"] {
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      transform 0.1s ease;
   }
 
   input[type="checkbox"] {

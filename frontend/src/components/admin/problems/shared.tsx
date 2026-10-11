@@ -9,10 +9,10 @@ export const inputClass =
   "w-full rounded border border-border bg-canvas px-3 py-2 text-sm text-text placeholder:text-muted focus:border-action focus:outline-none";
 
 export const primaryButton =
-  "inline-flex items-center justify-center gap-2 rounded bg-action px-4 py-2 text-sm font-medium text-canvas hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex items-center justify-center gap-2 rounded-md bg-action px-4 py-2 text-sm font-medium text-canvas hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40";
 
 export const secondaryButton =
-  "inline-flex items-center justify-center gap-2 rounded border border-border px-4 py-2 text-sm font-medium text-text hover:border-action hover:text-action disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text";
+  "inline-flex items-center justify-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-text hover:border-action hover:text-action disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text";
 
 // Literal class names so Tailwind picks them up.
 export const DIFFICULTY_TEXT: Record<Difficulty, string> = {

@@ -13,7 +13,7 @@ import type { PrivateProfile, Profile } from "@/lib/types/profile";
 
 // X2: plan pill next to the name; Free has none. Literal classes so Tailwind picks them up.
 const PLAN_PILL: Partial<Record<PlanId, string>> = {
-  pro: "border-[#8BACFF]/40 bg-[#8BACFF]/10 text-[#8BACFF]",
+  pro: "border-[#8BACFF]/25 bg-[#8BACFF]/8 text-[#8BACFF] backdrop-blur-md",
   own_key: "border-[#2dd4bf]/40 bg-[#2dd4bf]/10 text-[#2dd4bf]",
   max: "border-[#c084fc]/40 bg-[#c084fc]/10 text-[#c084fc]",
 };

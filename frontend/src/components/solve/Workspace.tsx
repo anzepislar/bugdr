@@ -443,9 +443,9 @@ export function Workspace({
 
   return (
     <div
-      className={`flex h-screen w-screen flex-col overflow-hidden bg-canvas ${dragging ? "cursor-col-resize select-none" : ""}`}
+      className={`flex h-screen w-screen flex-col overflow-hidden ${dragging ? "cursor-col-resize select-none" : ""}`}
     >
-      <header className="grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border bg-surface px-3 sm:px-4">
+      <header className="grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-white/7 bg-canvas/80 px-3 backdrop-blur-[20px] sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/" className="shrink-0">
             <Image src="/logo/bugdr-mark.png" alt="Bugdr" width={90} height={126} className="h-7 w-auto sm:hidden" />
@@ -528,7 +528,7 @@ export function Workspace({
 
         <div
           ref={editorRef}
-          className="relative flex min-w-[120px] flex-1 flex-col bg-[#1e1e1e]"
+          className="relative flex min-w-[120px] flex-1 flex-col overflow-hidden rounded-md border border-white/9 bg-[#1e1e1e]"
         >
           {collapsed ? (
             <button
@@ -696,9 +696,9 @@ export function Workspace({
           aria-label="AI assistant"
           aria-hidden={!chatOpen}
           inert={!chatOpen}
-          className={`relative shrink overflow-hidden bg-surface ${
+          className={`relative shrink overflow-hidden bg-canvas/70 backdrop-blur-[20px] ${
             dragging ? "" : "transition-all duration-300 ease-out motion-reduce:transition-none"
-          } ${chatOpen ? "w-[var(--chat-w)] min-w-[80px]" : "w-0"}`}
+          } ${chatOpen ? "w-[var(--chat-w)] min-w-[80px] border-l border-white/7" : "w-0"}`}
         >
           <AiChatPanel tracker={tracker} difficulty={difficulty} attemptId={attempt?.id ?? null} files={files} runsDone={runsDone} />
           <button

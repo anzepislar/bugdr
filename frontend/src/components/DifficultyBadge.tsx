@@ -30,7 +30,7 @@ export function getDifficultyColor(difficulty: string): string {
   return styleOf(difficulty).color;
 }
 
-/** Very dark tint of the color (backgrounds of the sm tag and the share card pill). */
+/** Very dark tint of the color (background of the share card pill). */
 export function getDifficultyTint(difficulty: string): string {
   return styleOf(difficulty).tint;
 }
@@ -65,8 +65,9 @@ export function DifficultyBadge({ difficulty, size = "md", showLabel = false, cl
   if (size === "sm")
     return (
       <span
-        className={`inline-flex shrink-0 items-center rounded border px-2.5 py-1 font-mono text-[11px] leading-[14px] ${className}`}
-        style={{ color: s.color, borderColor: s.color, background: s.tint }}
+        className={`inline-flex shrink-0 items-center rounded-[8px] border px-2.5 backdrop-blur-sm py-1 font-mono text-[11px] leading-[14px] ${className}`}
+        // Hex alpha: 40 = 0.25, 1a = 0.10.
+        style={{ color: s.color, borderColor: `${s.color}40`, background: `${s.color}1a` }}
       >
         {tag}
       </span>

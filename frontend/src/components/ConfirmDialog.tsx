@@ -41,7 +41,7 @@ export function ConfirmDialog({
         if (!busy) onCancel();
       }}
       onClick={(e) => e.target === e.currentTarget && !busy && onCancel()}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-md border border-border bg-surface p-6 text-text backdrop:bg-canvas/70"
+      className="m-auto w-[calc(100%-2rem)] max-w-md glass-modal rounded-xl border p-6 text-text backdrop:bg-canvas/70 backdrop:backdrop-blur-[4px]"
     >
       <h2 id="confirm-dialog-title" className="text-lg font-semibold">
         {title}
