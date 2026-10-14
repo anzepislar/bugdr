@@ -13,6 +13,7 @@ import { leaderboardRouter } from "./modules/leaderboard/leaderboard.routes.js";
 import { meRouter } from "./modules/me/me.routes.js";
 import { problemsRouter } from "./modules/problems/problems.routes.js";
 import { usersRouter } from "./modules/users/users.routes.js";
+import { waitlistRouter } from "./modules/waitlist/waitlist.routes.js";
 
 export const app = express();
 // 3 MB: a Test submission carries the user's files (runner limit 2 MB, R3).
@@ -31,6 +32,7 @@ api.use("/leaderboard", leaderboardRouter);
 api.use("/me", meRouter);
 api.use("/problems", problemsRouter);
 api.use("/users", usersRouter);
+api.use("/waitlist", waitlistRouter);
 api.use(commentsRouter);
 
 api.get("/health", async (req, res) => {

@@ -19,6 +19,7 @@
   --color-get-a-job: #ef4444;
 
   --font-sans: var(--font-inter);
+  --font-display: var(--font-syne);
   /* Glass redesign: rounded 10, rounded-md 12, rounded-lg 16, rounded-xl 20. */
   --radius: 10px;
   --radius-md: 12px;
@@ -27,6 +28,25 @@
 
   /* Page containers center from here (CLAUDE.md "UI Rules"). */
   --breakpoint-wide: 1400px;
+
+  /* Design system tokens. rounded-sm/md/lg and backdrop-blur-md keep their current values. */
+  --color-surface2: #26292f;
+  --color-muted2: #6b7280;
+  --color-severe: #f97316;
+
+  --radius-2xl: 28px;
+
+  --blur-xs: 4px;
+  --blur-sm: 8px;
+  --blur-lg: 24px;
+  --blur-xl: 40px;
+
+  --shadow-glass: 0 4px 24px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-glass-lg: 0 16px 48px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  --shadow-glass-modal: 0 32px 80px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(139, 172, 255, 0.06), 0 0 60px rgba(139, 172, 255, 0.04);
+  --shadow-action-glow: 0 0 24px rgba(139, 172, 255, 0.2);
+  --shadow-action-glow-lg: 0 0 40px rgba(139, 172, 255, 0.28);
+  --shadow-success-glow: 0 0 20px rgba(34, 197, 94, 0.18);
 }
 
 body {
@@ -266,4 +286,198 @@ body::before {
   100% {
     transform: scale(1);
   }
+}
+
+/* ─────────────────────────────────────────
+   BUGDR DESIGN SYSTEM — glass tokens
+───────────────────────────────────────── */
+
+:root {
+  /* Glass surface tokens */
+  --glass-bg:              rgba(255,255,255,0.06);
+  --glass-bg-hover:        rgba(255,255,255,0.10);
+  --glass-border:          rgba(255,255,255,0.08);
+  --glass-border-hover:    rgba(255,255,255,0.15);
+
+  /* Action glass tokens */
+  --glass-action-bg:       rgba(139,172,255,0.10);
+  --glass-action-bg-hover: rgba(139,172,255,0.18);
+  --glass-action-border:   rgba(139,172,255,0.28);
+  --glass-action-border-hover: rgba(139,172,255,0.52);
+
+  /* Success glass tokens */
+  --glass-success-bg:      rgba(34,197,94,0.08);
+  --glass-success-border:  rgba(34,197,94,0.22);
+
+  /* Danger glass tokens */
+  --glass-danger-bg:       rgba(239,68,68,0.08);
+  --glass-danger-border:   rgba(239,68,68,0.22);
+
+  /* Glow tokens */
+  --glow-action:   rgba(139,172,255,0.20);
+  --glow-success:  rgba(34,197,94,0.15);
+  --glow-danger:   rgba(239,68,68,0.15);
+}
+
+/* ─── Keyframe animations ─── */
+
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes float-up {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-8px); }
+}
+
+@keyframes blob-pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.15); }
+}
+
+/* ─── Animation utility classes ─── */
+
+.animate-modal-in {
+  animation: modal-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-fade-up {
+  animation: fade-up 0.3s ease both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease both;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.animate-spin-smooth {
+  animation: spin 0.6s linear infinite;
+}
+
+.animate-blob-pulse-slow {
+  animation: blob-pulse 8s ease-in-out infinite;
+}
+
+.animate-blob-pulse-slower {
+  animation: blob-pulse 11s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+/* ─── Glass utility classes ─── */
+
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.glass:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-hover);
+}
+
+.glass-heavy {
+  background: rgba(32,34,38,0.92);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.glass-action {
+  background: var(--glass-action-bg);
+  border: 1px solid var(--glass-action-border);
+  color: #8BACFF;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
+}
+
+.glass-action:hover {
+  background: var(--glass-action-bg-hover);
+  border-color: var(--glass-action-border-hover);
+  box-shadow: 0 0 32px var(--glow-action);
+}
+
+.glass-success {
+  background: var(--glass-success-bg);
+  border: 1px solid var(--glass-success-border);
+}
+
+.glass-danger {
+  background: var(--glass-danger-bg);
+  border: 1px solid var(--glass-danger-border);
+}
+
+/* ─── Modal backdrop ─── */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8,10,12,0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+/* ─── Accent stripe (top of modals/cards) ─── */
+
+.accent-stripe {
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(139,172,255,0.45) 25%,
+    rgba(139,172,255,0.80) 50%,
+    rgba(139,172,255,0.45) 75%,
+    transparent 100%
+  );
+}
+
+/* ─── Scrollbar styling ─── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #383C43 transparent;
+}
+
+*::-webkit-scrollbar { width: 5px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: #383C43;
+  border-radius: 99px;
+}
+
+/* ─── Focus ring ─── */
+
+.focus-ring:focus-visible {
+  outline: 2px solid #8BACFF;
+  outline-offset: 2px;
 }
