@@ -17,14 +17,14 @@ povezala na API.
 ## Stanje
 
 ```
-Zadnja posodobitev: 10. 10. 2026
-Backend: M10 ✅ (E1-E6, e-pošta), M9 ✅ (K1-K3), M8 ✅ (S1-S8), M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2), M6 ✅ (A1-A10 + A9.1)
+Zadnja posodobitev: 14. 10. 2026
+Backend: X8 ✅ (čakalni seznam), M10 ✅ (E1-E6, e-pošta), M9 ✅ (K1-K3), M8 ✅ (S1-S8), M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2), M6 ✅ (A1-A10 + A9.1)
 Frontend: 26 zaslonov (večina na API) - /login, /signup, /forgot-password, /reset-password, /onboarding, / (dashboard),
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit,
           /admin/login, /admin/problems, /admin/problems/[id]/edit, /admin/users (+ [id]), /admin/analytics,
-          /leaderboard, /career-paths, /admin/career-paths, /admin/inbox (+ okno Help & feedback)
+          /leaderboard, /career-paths, /admin/career-paths, /admin/inbox (+ okno Help & feedback), /waitlist
 Naslednja rezina: M10 ✅ 10. 10. 2026 (E1-E3: Resend, Help & feedback, /admin/inbox, ponastavitev gesla; 11. 10. 2026 E4 pozdravna e-pošta, E5 e-pošta ob napredovanju s kartico; testi 217/217); M6 ✅ (A1-A10 + A9.1 ✅ 9. 10. 2026); M8 ✅ 9. 10. 2026 (S1-S8; odloženo: AI statistike profila iz `03`, področja izboljšav v S5); M9 ✅ 10. 10. 2026 (K1-K3); naprej M7 (Z1, Z2); za pravo analizo `ANTHROPIC_API_KEY` v `backend/.env`; odločitve M6 D20, D21, D22, D45, D46, D48, D50 rešene); testi 204/204 (10. 10. 2026: + test časovnih pasov v f0); nove funkcije 9. 10. 2026 (brezplačni model, lasten API ključ, povratna informacija, benchmark, karierne poti) so rezine S6-S8 in M9 (K1-K3)
 ```
 
@@ -597,6 +597,13 @@ Vsa e-pošta gre prek Resend. Uporabnik nastavi `RESEND_API_KEY` (poln dostop) i
 - Test: `s1` (omejitev pozivov, model po paketu, Own Key brez ključa), `s6`, `s8` (`locked`), `k2` (`PLAN_REQUIRED`), `a8` (admin nastavi paket, paket v `/auth/me`, `/me/profile`, javnem profilu).
 - Opomnik za karierno pot (E6) gre samo uporabnikom s paketom s kariernimi potmi (znižan paket = brez opomnika; test `k4`). Ostane: pozivi, poslani hkrati, vsi prestanejo preverjanje omejitve (ponytail v kodi).
 
+### X8 - Čakalni seznam
+
+**X8 · Čakalni seznam (early access)** `S` · odvisno od: F0 · ✅ 14. 10. 2026
+- Migracija 0030 `waitlist`. `POST /waitlist { email }` → 201 `{ success: true }` (tudi ponovna prijava, da obrazec ne razkrije, kdo je že na seznamu), `GET /waitlist` → `{ count }` za vrstico z dokazom v oknu.
+- Frontend: stran `/waitlist` (`HeroSection` + `WaitlistModal`, primitivi iz `components/ui/`).
+- Test: `waitlist`. Ostane: omejitev po IP (Z2).
+
 ### M7 - Produkcija
 
 **Z1 · Seed v produkciji** `S` · odvisno od: F2 · ⬜
@@ -634,6 +641,7 @@ Vsak zgrajen zaslon doda vrstico. Ko rezina zamenja mock, se vrstica označi ✅
 | `/admin/contests` | na API (A6): seznam, Schedule / Cancel / Delete / Archive; zavihki in iskanje na odjemalcu; rezultati, CSV in "nagrada poslana" v razširjeni vrstici (A7) | A6 ✅, A7 ✅ | ✅ |
 | `/career-paths` | na API od začetka (K2): `GET /career-paths`, start z `careerPath` | K2 | ✅ 10. 10. 2026 |
 | `/pricing` | brez API (paketi iz `lib/plans.ts`, trenutni paket iz seje) | X2 | ✅ 11. 10. 2026 |
+| `/waitlist` | na API od začetka (X8): `POST /waitlist`, `GET /waitlist` (število) | X8 | ✅ 14. 10. 2026 |
 | `/admin/career-paths` | na API od začetka (K3): `GET /admin/career-paths`, `PUT /admin/career-paths/thresholds` | K3 | ✅ 10. 10. 2026 |
 | `/admin/contests/new`, `/admin/contests/[id]/edit` | na API (A6): čarovnik `ContestWizard`, izbira objavljenih problemov, datumi iz `src/lib/getContestDates.ts`; `src/lib/mock/adminContests.ts` ni več v uporabi | A6 | ✅ |
 
@@ -698,6 +706,7 @@ Odprto:
 | `/admin/problems`, `/admin/problems/[id]/edit` | A2, A3 (A5 za objavo / umik), K1 |
 | `/admin/contests`, `/admin/contests/new`, `/admin/contests/[id]/edit` | A6 (A7 za rezultate) |
 | `/admin/analytics` | S5 ✅ |
+| `/waitlist` | X8 ✅ |
 | `/admin/career-paths` | K3 ✅ |
 | `/admin/inbox`, okno Help & feedback | E2 ✅ |
 | `/admin/*` | A1-A9 |

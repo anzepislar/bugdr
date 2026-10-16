@@ -2341,3 +2341,33 @@ sledljivost), `00` (Career Paths, pragovi, brezplačna raven), `03`, `04`,
   Starejše rešitve brez posnetka se izmerijo ob pisanju povratne informacije.
 - UI kartice nespremenjen. Testi 227/227 (nov `test/benchmarks.test.js`, s8
   posodobljen); frontend lint, typecheck, build OK.
+
+## 14. 10. 2026 — Seja 28: Graphite Signal tokeni, UI primitivi, čakalni seznam
+
+- **Tokeni** (Tailwind v4, zato v `@theme` v `globals.css`, ne v
+  `tailwind.config.ts`, ki ga projekt nima): barve `surface2`, `muted2`,
+  `severe`; zamegljenost `xs`/`sm`/`lg`/`xl`; sence `glass`, `glass-lg`,
+  `glass-modal`, `action-glow`, `action-glow-lg`, `success-glow`; `radius-2xl`
+  28 px. `rounded-sm/md/lg` in `backdrop-blur-md` ostanejo (odločitev: ne
+  spreminjati obstoječega videza). Na konec datoteke dodani CSS spremenljivke
+  `--glass-*`, keyframes, razredi `glass`, `glass-heavy`, `glass-action`,
+  `glass-success`, `glass-danger`, `modal-backdrop`, `accent-stripe`,
+  `focus-ring`, `animate-*` in tanki drsniki za vse elemente (vidna sprememba
+  povsod). Pisava Syne prek `next/font` kot `font-display`.
+- **UI primitivi** v `frontend/src/components/ui/` (+ `index.ts`):
+  `GlassCard`, `GlassButton` (action / ghost / danger, sm/md/lg, loading),
+  `ModalShell` (Esc, klik zunaj, ujet fokus, zaklep drsenja, fokus nazaj;
+  ozadje `bg-[var(--color-surface)]`, ker je `.bg-surface` prosojno steklo),
+  `Input` (ikona, napaka, `aria-invalid`). Na obstoječih straneh še niso
+  uporabljeni; `ConfirmDialog` ostane.
+- **Čakalni seznam:** migracija 0030 `waitlist` (email unikaten);
+  `POST /waitlist { email }` → 201 `{ success: true }` (ponovna prijava ista
+  uspešnost, e-pošta z malimi črkami), `GET /waitlist` → `{ count }`. Brez
+  omejitve po IP (Z2). Test `test/waitlist.test.js`.
+- **Nova stran `/waitlist`** (zunaj `(app)`, brez stranske vrstice):
+  `HeroSection` (22 lebdečih plošč v 3 slojih, requestAnimationFrame, nagib
+  ob premiku miške, mirno ob reduced motion) + `WaitlistModal` (obrazec →
+  nalaganje → uspeh). Število "developers" je resnično iz `GET /waitlist`,
+  vrstica je skrita, dokler je seznam prazen (ne izmišljeno 247). `/` ostane
+  dashboard.
+- Lint, typecheck, build OK; stran in modal v brskalniku še nista preverjena.

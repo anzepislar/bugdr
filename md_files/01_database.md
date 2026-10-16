@@ -759,6 +759,22 @@ CREATE TABLE password_reset_tokens (
 
 ---
 
+## Waitlist
+
+### waitlist
+Early access signups from `/waitlist` (X8, `migrations/0030_waitlist.sql`). Emails stored lowercased; joining twice
+is a no-op.
+
+```sql
+CREATE TABLE waitlist (
+  id          SERIAL PRIMARY KEY,
+  email       VARCHAR(254) NOT NULL UNIQUE,
+  created_at  TIMESTAMP NOT NULL DEFAULT now()
+);
+```
+
+---
+
 ## Important Notes
 
 - **Comments** are gated by `status = 'solved'` — enforced in API layer
