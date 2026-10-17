@@ -22,7 +22,7 @@ import {
   secondaryButton,
 } from "./shared";
 
-export const MIN_CHECKS = 3; // 04_admin.md "At least 3 checks"
+export const MIN_CHECKS = 1; // any number of checks, at least one (user, 17. 10. 2026)
 export const SHORT_DESCRIPTION_MAX = 300; // problems.short_description VARCHAR(300)
 export const TITLE_MAX = 255; // problems.title VARCHAR(255)
 
@@ -252,7 +252,7 @@ export function ReviewStep(props: Props) {
           </button>
           {!canContinue && (
             <p className="mt-2 text-xs text-muted">
-              Needs a title, all three descriptions, a role and at least {MIN_CHECKS} checks with a description and
+              Needs a title, all three descriptions, a role and at least one check with a description and
               command.
             </p>
           )}

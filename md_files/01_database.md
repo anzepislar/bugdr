@@ -163,6 +163,8 @@ CREATE TABLE problems (
   solve_count         INTEGER DEFAULT 0,  -- not maintained yet; the admin list counts solved attempts
   bug_summary         TEXT NOT NULL DEFAULT '',  -- AI analysis note about the bug, admin only (A2, 0014)
   dry_run_passed_for  TIMESTAMP,         -- A4: updated_at of the version whose checks all failed on the buggy code (0016)
+  import_check_status TEXT CHECK (import_check_status IN ('pending', 'passed', 'failed')), -- X9 bulk import background check run; NULL = not a bulk import (0032)
+  import_check_error  TEXT,              -- X9: why the background run did not publish (0032)
   created_by          UUID REFERENCES users(id),
   created_at          TIMESTAMP DEFAULT NOW(),
   updated_at          TIMESTAMP DEFAULT NOW(),

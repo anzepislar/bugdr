@@ -6,7 +6,7 @@ import { adminAnalyticsRouter } from "./analytics.routes.js";
 import { adminCareerPathsRouter } from "./careerPaths.routes.js";
 import { adminContestsRouter } from "./contests.routes.js";
 import { checkHealth } from "./health.service.js";
-import { adminProblemsRouter, importProblem } from "./problems.routes.js";
+import { adminProblemsRouter, bulkImportProblem, importProblem } from "./problems.routes.js";
 import { enrich, scrape } from "./scrape.routes.js";
 import { adminStatsRouter } from "./stats.routes.js";
 import { adminUsersRouter } from "./users.routes.js";
@@ -63,6 +63,7 @@ adminRouter.get("/health", requireAdmin, async (req, res) => {
 
 adminRouter.use("/problems", requireAdmin, adminProblemsRouter);
 adminRouter.post("/import-problem", requireAdmin, importProblem);
+adminRouter.post("/bulk-import-problem", requireAdmin, bulkImportProblem);
 adminRouter.post("/scrape", requireAdmin, scrape);
 adminRouter.post("/enrich", requireAdmin, enrich);
 adminRouter.use("/contests", requireAdmin, adminContestsRouter);

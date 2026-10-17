@@ -108,16 +108,14 @@ test("dry-run: a check that passes on the buggy code makes the run fail", async 
 const publish = async (id) => events(await call("POST", `/admin/problems/${id}/publish`));
 const code = async (res) => [res.status, (await res.json()).error?.code];
 
-test("publish: needs a role, 3 checks and hidden tests - checked before anything runs", async () => {
+test("publish: needs a role and hidden tests - checked before anything runs", async () => {
   const noRole = await withCode("No role", [failing, failing, failing]);
   await pool.query("UPDATE problems SET category_id = NULL WHERE id = $1", [noRole]);
   assert.deepEqual(await code(await call("POST", `/admin/problems/${noRole}/publish`)), [409, "NO_ROLE"]);
-  const two = await withCode("Two checks", [failing, failing]);
-  assert.deepEqual(await code(await call("POST", `/admin/problems/${two}/publish`)), [409, "TOO_FEW_CHECKS"]);
   const noTests = await withCode("No hidden tests", [failing, failing, failing]);
   await pool.query("UPDATE problem_codebase SET hidden_files = '{}' WHERE problem_id = $1", [noTests]);
   assert.deepEqual(await code(await call("POST", `/admin/problems/${noTests}/publish`)), [409, "NO_HIDDEN_FILES"]);
-  assert.equal((await call("POST", `/admin/problems/${two}/publish`, null, null)).status, 401);
+  assert.equal((await call("POST", `/admin/problems/${noRole}/publish`, null, null)).status, 401);
 });
 
 test("publish: a check that passes on the buggy code blocks publishing", async () => {

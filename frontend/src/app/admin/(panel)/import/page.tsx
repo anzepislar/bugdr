@@ -16,17 +16,69 @@ import { api, apiStream, ApiError } from "@/lib/api";
 import { CATEGORIES, DIFFICULTIES, type Difficulty } from "@/lib/types/problem";
 
 // Bulk import from GitHub: scrape merged bug-fix PRs (POST /admin/scrape) → Claude rebuilds each one as a
-// standalone Node problem or rejects it (POST /admin/enrich) → preview → saved one at a time as drafts
-// (POST /admin/import-problem). Publishing still goes through the check run on the edit page (A4/A5).
+// standalone Node problem or rejects it (POST /admin/enrich) → preview → saved one at a time on confirm
+// (POST /admin/bulk-import-problem) as drafts; the server runs the checks in the background and publishes on a pass.
 
 const DEFAULT_REPOS = [
   "nodejs/node",
-  "nicolo-ribaudo/tc39-proposal-iterator-helpers",
   "expressjs/express",
+  "fastify/fastify",
+  "koajs/koa",
+  "nestjs/nest",
+  "socket.io/socket.io",
+  "axios/axios",
+  "node-fetch/node-fetch",
   "sindresorhus/got",
-  "tj/commander.js",
-  "isaacs/node-graceful-fs",
-  "mysticatea/eslint-utils",
+  "sindresorhus/execa",
+  "sindresorhus/p-limit",
+  "yargs/yargs",
+  "chalk/chalk",
+  "mochajs/mocha",
+  "jestjs/jest",
+  "eslint/eslint",
+  "prettier/prettier",
+  "vitejs/vite",
+  "rollup/rollup",
+  "webpack/webpack",
+  "babel/babel",
+  "postcss/postcss",
+  "sequelize/sequelize",
+  "typeorm/typeorm",
+  "knex/knex",
+  "django/django",
+  "pallets/flask",
+  "fastapi/fastapi",
+  "psf/requests",
+  "celery/celery",
+  "sqlalchemy/sqlalchemy",
+  "pydantic/pydantic",
+  "encode/httpx",
+  "rails/rails",
+  "sinatra/sinatra",
+  "golang/go",
+  "gin-gonic/gin",
+  "gorilla/mux",
+  "labstack/echo",
+  "rust-lang/rust",
+  "actix/actix-web",
+  "tokio-rs/tokio",
+  "hyperium/hyper",
+  "laravel/laravel",
+  "symfony/symfony",
+  "spring-projects/spring-boot",
+  "vercel/next.js",
+  "nuxt/nuxt",
+  "sveltejs/svelte",
+  "vuejs/vue",
+  "angular/angular",
+  "prisma/prisma",
+  "supabase/supabase",
+  "drizzle-team/drizzle-orm",
+  "stripe/stripe-node",
+  "stripe/stripe-python",
+  "twilio/twilio-node",
+  "redis/node-redis",
+  "mongoosejs/mongoose",
 ].join("\n");
 const ENRICH_BATCH = 10; // candidates per /admin/enrich request: keeps each body small and a dropped stream cheap
 const REPO = /^[\w.-]+\/[\w.-]+$/;
@@ -265,7 +317,7 @@ export default function AdminImportPage() {
     for (const row of queue) {
       update(row.key, { status: "importing" });
       try {
-        await api("/admin/import-problem", { method: "POST", body: JSON.stringify(row.entry) });
+        await api("/admin/bulk-import-problem", { method: "POST", body: JSON.stringify(row.entry) });
         update(row.key, { status: "done" });
       } catch (err) {
         update(row.key, { status: "failed", message: saveErrorMessage(err) });
@@ -309,7 +361,7 @@ export default function AdminImportPage() {
     <div className="w-full px-6 py-8 wide:mx-auto wide:max-w-[1200px]">
       <h1 className="text-3xl font-semibold text-text">Import problems</h1>
       <p className="mt-2 text-muted">
-        Turn merged bug-fix pull requests into problems. Every import is saved as a draft; publish runs the checks.
+        Turn merged bug-fix pull requests into problems. Confirmed problems publish automatically once their checks pass.
       </p>
 
       {phase === "idle" && (
@@ -462,8 +514,8 @@ export default function AdminImportPage() {
           {phase === "done" && (
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm font-semibold text-text">
-                {imported} problems saved as drafts{failed > 0 && <span className="text-failed"> · {failed} failed</span>}.
-                Publish them from Problems after the check run.
+                Imported {imported} problems — running checks, will publish automatically on pass.
+                {failed > 0 && <span className="text-failed"> {failed} failed to import.</span>}
               </p>
               <button type="button" onClick={reset} className={`${primaryButton} sm:w-fit`}>
                 Start over
