@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/admin", label: "Overview", icon: "dashboard" },
   { href: "/admin/problems", label: "Problems", icon: "problems" },
+  { href: "/admin/import", label: "Import", icon: "upload" },
   { href: "/admin/contests", label: "Contests", icon: "trophy" },
   { href: "/admin/users", label: "Users", icon: "user" },
   { href: "/admin/analytics", label: "Analytics", icon: "ranking" },
@@ -24,6 +25,7 @@ const CRUMB: [RegExp, string][] = [
   [/^\/admin\/problems\/new$/, "Add problem"],
   [/^\/admin\/problems\/[^/]+\/edit$/, "Edit problem"],
   [/^\/admin\/problems$/, "Problems"],
+  [/^\/admin\/import$/, "Import problems"],
   [/^\/admin\/contests\/new$/, "New contest"],
   [/^\/admin\/contests\/[^/]+\/edit$/, "Edit contest"],
   [/^\/admin\/contests/, "Contests"],

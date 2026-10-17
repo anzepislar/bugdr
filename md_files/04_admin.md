@@ -142,6 +142,12 @@ active users and solves for the range with a trend, published problems, active c
 solves per day (14 days), solves by difficulty and role, current streaks, top 8 problems and 8 with the biggest
 drop-off. The original list below is what it was based on.
 
+**Services (built 17. 10. 2026):** a card at the bottom of the overview, `GET /admin/health`. One cheap real call
+per configured service in parallel (10 s each): Anthropic (1-token ping on `claude-haiku-4-5` - checks the key, not
+`ANTHROPIC_MODEL`), OpenAI (`/v1/models`), GitHub (`/rate_limit`, warning under 100 requests left) and Resend
+(`/domains`). Each tile shows Healthy / Warning / Error / Not configured plus a detail; no key values are returned.
+Fetched on load and on Recheck only (never polled - every check is a real call).
+
 **Overview:**
 - Total users
 - Active users (last 7 days, last 30 days)
@@ -178,6 +184,22 @@ number of new threads:
 - Filter New / Done / All. A thread shows the messages and replies; the reply box sends an email from
   EMAIL_FROM and marks the thread done; the person's answer comes back to the same thread as new.
 - No alerts outside the admin panel yet (would need a webhook on a public backend).
+
+### 6. Import from GitHub (`/admin/import`)
+
+Built 17. 10. 2026 (X9). "Import" in the admin sidebar, after Problems. Pipeline:
+1. **Scrape** (`POST /admin/scrape`, NDJSON): for each repo (owner/name, up to 20) the newest 300 closed PRs; kept
+   are merged PRs with a bug-fix title that change 1-3 JavaScript files (≤ 150 lines, tests and docs ignored,
+   nothing else changed), at most 10 per repo. PRs already imported (`problems.source_url`) are skipped. Optional
+   `GITHUB_TOKEN` (60 → 5000 requests an hour).
+2. **Enrich** (`POST /admin/enrich`, NDJSON, batches of 10 from the page): one Claude call per PR (`ANTHROPIC_MODEL`,
+   effort medium, 16000 tokens, structured output). Claude rebuilds the bug as a small standalone codebase on Node
+   built-ins only (code, fixed files, hidden `node --test` checks, problem text) or rejects the PR with a reason.
+3. **Preview**: accepted/rejected counts, top rejection reasons, the problems with validation per row, Remove,
+   "Download results.json".
+4. **Confirm import**: `POST /admin/import-problem` once per problem, one at a time - saved as **drafts**
+   (`source = 'github'`). No bulk publish (user, 17. 10. 2026): each draft is published from Problems, where the
+   Docker check run is the gate.
 
 ---
 

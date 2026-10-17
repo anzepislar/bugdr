@@ -12,6 +12,21 @@ import { CATEGORIES } from "@/lib/types/problem";
 const roleName = (slug: string) => CATEGORIES.find((c) => c.slug === slug)?.name.replace(" Engineer", "") ?? slug;
 const pct = (o: { started: number; solved: number }) => Math.round((1 - o.solved / o.started) * 100);
 
+type ServiceStatus = "ok" | "warn" | "error" | "unconfigured";
+type Health = Record<"anthropic" | "openai" | "github" | "resend", { status: ServiceStatus; detail: string }>;
+const SERVICES: [keyof Health, string][] = [
+  ["anthropic", "Anthropic"],
+  ["openai", "OpenAI"],
+  ["github", "GitHub"],
+  ["resend", "Resend"],
+];
+const STATUS: Record<ServiceStatus, [string, string]> = {
+  ok: ["text-passed", "Healthy"],
+  warn: ["text-pending", "Warning"],
+  error: ["text-failed", "Error"],
+  unconfigured: ["text-muted", "Not configured"],
+};
+
 const th = "pb-2 text-left text-xs font-medium uppercase tracking-wide text-muted";
 const td = "border-b border-border py-2.5";
 
@@ -41,6 +56,73 @@ function Pills<T extends string>({
         </button>
       ))}
     </div>
+  );
+}
+
+/** Live key health (GET /admin/health): fetched once on mount and on Recheck, never polled (each check is a real call). */
+function Services() {
+  const [health, setHealth] = useState<Health | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  const load = () =>
+    api<Health>("/admin/health")
+      .then((h) => (setHealth(h), setFailed(false)))
+      .catch(() => setFailed(true))
+      .finally(() => setChecking(false));
+  useEffect(() => {
+    load();
+  }, []);
+  const check = () => {
+    setChecking(true);
+    load();
+  };
+
+  return (
+    <ChartCard
+      title="Services"
+      subtitle="Live key health"
+      action={
+        <button
+          type="button"
+          onClick={check}
+          disabled={checking}
+          className="rounded border border-border px-3 py-1 text-sm text-text hover:border-action hover:text-action disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {checking ? "Checking…" : "Recheck"}
+        </button>
+      }
+    >
+      {failed ? (
+        <p className="text-sm text-failed">Could not check the services. Try Recheck.</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {SERVICES.map(([key, name]) => {
+            const service = checking ? null : health?.[key];
+            const [color, label] = service ? STATUS[service.status] : ["", ""];
+            return (
+              <div key={key} className="min-w-0 rounded border border-border p-4">
+                <p className="text-sm font-medium text-text">{name}</p>
+                {service ? (
+                  <>
+                    <p className={`mt-2 flex items-center gap-2 text-sm ${color}`}>
+                      <span aria-hidden className="inline-block h-2 w-2 shrink-0 rounded-full bg-current" />
+                      {label}
+                    </p>
+                    <p className="mt-1 break-words text-xs text-muted">{service.detail}</p>
+                  </>
+                ) : (
+                  <div aria-label="Checking" className="mt-2 space-y-2">
+                    <div className="h-4 w-20 animate-pulse rounded bg-white/10" />
+                    <div className="h-3 w-28 max-w-full animate-pulse rounded bg-white/10" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </ChartCard>
   );
 }
 
@@ -189,6 +271,10 @@ export default function AdminOverviewPage() {
           </div>
         </>
       )}
+
+      <div className="mt-10">
+        <Services />
+      </div>
     </div>
   );
 }

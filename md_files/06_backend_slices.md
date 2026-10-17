@@ -24,7 +24,7 @@ Frontend: 26 zaslonov (večina na API) - /login, /signup, /forgot-password, /res
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit,
           /admin/login, /admin/problems, /admin/problems/[id]/edit, /admin/users (+ [id]), /admin/analytics,
-          /leaderboard, /career-paths, /admin/career-paths, /admin/inbox (+ okno Help & feedback), /waitlist
+          /leaderboard, /career-paths, /admin/career-paths, /admin/inbox (+ okno Help & feedback), /waitlist, /admin/import
 Naslednja rezina: M10 ✅ 10. 10. 2026 (E1-E3: Resend, Help & feedback, /admin/inbox, ponastavitev gesla; 11. 10. 2026 E4 pozdravna e-pošta, E5 e-pošta ob napredovanju s kartico; testi 217/217); M6 ✅ (A1-A10 + A9.1 ✅ 9. 10. 2026); M8 ✅ 9. 10. 2026 (S1-S8; odloženo: AI statistike profila iz `03`, področja izboljšav v S5); M9 ✅ 10. 10. 2026 (K1-K3); naprej M7 (Z1, Z2); za pravo analizo `ANTHROPIC_API_KEY` v `backend/.env`; odločitve M6 D20, D21, D22, D45, D46, D48, D50 rešene); testi 204/204 (10. 10. 2026: + test časovnih pasov v f0); nove funkcije 9. 10. 2026 (brezplačni model, lasten API ključ, povratna informacija, benchmark, karierne poti) so rezine S6-S8 in M9 (K1-K3)
 ```
 
@@ -604,6 +604,15 @@ Vsa e-pošta gre prek Resend. Uporabnik nastavi `RESEND_API_KEY` (poln dostop) i
 - Frontend: stran `/waitlist` (`HeroSection` + `WaitlistModal`, primitivi iz `components/ui/`).
 - Test: `waitlist`. Ostane: omejitev po IP (Z2).
 
+### X9 - Uvoz problemov
+
+**X9 · Množični uvoz (GitHub)** `S` · odvisno od: A2 · ✅ 17. 10. 2026
+- `POST /admin/import-problem` (admin): en vnos iz `import.json` (snake_case) → osnutek prek `parseDraft` + `saveDraft` (ista validacija in transakcija kot A10), `source = 'github'`, `source_url`, slug iz datoteke, cela koda (`files`, `solution_files`, `hidden_files`, `language`, `framework`, `setup_commands`, `run_command`), `expected_output` pri preverjanjih, `content_hash` (ista koda dvakrat = 409 `DUPLICATE_CODEBASE`). Odgovor 201 `{ id, slug, isPublished }`, napake v skupni obliki.
+- Frontend: `/admin/import` (Import v admin meniju): spustna cona za `.json`, predogled s preverbo po vrsticah (neveljavne se preskočijo), uvoz eden za drugim z napredkom in stanjem po vrstici.
+- Test: `import`. Objava še vedno prek preverjanj na strani za urejanje (A4/A5).
+- Cevovod z GitHuba (zamenja spustno cono): `POST /admin/scrape` (NDJSON, združeni JS popravki, diff + datoteka pred popravkom, `GITHUB_TOKEN` neobvezen) → `POST /admin/enrich` (NDJSON, Claude zgradi samostojen problem na vgrajenih modulih Node ali zavrne PR) → predogled → `import-problem` (osnutki). Brez množične objave (uporabnik). Test: `scrape`.
+- Predogled ima "Download results.json" (Blob). Kartica "Services" na `/admin`: `GET /admin/health` (Anthropic ping na `claude-haiku-4-5`, OpenAI, GitHub, Resend; vedno 200, brez ključev), Recheck brez samodejnega osveževanja. Test: `health`.
+
 ### M7 - Produkcija
 
 **Z1 · Seed v produkciji** `S` · odvisno od: F2 · ⬜
@@ -709,4 +718,5 @@ Odprto:
 | `/waitlist` | X8 ✅ |
 | `/admin/career-paths` | K3 ✅ |
 | `/admin/inbox`, okno Help & feedback | E2 ✅ |
+| `/admin/import`, kartica Services na `/admin` | X9 ✅ |
 | `/admin/*` | A1-A9 |

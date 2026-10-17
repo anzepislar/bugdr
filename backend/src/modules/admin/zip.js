@@ -101,7 +101,12 @@ export function readZip(buf) {
   const files = Object.fromEntries(kept.map(([path, text]) => [single ? path.slice(path.indexOf("/") + 1) : path, text]));
   validateFiles(files);
 
+  return { files, hash: contentHash(files) };
+}
+
+/** problem_codebase.content_hash: the same files give the same hash, whatever their order. */
+export function contentHash(files) {
   const hash = createHash("sha256");
   for (const path of Object.keys(files).sort()) hash.update(path).update("\0").update(files[path]).update("\0");
-  return { files, hash: hash.digest("hex") };
+  return hash.digest("hex");
 }

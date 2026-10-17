@@ -31,6 +31,8 @@ export const config = {
   openaiApiKey: testing ? "" : (env.OPENAI_API_KEY ?? ""),
   openaiModel: env.OPENAI_MODEL ?? "gpt-4o",
   aiProvider: env.AI_PROVIDER ?? "",
+  // Bulk import scrape (/admin/import): optional, raises GitHub's limit from 60 to 5000 requests an hour.
+  githubToken: testing ? "" : (env.GITHUB_TOKEN ?? ""),
   // S1 (D62): overrides the Free plan's cheap model; the daily prompt limits are per plan (modules/plans/plans.js).
   aiFreeModel: env.AI_FREE_MODEL ?? "",
   // S6 (D63): master key for users' own API keys (AES-256-GCM). Unset = connecting a key is switched off.

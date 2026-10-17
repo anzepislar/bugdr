@@ -71,7 +71,7 @@ Phase: Backend slices (06_backend_slices.md) - frontend screens swap their mocks
 Frontend: 26 screens; login, signup, logout, forgot + reset password, onboarding, /problems, /problems/[slug] (incl. rating and discussion),
   the solve page, /profile/[username], /settings (profile tab), / (dashboard), the sidebar, /contests, /contests/[id],
   /admin/login, /admin (overview), /admin/problems (+ new, edit), /admin/contests (+ new, edit, results inline)
-  /admin/users (+ [id]), /admin/analytics, /admin/career-paths, /admin/inbox, /leaderboard and /career-paths use the
+  /admin/users (+ [id]), /admin/analytics, /admin/career-paths, /admin/inbox, /admin/import, /leaderboard and /career-paths use the
   real API, incl. the solve page's AI chat (M8) and the Help & feedback dialog
 Backend: Milestones M0 (F0-F4: skeleton, levels, auth, route protection, onboarding), M1 (P1-P2: problem list,
   bookmarks, problem detail, streak on view) and M2 (R1-R6: start, give up, try history, Docker check runner,
@@ -307,7 +307,7 @@ PostgreSQL
 | Contests | `/contests` | Daily/weekly/monthly |
 | Contest detail | `/contests/[id]` | Incident, rules, entry + your participation |
 | Leaderboard | `/leaderboard` | Public top 100 by points (include efficiency), All time / This month (D52) |
-| Admin | `/admin` | Problem + contest management, AI session analytics (`/admin/analytics`), inbox (`/admin/inbox`) |
+| Admin | `/admin` | Problem + contest management, AI session analytics (`/admin/analytics`), inbox (`/admin/inbox`), import from GitHub (`/admin/import`) |
 | Landing | Separate repo | Friend 2 builds this |
 
 ---

@@ -2,9 +2,9 @@ import express, { Router } from "express";
 import { randomBytes } from "node:crypto";
 import { pool } from "../../db.js";
 import { HttpError } from "../../errors.js";
-import { checkCodeLoads, runChecks } from "../runner/runner.service.js";
+import { checkCodeLoads, runChecks, validateFiles } from "../runner/runner.service.js";
 import { analysis } from "./analysis.service.js";
-import { readZip, ZIP_MAX_BYTES } from "./zip.js";
+import { contentHash, readZip, ZIP_MAX_BYTES } from "./zip.js";
 
 // A2: problem drafts, A10: a draft from an uploaded ZIP + Claude's analysis (D22). Publishing (with the check run,
 // D20) is A5, so everything here stays is_published = FALSE and a published problem cannot be edited.
@@ -88,7 +88,8 @@ function parseDraft(body) {
 
 /**
  * Writes a draft (insert when id is null) with its tags, checks and hidden files in one transaction.
- * `codebase` (A10, new drafts only) = the uploaded files: { files, hash, repositoryName, slugSuffix }.
+ * `codebase` (A10, new drafts only) = the uploaded files: { files, hash, repositoryName, slugSuffix }; the bulk import
+ * adds { slug, language, framework, solutionFiles, setupCommands, runCommand } and d.source / d.sourceUrl.
  */
 async function saveDraft(id, d, codebase = null) {
   const client = await pool.connect();
@@ -103,7 +104,7 @@ async function saveDraft(id, d, codebase = null) {
     }
     const values = [
       d.title,
-      toSlug(d.title) + (codebase?.slugSuffix ?? ""),
+      codebase?.slug ?? toSlug(d.title) + (codebase?.slugSuffix ?? ""),
       d.shortDescription,
       d.codebaseContext,
       d.incidentReport,
@@ -122,9 +123,9 @@ async function saveDraft(id, d, codebase = null) {
         )
       : await client.query(
           `INSERT INTO problems (title, slug, short_description, codebase_context, incident_report, difficulty, category_id,
-             base_points, time_limit_minutes, bug_summary, is_published)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, FALSE) RETURNING id, slug, is_published`,
-          values,
+             base_points, time_limit_minutes, bug_summary, source, source_url, is_published)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, FALSE) RETURNING id, slug, is_published`,
+          [...values, d.source ?? null, d.sourceUrl ?? null],
         );
     if (!rows.length) throw new HttpError(409, "PROBLEM_PUBLISHED", "A published problem cannot be edited");
     const problemId = rows[0].id;
@@ -138,9 +139,10 @@ async function saveDraft(id, d, codebase = null) {
     ]);
     await client.query("DELETE FROM problem_checks WHERE problem_id = $1", [problemId]);
     await client.query(
-      `INSERT INTO problem_checks (problem_id, check_order, description, check_type, check_command, must_pass)
-       SELECT $1, c.check_order, c.description, c.check_type, c.check_command, c.must_pass
-       FROM json_to_recordset($2) AS c (check_order INT, description TEXT, check_type TEXT, check_command TEXT, must_pass BOOLEAN)`,
+      `INSERT INTO problem_checks (problem_id, check_order, description, check_type, check_command, expected_output, must_pass)
+       SELECT $1, c.check_order, c.description, c.check_type, c.check_command, c.expected_output, c.must_pass
+       FROM json_to_recordset($2) AS c (check_order INT, description TEXT, check_type TEXT, check_command TEXT,
+         expected_output TEXT, must_pass BOOLEAN)`,
       [
         problemId,
         JSON.stringify(
@@ -150,6 +152,7 @@ async function saveDraft(id, d, codebase = null) {
             description: str(c.description),
             check_type: c.checkType,
             check_command: str(c.checkCommand),
+            expected_output: typeof c.expectedOutput === "string" ? c.expectedOutput : null,
             must_pass: c.mustPass,
           })),
         ),
@@ -158,10 +161,11 @@ async function saveDraft(id, d, codebase = null) {
     // The uploaded code is written once, when the analysis creates the draft (A10); edits change only the
     // hidden files. A draft saved without an upload (POST without code) gets an empty codebase.
     const files = codebase?.files ?? {};
-    const language = codebase ? languageOf(files) : "typescript";
+    const language = codebase?.language ?? (codebase ? languageOf(files) : "typescript");
     await client.query(
-      `INSERT INTO problem_codebase (problem_id, repository_name, repository_structure, files, hidden_files, language, content_hash)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO problem_codebase (problem_id, repository_name, repository_structure, files, hidden_files, language, content_hash,
+         solution_files, framework, setup_commands, run_command)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        ON CONFLICT (problem_id) DO UPDATE SET hidden_files = EXCLUDED.hidden_files`,
       [
         problemId,
@@ -171,6 +175,10 @@ async function saveDraft(id, d, codebase = null) {
         d.hiddenFiles,
         language,
         codebase?.hash ?? null,
+        codebase?.solutionFiles ?? null,
+        codebase?.framework ?? null,
+        codebase?.setupCommands ?? null,
+        codebase?.runCommand ?? null,
       ],
     );
     await client.query("COMMIT");
@@ -267,6 +275,64 @@ adminProblemsRouter.get("/:id", async (req, res) => {
 adminProblemsRouter.post("/", async (req, res) => {
   res.status(201).json(await saveDraft(null, parseDraft(req.body)));
 });
+
+const optionalText = (v, max = Infinity) => v == null || (typeof v === "string" && v.length <= max);
+
+/**
+ * Bulk import (/admin/import): one entry of an import.json scraped from GitHub (snake_case) → a draft with its full
+ * codebase, source 'github'. The page calls this once per problem. Publishing still needs the check run (A4/A5).
+ */
+export async function importProblem(req, res) {
+  const b = req.body ?? {};
+  const cb = b.codebase ?? {};
+  const draft = parseDraft({
+    title: b.title,
+    shortDescription: b.short_description,
+    codebaseContext: b.codebase_context,
+    incidentReport: b.incident_report,
+    difficulty: b.difficulty,
+    categorySlug: b.category_slug ?? null,
+    timeLimitMinutes: b.time_limit_minutes,
+    tags: b.tags ?? [],
+    checks: Array.isArray(b.checks)
+      ? b.checks.map((c) => ({
+          description: c?.description,
+          checkType: c?.check_type,
+          checkCommand: c?.check_command,
+          expectedOutput: c?.expected_output,
+          mustPass: c?.must_pass ?? true,
+        }))
+      : null,
+    hiddenFiles: cb.hidden_files ?? {},
+    bugSummary: b.bug_summary,
+  });
+  const details = {};
+  if (typeof b.slug !== "string" || !/^[a-z0-9-]{1,255}$/.test(b.slug)) details.slug = "Lowercase letters, digits and hyphens";
+  if (!optionalText(b.source_url, 500)) details.sourceUrl = "Up to 500 characters";
+  if (!cb.files || typeof cb.files !== "object" || !Object.keys(cb.files).length) details.files = "At least one file";
+  if (!optionalText(cb.language, 50) || !optionalText(cb.framework, 50)) details.language = "Up to 50 characters";
+  if (!optionalText(cb.setup_commands) || !optionalText(cb.run_command)) details.commands = "Text";
+  if (Object.keys(details).length) throw new HttpError(400, "VALIDATION_ERROR", "Check the highlighted fields", details);
+  validateFiles(cb.files);
+  if (cb.solution_files != null) validateFiles(cb.solution_files);
+
+  const saved = await saveDraft(
+    null,
+    { ...draft, source: "github", sourceUrl: b.source_url ?? null },
+    {
+      files: cb.files,
+      hash: contentHash(cb.files),
+      repositoryName: typeof cb.repository_name === "string" ? cb.repository_name.slice(0, 100) : null,
+      slug: b.slug,
+      language: cb.language || undefined,
+      framework: cb.framework ?? null,
+      solutionFiles: cb.solution_files ?? null,
+      setupCommands: cb.setup_commands ?? null,
+      runCommand: cb.run_command ?? null,
+    },
+  );
+  res.status(201).json(saved);
+}
 
 /** Replaces every editable field of a draft (the form always sends all of them). */
 adminProblemsRouter.put("/:id", async (req, res) => {

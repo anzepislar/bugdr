@@ -2390,3 +2390,44 @@ sledljivost), `00` (Career Paths, pragovi, brezplačna raven), `03`, `04`,
   `bugdr_admin` (JWT 8 h, ključ = `JWT_SECRET` + hash gesla), `requireAdmin`
   brez baze; odjava samo pobriše piškotek, globalni števec neuspehov (Z2).
 - Dokumenti posodobljeni: `00` (poti + sestava), `01`, `04`, `06`, `CLAUDE.md`.
+
+## 17. 10. 2026 — Seja 30: množični uvoz problemov
+
+- **X9:** `POST /admin/import-problem` - en problem iz `import.json` na klic,
+  kot osnutek z virom `github`. Uporabi obstoječa `parseDraft` + `saveDraft`
+  (ista validacija, transakcija, napake); `saveDraft` zdaj zapiše še slug iz
+  datoteke, `source`/`source_url`, `expected_output` in stolpce kode
+  (`solution_files`, `framework`, `setup_commands`, `run_command`, jezik).
+  `contentHash` izvlečen iz `zip.js`, zato ista koda dvakrat vrne 409.
+- Nova stran `/admin/import` (+ "Import" v admin meniju, ikona `upload`):
+  spustna cona, "Expected format" (`<details>`), predogled s preverbo po
+  vrsticah in gumbom za odstranitev, uvoz zaporedno z napredkom.
+- Testi 233/233 (nov `import`), lint, typecheck, build OK; stran v brskalniku
+  še ni preverjena.
+- **Uvoz z GitHuba (cevovod):** `/admin/import` ni več spustna cona, ampak
+  scrape → enrich → predogled → potrditev → osnutki. `POST /admin/scrape`
+  (NDJSON): združeni PR-ji z naslovom popravka, 1-3 spremenjene JS datoteke
+  (≤ 150 vrstic, brez C++/konfiguracije), diff + datoteka pred popravkom,
+  največ 10 kandidatov na repo, že uvoženi (`source_url`) preskočeni,
+  počakanje na GitHub omejitev (do 5 min), neobvezen `GITHUB_TOKEN`.
+  `POST /admin/enrich` (NDJSON): en klic Claude na kandidata (model
+  `ANTHROPIC_MODEL`, effort medium, 16000 žetonov, structured outputs z
+  `[{ path, content }]` seznami, fallbacks kot pri A10), Claude zgradi
+  samostojno kodo samo z vgrajenimi moduli Node ali zavrne PR; ob 429 počaka
+  60 s in poskusi enkrat znova. Oba toka pošiljata prazno vrstico vsakih
+  15 s (Next proxy) in se ustavita, ko admin zapre stran. Stran pošilja
+  kandidate v paketih po 10 in shranjuje z obstoječim `import-problem`.
+  Uporabnikova odločitev: brez množične objave in brez "dry run" brez
+  Dockerja - objava s preverjanji ostane vrata. Test `scrape`; testi 238/238.
+- Gumb "Download results.json" v predogledu uvoza (Blob, brez zaledja).
+- **Zdravje storitev:** `GET /admin/health` (`health.service.js`) vzporedno
+  preveri Anthropic (`messages.create`, 1 žeton), OpenAI (`/v1/models`),
+  GitHub (`/rate_limit`, opozorilo pod 100 zahtevami) in Resend (`/domains`),
+  vsak z 10 s omejitvijo; vedno 200, stanja ok / warn / error / unconfigured,
+  brez ključev v odgovoru. Kartica "Services" na dnu `/admin` z gumbom
+  Recheck (brez samodejnega osveževanja). Test `health`; testi 242/242.
+- Ping za Anthropic preklopljen na `claude-haiku-4-5` (ne razmišlja, 1 žeton);
+  `thinking: disabled` bi Sonnet 5.5 zavrnil s 400. Preverja ključ, ne
+  dostopa do `ANTHROPIC_MODEL`.
+- Dokumenti posodobljeni: `00`, `04` (Services, Import from GitHub), `05`,
+  `06`, `CLAUDE.md`.
