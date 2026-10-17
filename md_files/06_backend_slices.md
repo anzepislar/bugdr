@@ -17,9 +17,9 @@ povezala na API.
 ## Stanje
 
 ```
-Zadnja posodobitev: 17. 10. 2026 (kategoriji Mobile + DevOps / Infra, migracija 0031; testi 229/229)
-Backend: X8 ✅ (čakalni seznam), M10 ✅ (E1-E6, e-pošta), M9 ✅ (K1-K3), M8 ✅ (S1-S8), M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2), M6 ✅ (A1-A10 + A9.1)
-Frontend: 26 zaslonov (večina na API) - /login, /signup, /forgot-password, /reset-password, /onboarding, / (dashboard),
+Zadnja posodobitev: 17. 10. 2026 (X9 uvoz z GitHuba + kartica Services, migracija 0032; testi 245/245)
+Backend: X9 ✅ (uvoz z GitHuba), X8 ✅ (čakalni seznam), M10 ✅ (E1-E6, e-pošta), M9 ✅ (K1-K3), M8 ✅ (S1-S8), M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2), M6 ✅ (A1-A10 + A9.1)
+Frontend: 28 zaslonov (večina na API) - /login, /signup, /forgot-password, /reset-password, /onboarding, / (dashboard),
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
           /profile/[username], /settings, /contests, /contests/[id], /admin/problems/new,
           /admin (pregled), /admin/contests, /admin/contests/new, /admin/contests/[id]/edit,
@@ -427,7 +427,7 @@ polnijo s seed skripto.
 
 **A5 · Objava** `S` · odvisno od: A4 · ✅ 9. 10. 2026
 - API: `POST /admin/problems/:id/publish` / `unpublish`. Objava zavrnjena brez ≥ 3 preverjanj in uspešnega dry-runa (vsa padejo na izvirni kodi, D20) (`04` "Quality Guidelines"). Brisanje rešenega problema ni mogoče - samo unpublish (`04` "Admin Rules").
-- Narejeno: `POST /admin/problems/:id/publish` **vedno znova zažene preverjanja** (uporabnik, A4) - isti NDJSON tok kot dry-run, objavi samo, če vsa padejo in se osnutek med zagonom ni spremenil; konec `{ type: "done", ok, published, slug? }`. Pred tokom 409: že objavljen, brez vloge (`NO_ROLE`), < 3 preverjanja (`TOO_FEW_CHECKS`), brez kode, brez skritih testnih datotek (`NO_HIDDEN_FILES`, D53). `POST /admin/problems/:id/unpublish` → spet osnutek (urejljiv, nova objava = nov zagon); 409, če je problem v tekmovanju, ki še ni končano (`IN_CONTEST`). Brisanja ni. Urejanje preverjanj prej objavljenega problema izbriše shranjene `check_results` uporabnikov za ta preverjanja (`ON DELETE CASCADE`).
+- Narejeno: `POST /admin/problems/:id/publish` **vedno znova zažene preverjanja** (uporabnik, A4) - isti NDJSON tok kot dry-run, objavi samo, če vsa padejo in se osnutek med zagonom ni spremenil; konec `{ type: "done", ok, published, slug? }`. Pred tokom 409: že objavljen, brez vloge (`NO_ROLE`), brez preverjanj (`NO_CHECKS`; meja 3 preverjanj odstranjena 17. 10. 2026), brez kode, brez skritih testnih datotek (`NO_HIDDEN_FILES`, D53). `POST /admin/problems/:id/unpublish` → spet osnutek (urejljiv, nova objava = nov zagon); 409, če je problem v tekmovanju, ki še ni končano (`IN_CONTEST`). Brisanja ni. Urejanje preverjanj prej objavljenega problema izbriše shranjene `check_results` uporabnikov za ta preverjanja (`ON DELETE CASCADE`).
 - Frontend: gumb "Publish Problem" je v kartici Check run (korak Publish in urejanje), uspeh → "Problem published" + "View problem"; objavljen problem na strani urejanja: zaklenjen, "View problem" + "Unpublish" (`ConfirmDialog`). Seznam: "Manage" za objavljene.
 
 **A6 · Tekmovanja** `M` · odvisno od: A1, T1 · ✅ 9. 10. 2026
@@ -608,8 +608,8 @@ Vsa e-pošta gre prek Resend. Uporabnik nastavi `RESEND_API_KEY` (poln dostop) i
 
 **X9 · Množični uvoz (GitHub)** `S` · odvisno od: A2 · ✅ 17. 10. 2026
 - `POST /admin/import-problem` (admin): en vnos iz `import.json` (snake_case) → osnutek prek `parseDraft` + `saveDraft` (ista validacija in transakcija kot A10), `source = 'github'`, `source_url`, slug iz datoteke, cela koda (`files`, `solution_files`, `hidden_files`, `language`, `framework`, `setup_commands`, `run_command`), `expected_output` pri preverjanjih, `content_hash` (ista koda dvakrat = 409 `DUPLICATE_CODEBASE`). Odgovor 201 `{ id, slug, isPublished }`, napake v skupni obliki.
-- Frontend: `/admin/import` (Import v admin meniju): spustna cona za `.json`, predogled s preverbo po vrsticah (neveljavne se preskočijo), uvoz eden za drugim z napredkom in stanjem po vrstici.
-- Test: `import`. Objava še vedno prek preverjanj na strani za urejanje (A4/A5).
+- Frontend: `/admin/import` (Import v admin meniju): sprva spustna cona za `.json`, zdaj cevovod spodaj; predogled s preverbo po vrsticah (neveljavne se preskočijo), uvoz eden za drugim z napredkom in stanjem po vrstici.
+- Test: `import`.
 - Cevovod z GitHuba (zamenja spustno cono): `POST /admin/scrape` (NDJSON, združeni JS popravki, diff + datoteka pred popravkom, `GITHUB_TOKEN` neobvezen) → `POST /admin/enrich` (NDJSON, Claude zgradi samostojen problem na vgrajenih modulih Node ali zavrne PR) → predogled → `import-problem` (osnutki). Test: `scrape`.
 - Predogled ima "Download results.json" (Blob). Kartica "Services" na `/admin`: `GET /admin/health` (Anthropic ping na `claude-haiku-4-5`, OpenAI, GitHub, Resend; vedno 200, brez ključev), Recheck brez samodejnega osveževanja. Test: `health`.
 - 17. 10. 2026 (uporabnik): potrditev uvoza = `POST /admin/bulk-import-problem`: osnutek (zavrne problem brez vloge ali skritih testov), nato v ozadju (vrsta, en zagon naenkrat) isti Docker zagon kot objava (`runChecksAndMaybePublish`); ob uspehu objavi, sicer ostane osnutek z razlogom. Migracija 0032 `problems.import_check_status` (pending/passed/failed) + `import_check_error`. `import-problem` še vedno shrani osnutek brez zagona. Objava (A5) ne zahteva več 3 preverjanj, dovolj je eno (tudi obrazec Review). Test: `import`, `a4`.
