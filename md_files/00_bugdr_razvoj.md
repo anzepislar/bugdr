@@ -68,7 +68,7 @@ bugdr/
 
 ```
 Phase: Backend slices (06_backend_slices.md) - frontend screens swap their mocks slice by slice
-Frontend: 26 screens; login, signup, logout, forgot + reset password, onboarding, /problems, /problems/[slug] (incl. rating and discussion),
+Frontend: 28 screens; login, signup, logout, forgot + reset password, onboarding, /problems, /problems/[slug] (incl. rating and discussion),
   the solve page, /profile/[username], /settings (profile tab), / (dashboard), the sidebar, /contests, /contests/[id],
   /admin/login, /admin (overview), /admin/problems (+ new, edit), /admin/contests (+ new, edit, results inline)
   /admin/users (+ [id]), /admin/analytics, /admin/career-paths, /admin/inbox, /admin/import, /leaderboard and /career-paths use the
@@ -84,12 +84,15 @@ Backend: Milestones M0 (F0-F4: skeleton, levels, auth, route protection, onboard
   S7 per-problem benchmark, S8 post-solve feedback, S4 public leaderboard, S5 admin AI analytics) and M9 (career
   paths: K1 path problems in the admin, K2 progress + assignment + unlock + /career-paths, K3 admin thresholds +
   metrics) and M10 (email through Resend: E1 email module, E2 Help & feedback + /admin/inbox with replies by
-  email, E3 password reset, E4 welcome email, E5 rank up email with the share card as a PNG) done; next M7 (Z1, Z2)
-Database: PostgreSQL 17 in Docker; migrations 0001-0026 (levels, users, profiles, problems, problem detail,
+  email, E3 password reset, E4 welcome email, E5 rank up email with the share card as a PNG) and X9 (import from GitHub:
+  scrape → Claude enrich → preview → draft + background Docker check run → published on a pass; service health card)
+  done; next M7 (Z1, Z2)
+Database: PostgreSQL 17 in Docker; migrations 0001-0032 (levels, users, profiles, problems, problem detail,
   problem brief, attempt tries, check results + points ledger, comment replies + helpful, profile fields, contests,
   contest entries, drop users.is_admin, bug summary, codebase hash, dry-run version, contest reward sent,
   solve sessions + prompts, user API keys, editor events, problem benchmarks, solve feedback, problem career paths,
-  career path progress + attempts per path, career path thresholds, inbox + password reset tokens);
+  career path progress + attempts per path, career path thresholds, inbox + password reset tokens, path reminder,
+  plans, benchmark snapshot, waitlist, mobile + devops categories, import check status);
   `npm run seed` = 12 dev problems with code and checks, no made-up ratings (D57); only payment-retries-disappear
   is runnable so far; + 5 dev contests (dates relative to the seed run)
 Detailed status: CLAUDE.md "Current Status" and 06_backend_slices.md "Stanje"
