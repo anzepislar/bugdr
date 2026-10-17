@@ -27,7 +27,7 @@ Route: `/admin` — fully protected, redirects non-admins.
    (AI suggestion marked), role, acceptance checks (3+). Time limit = low end of the recommended range (D45).
 3. Publish: Save as Draft, Run checks, Publish Problem.
    Career paths (K1, built, D66): Review has a "Career paths" checkbox group (AI Engineer / Backend / Frontend /
-   Full Stack / Database), also on the edit page; none ticked = general problem on `/problems`. A path problem is
+   Full Stack / Database / Mobile / DevOps / Infra), also on the edit page; none ticked = general problem on `/problems`. A path problem is
    hidden from `/problems`, the dashboard feed and the contest problem picker; its difficulty is its stage in the
    path. The Publish summary says where it goes, the problem list shows "Career path: …" under the title.
 - Source (github / claude_generated) + source URL: not built

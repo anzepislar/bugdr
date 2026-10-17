@@ -2371,3 +2371,22 @@ sledljivost), `00` (Career Paths, pragovi, brezplačna raven), `03`, `04`,
   vrstica je skrita, dokler je seznam prazen (ne izmišljeno 247). `/` ostane
   dashboard.
 - Lint, typecheck, build OK; stran in modal v brskalniku še nista preverjena.
+
+## 17. 10. 2026 — Seja 29: kategoriji Mobile + DevOps, preverba sheme
+
+- **Shema vs. `01_database.md`:** shema, zgrajena iz vseh migracij, primerjana
+  z vsemi `CREATE TABLE` v `01` (tabele, stolpci, osnovni tipi). Manjkal je
+  samo `career_path_progress.reminder_sent_at` (0027) - dodan.
+  `contest_attempt_links` je v `01` označena kot nezgrajena (pravilno).
+- **Migracija 0031:** kategoriji `Mobile Engineer` / `mobile` in
+  `DevOps / Infra` / `devops` (z opisom). Ker se karierne poti berejo iz
+  `problem_categories`, sta to tudi dve novi karierni poti (še brez problemov).
+  Dopolnjeno: `GOAL_ROLES` v `me.routes.js` (`goal_role` nima CHECK, samo
+  API), `CATEGORIES` v `frontend/src/lib/types/problem.ts` (vsi izbirniki
+  vlog), izbira vloge na onboardingu. Testi `p1`, `k2`, `a9`, `k1`
+  prilagojeni na 7 kategorij (`k1` za neznano vlogo zdaj uporablja `qa`).
+  Testi 229/229 (prvi poln zagon je padel, ker se je Docker ustavil).
+- Pregled admin prijave (samo razlaga, brez sprememb): ločen piškotek
+  `bugdr_admin` (JWT 8 h, ključ = `JWT_SECRET` + hash gesla), `requireAdmin`
+  brez baze; odjava samo pobriše piškotek, globalni števec neuspehov (Z2).
+- Dokumenti posodobljeni: `00` (poti + sestava), `01`, `04`, `06`, `CLAUDE.md`.

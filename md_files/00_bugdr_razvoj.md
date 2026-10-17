@@ -174,7 +174,8 @@ Every user has one plan (`users.plan`). Until payments exist (no Stripe yet) the
 Career paths guide engineers from Easy to "Get a job" difficulty through a structured progression that mirrors what they would actually encounter in their target role.
 
 ### How it works (D66)
-- One path per role: AI Engineer, Backend, Frontend, Full Stack, Database
+- One path per role: AI Engineer, Backend, Frontend, Full Stack, Database, Mobile, DevOps / Infra (Mobile + DevOps
+  added 17. 10. 2026, migration 0031 - no problems yet)
 - Every path has its own set of problems, Easy to Get a job. Path problems are not shown on `/problems`;
   the admin puts a problem into one or more paths when publishing it
 - A user can follow any number of paths at once, each with its own progress; the onboarding role is only shown first
@@ -199,6 +200,8 @@ Career paths guide engineers from Easy to "Get a job" difficulty through a struc
 | Frontend Engineer | Frontend, UI | Backend APIs | Performance |
 | Full Stack | Frontend + Backend | Database | DevOps |
 | Database Engineer | Database, queries | Backend | DevOps |
+| Mobile Engineer | iOS, Android, cross-platform (Swift, Kotlin, React Native, Flutter) | Backend APIs | Performance |
+| DevOps / Infra | CI/CD, containers, infrastructure (Docker, Kubernetes, Terraform, GitHub Actions) | Backend | Database |
 
 ### Why breadth matters
 Engineers don't just need depth in their specialty — they need enough breadth to function in a real team. Career paths reflect this. An AI engineer who can't debug a broken API is incomplete. The path teaches the full picture.

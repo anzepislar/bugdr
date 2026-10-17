@@ -17,7 +17,7 @@ povezala na API.
 ## Stanje
 
 ```
-Zadnja posodobitev: 14. 10. 2026
+Zadnja posodobitev: 17. 10. 2026 (kategoriji Mobile + DevOps / Infra, migracija 0031; testi 229/229)
 Backend: X8 ✅ (čakalni seznam), M10 ✅ (E1-E6, e-pošta), M9 ✅ (K1-K3), M8 ✅ (S1-S8), M0 ✅ (F0-F4), M1 ✅ (P1 seznam problemov, P2 podrobnosti problema), M2 ✅ (R1, R2, R2b, R3, R4, R5, R6), M3 ✅ (O1, O2), M4 ✅ (U1, U2, U3), M5 ✅ (T1, T2), M6 ✅ (A1-A10 + A9.1)
 Frontend: 26 zaslonov (večina na API) - /login, /signup, /forgot-password, /reset-password, /onboarding, / (dashboard),
           /problems, /problems/[slug] (+ rešen problem + razprava), /problems/[slug]/solve,
@@ -166,7 +166,7 @@ seznam sprememb za tabele, ki še niso zgrajene. Narejeno v `01`: `users`
 (F2), `user_profiles` + `languages` (F4), `problem_categories`, `problems`, `problem_tags`,
 `problem_bookmarks`, `user_problem_attempts` (P1), `attempt_tries` (R2b), `check_results`, `point_transactions` (R4), `problem_codebase` (+ `hidden_files`, `solution_files`,
 `repository_name`), `problem_checks`, `problem_ratings`, `problem_comments`, `user_daily_activity` (P2); `problem_comments.parent_id`, `comment_helpful` (O2, migracija 0009 - brez `helpful_count`, šteje se ob branju);
-`problems.description` → `codebase_context` + `incident_report` (migracija 0006, 8. 10. 2026); `contests` (NULL datumi, `archived_at`), `contest_problems` (T1, migracija 0011), `contest_entries` (T2, migracija 0012; `contest_attempt_links` ni zgrajena); `solve_sessions`, `prompt_events` (S1, migracija 0018); `user_api_keys` (S6, migracija 0019); `editor_events` (S2, migracija 0020); `problem_benchmarks` (S7, migracija 0021); `solve_feedback` (S8, migracija 0022); `problem_career_paths` (K1, migracija 0023); `career_path_progress`, `user_problem_attempts.career_path` (K2, migracija 0024); `career_path_thresholds` (K3, migracija 0025); `inbox_threads`, `inbox_entries`, `password_reset_tokens`, `users.password_changed_at` (E2, E3, migracija 0026); `career_path_progress.reminder_sent_at` (E6, migracija 0027); `users.plan` (X2, migracija 0028); `user_problem_attempts.benchmark_snapshot` (merila povratnih informacij, migracija 0029).
+`problems.description` → `codebase_context` + `incident_report` (migracija 0006, 8. 10. 2026); `contests` (NULL datumi, `archived_at`), `contest_problems` (T1, migracija 0011), `contest_entries` (T2, migracija 0012; `contest_attempt_links` ni zgrajena); `solve_sessions`, `prompt_events` (S1, migracija 0018); `user_api_keys` (S6, migracija 0019); `editor_events` (S2, migracija 0020); `problem_benchmarks` (S7, migracija 0021); `solve_feedback` (S8, migracija 0022); `problem_career_paths` (K1, migracija 0023); `career_path_progress`, `user_problem_attempts.career_path` (K2, migracija 0024); `career_path_thresholds` (K3, migracija 0025); `inbox_threads`, `inbox_entries`, `password_reset_tokens`, `users.password_changed_at` (E2, E3, migracija 0026); `career_path_progress.reminder_sent_at` (E6, migracija 0027); `users.plan` (X2, migracija 0028); `user_problem_attempts.benchmark_snapshot` (merila povratnih informacij, migracija 0029); `waitlist` (X8, migracija 0030); kategoriji `mobile` + `devops` v `problem_categories` (migracija 0031, 17. 10. 2026: hkrati novi karierni poti; `GOAL_ROLES` v `me.routes.js` in `CATEGORIES` v `frontend/src/lib/types/problem.ts` dopolnjena, `goal_role` nima CHECK).
 
 ---
 
@@ -200,7 +200,7 @@ seznam sprememb za tabele, ki še niso zgrajene. Narejeno v `01`: `users`
 | M5 Tekmovanja | T1 → T2 | Seznam tekmovanj, rezultati |
 | M6 Admin | A1 → A2 → A10 → A3 → A4 → A5 → A6-A9 → A9.1 | Upravljanje problemov, tekmovanj, uporabnikov, statistika |
 | M8 AI seja | S1 → S6 → S2 → S3 → S7 → S8 → S4, S5 | Vgrajeni AI klepet (brezplačni model / lasten ključ), zajem seje, ocena učinkovitosti v točkah, benchmark problema, povratna informacija po rešitvi, lestvica, AI analitika |
-| M9 Karierne poti | K1 → K2 → K3 | Problemi poti v adminu, 5 poti z lastnimi problemi in stopnjami, odklep s pragom, pragovi v adminu |
+| M9 Karierne poti | K1 → K2 → K3 | Problemi poti v adminu, 7 poti (od 17. 10. 2026; prej 5) z lastnimi problemi in stopnjami, odklep s pragom, pragovi v adminu |
 | M10 E-pošta | E1 → E2 → E3 → E4 → E5 → E6 | Vsa e-pošta prek Resend, Help & feedback, admin predal z odgovori, ponastavitev gesla, pozdravna e-pošta, e-pošta ob napredovanju |
 | M7 Produkcija | Z1 → Z2 | Seed zaklenjen v produkciji, varna namestitev |
 
@@ -526,7 +526,7 @@ Odločitve D51, D62-D65 rešene 9. 10. 2026 (priprava M8, Seja 21); čaka samo �
 
 ### M9 - Karierne poti (`00` "Career Paths", D66, D67)
 
-Vsaka pot (5 vlog) ima svoj nabor problemov od Easy do Get a job; višja stopnja se odklene s pragom (D66 e). V razvoju odprto vsem (D67). Ni dizajna - postavitev strani vprašaj ob K2.
+Vsaka pot (7 vlog; Mobile + DevOps / Infra dodani 17. 10. 2026, migracija 0031) ima svoj nabor problemov od Easy do Get a job; višja stopnja se odklene s pragom (D66 e). V razvoju odprto vsem (D67). Ni dizajna - postavitev strani vprašaj ob K2.
 
 **K1 · Problemi poti v adminu** `S` · odvisno od: A2, A5 · ✅ 9. 10. 2026
 - Narejeno: migracija 0023 `problem_career_paths` (vloga = FK na `problem_categories.slug`); osnutek (`POST`/`PUT /admin/problems`) sprejme `careerPaths: string[]` (manjka = `[]`, podvojeni odstranjeni, neznana vloga → 400), `GET /admin/problems` in `/:id` ga vrneta. Izbira je **na obrazcu Review** (kljukice "Career paths" pod Role), zato velja tudi na strani urejanja; povzetek Publish pove, kam gre problem; seznam pokaže "Career path: …" pod naslovom. Poti se spreminjajo kot ostala polja - samo na osnutku. `/problems/[slug]` problema poti ostane odprt do K2 (Start z dodelitvijo). Test `test/k1.test.js`.
@@ -538,7 +538,7 @@ Vsaka pot (5 vlog) ima svoj nabor problemov od Easy do Get a job; višja stopnja
 - Dodelitev (D66 d, f): odprt poskus poti, sicer najstarejši (`created_at`) objavljen problem stopnje, ki ga na tej poti še ni zaključil, sicer najstarejši, zaključen pred > 3 meseci; sicer `null`. Zaključen = rešen (`solved_at`) ali opuščen (`started_at` zadnjega poskusa - ponytail).
 - Start: `POST /problems/:slug/start` sprejme `{ careerPath }`; problem poti brez poti → 403 `PATH_PROBLEM`, nedodeljen → 403 `NOT_ASSIGNED`, problem ni na tej poti → 404. Prvi start ustvari vrstico napredka. Odprt poskus na odstranjenem (unpublished) problemu se ob startu opusti, da pot ne obtiči.
 - Po rešitvi (transakcija R4, zaklenjena vrstica napredka): ≥ najmanjše število rešitev in povprečja zadnjih 5 (Hard 3) izpolnijo vse pogoje → naslednja stopnja + `stage_unlocked_at`. Ponovna rešitev po rotaciji = nov poskus, točke znova.
-- API: `GET /career-paths` → vseh 5 poti (vloga z onboardinga prva): `started`, `stage`, `stageUnlockedAt`, `solvesOnStage`, `progress` (metrike trenutno / prag / izpolnjeno, null na Get a job), `nextProblem`. Brez `GET /career-paths/:role` in `POST .../start` (ena stran, vrstica ob prvem startu).
+- API: `GET /career-paths` → vse poti (zdaj 7, iz `problem_categories`) (vloga z onboardinga prva): `started`, `stage`, `stageUnlockedAt`, `solvesOnStage`, `progress` (metrike trenutno / prag / izpolnjeno, null na Get a job), `nextProblem`. Brez `GET /career-paths/:role` in `POST .../start` (ena stran, vrstica ob prvem startu).
 - Podrobnosti problema (`GET /problems/:slug`) berejo **zadnji** poskus (LATERAL) + `isPathProblem`, `careerPath`; ocena in komentarji: "rešen" = katerikoli rešen poskus. Dashboard `inProgress.careerPath`.
 - Frontend (uporabnik 10. 10. 2026): **ena stran `/career-paths` s harmoniko** (`<details>`, brez JS) - vrstica = ime, "Your role", 4 koraki, stopnja · rešitve; odprta = stopnje (✓ / trenutna z vrsticami metrik / 🔒) + kartica "Next problem" (Start / Resume → `/problems/[slug]/solve?path=`). "Career paths" v stranski vrstici, `/career-paths` v `proxy.ts`. Zaslon reševanja vzame `?path=`, Give up na poti → `/career-paths`; podrobnosti problema poti: "Career path problem" kartica namesto Start, "Next problem" po rešitvi → `/career-paths`.
 - Testi: `test/k2-thresholds.test.js` (pragovi), `test/k2.test.js` (dodelitev, start 403/404, dvojni start, odklep, drsno okno, ločenost po poti, rotacija, prava rešitev v Dockerju z drugimi točkami po rotaciji). 199/199. V brskalniku preverjeno pri 320-2560 px z začasnimi podatki (odstranjeni).
