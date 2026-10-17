@@ -10,7 +10,7 @@ meRouter.use(requireAuth);
 
 // Allowed values (01_database.md). Keep in sync with frontend/src/lib/types (CATEGORIES, EXPERIENCE_LEVELS,
 // PLATFORM_GOALS, LANGUAGES).
-const GOAL_ROLES = ["ai-engineer", "backend", "frontend", "fullstack", "database"];
+const GOAL_ROLES = ["ai-engineer", "backend", "frontend", "fullstack", "database", "mobile", "devops"];
 const EXPERIENCE_LEVELS = ["student", "junior", "mid", "senior"];
 const PLATFORM_GOALS = ["get_hired", "improve_skills", "both"];
 const LANGUAGES = ["TypeScript", "JavaScript", "Python", "Go", "SQL", "Java", "Rust", "C#"];

@@ -108,7 +108,7 @@ test("GET /career-paths: every role, the goal role first, Easy, the oldest Easy 
   const u = await signup();
   await pool.query("INSERT INTO user_profiles (user_id, goal_role) VALUES ($1, 'database')", [u.id]);
   const list = await paths(u.cookie);
-  assert.deepEqual(list.map((p) => p.role), ["database", "ai-engineer", "backend", "frontend", "fullstack"]);
+  assert.deepEqual(list.map((p) => p.role), ["database", "ai-engineer", "backend", "frontend", "fullstack", "devops", "mobile"]);
   assert.equal(list[0].isGoalRole, true);
   const backend = list.find((p) => p.role === "backend");
   assert.deepEqual(

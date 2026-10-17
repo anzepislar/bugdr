@@ -121,7 +121,7 @@ test("totals, fixed-window charts and breakdowns", async () => {
   assert.deepEqual([s.solvesPerDay.at(-1).solves, s.solvesPerDay.at(-3).solves, s.solvesPerDay.at(-11).solves], [1, 1, 1]);
 
   assert.deepEqual(s.solvesByDifficulty, { easy: 2, medium: 0, hard: 1, get_a_job: 0 });
-  assert.equal(s.solvesByRole.length, 5); // every role, also without solves
+  assert.equal(s.solvesByRole.length, 7); // every role, also without solves
   assert.deepEqual(s.solvesByRole.slice(0, 2), [{ categorySlug: "backend", solves: 2 }, { categorySlug: "frontend", solves: 1 }]);
   assert.deepEqual(s.streaks, [
     { range: "1d", users: 1 },

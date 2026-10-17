@@ -43,9 +43,9 @@ after(async () => {
   await pool.end();
 });
 
-test("the five categories are seeded by the migration", async () => {
+test("the seven categories are seeded by the migrations", async () => {
   const { rows } = await pool.query("SELECT slug FROM problem_categories ORDER BY slug");
-  assert.deepEqual(rows.map((r) => r.slug), ["ai-engineer", "backend", "database", "frontend", "fullstack"]);
+  assert.deepEqual(rows.map((r) => r.slug), ["ai-engineer", "backend", "database", "devops", "frontend", "fullstack", "mobile"]);
 });
 
 test("base_points must match the difficulty", async () => {

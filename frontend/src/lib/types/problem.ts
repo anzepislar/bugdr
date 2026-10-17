@@ -31,6 +31,8 @@ export const CATEGORIES = [
   { slug: "frontend", name: "Frontend Engineer" },
   { slug: "fullstack", name: "Full Stack" },
   { slug: "database", name: "Database Engineer" },
+  { slug: "mobile", name: "Mobile Engineer" },
+  { slug: "devops", name: "DevOps / Infra" },
 ] as const;
 export type CategorySlug = (typeof CATEGORIES)[number]["slug"];
 

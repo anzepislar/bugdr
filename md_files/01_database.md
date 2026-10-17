@@ -82,7 +82,7 @@ Stores onboarding answers and the profile fields from `/settings` (D34). One row
 CREATE TABLE user_profiles (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id               UUID REFERENCES users(id) ON DELETE CASCADE UNIQUE,
-  goal_role             VARCHAR(50),   -- problem_categories.slug: 'ai-engineer', 'backend', 'frontend', 'fullstack', 'database'; NULL = "Exploring my path"
+  goal_role             VARCHAR(50),   -- problem_categories.slug: 'ai-engineer', 'backend', 'frontend', 'fullstack', 'database', 'mobile', 'devops' (API list GOAL_ROLES in me.routes.js, no CHECK); NULL = "Exploring my path"
   experience_level      VARCHAR(20),   -- 'student', 'junior', 'mid', 'senior'
   platform_goal         VARCHAR(20),   -- 'get_hired', 'improve_skills', 'both'
   languages             TEXT[] NOT NULL DEFAULT '{}',  -- from onboarding step 4 (fixed list)
@@ -136,6 +136,8 @@ CREATE TABLE problem_categories (
 - Frontend Engineer / frontend
 - Full Stack / fullstack
 - Database Engineer / database
+- Mobile Engineer / mobile (migration 0031)
+- DevOps / Infra / devops (migration 0031)
 
 ### problems
 The main problem table.
@@ -326,6 +328,7 @@ CREATE TABLE career_path_progress (
   current_stage     VARCHAR(20) NOT NULL DEFAULT 'easy' CHECK (current_stage IN ('easy', 'medium', 'hard', 'get_a_job')),
   started_at        TIMESTAMP NOT NULL DEFAULT now(),
   stage_unlocked_at TIMESTAMP,
+  reminder_sent_at  TIMESTAMP,                   -- E6 "Your X path is waiting" email (migration 0027); next one only after newer activity, NULL again if sending fails
   PRIMARY KEY (user_id, role)
 );
 ```

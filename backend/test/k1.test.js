@@ -91,7 +91,7 @@ test("saving a draft replaces its paths; unknown or malformed roles are 400", as
   assert.equal((await call("PUT", `/admin/problems/${id}`, draft({ title: "Draft", careerPaths: [] }))).status, 200);
   assert.deepEqual((await (await call("GET", `/admin/problems/${id}`)).json()).problem.careerPaths, []);
 
-  for (const careerPaths of [["devops"], "backend", [1]]) {
+  for (const careerPaths of [["qa"], "backend", [1]]) {
     const res = await call("PUT", `/admin/problems/${id}`, draft({ title: "Draft", careerPaths }));
     assert.equal(res.status, 400, JSON.stringify(careerPaths));
     assert.ok((await res.json()).error.details.careerPaths);

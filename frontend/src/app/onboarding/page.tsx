@@ -32,6 +32,8 @@ const ROLES: Choice<RoleChoice>[] = [
   { value: "fullstack", name: "Full-stack engineer", hint: "From the browser to the database" },
   { value: "ai-engineer", name: "AI engineer", hint: "Models, retrieval and data pipelines" },
   { value: "database", name: "Database engineer", hint: "Queries, storage and reliability" },
+  { value: "mobile", name: "Mobile engineer", hint: "iOS, Android and cross-platform apps" },
+  { value: "devops", name: "DevOps / Infra engineer", hint: "CI/CD, containers and infrastructure" },
   { value: "exploring", name: "Exploring my path", hint: "Start with a little of everything" },
 ];
 
