@@ -2431,3 +2431,23 @@ sledljivost), `00` (Career Paths, pragovi, brezplačna raven), `03`, `04`,
   dostopa do `ANTHROPIC_MODEL`.
 - Dokumenti posodobljeni: `00`, `04` (Services, Import from GitHub), `05`,
   `06`, `CLAUDE.md`.
+- Privzeti seznam repozitorijev na uvozu zamenjan z 59 repozitoriji
+  (uporabnik); stran in strežnik še vedno sprejmeta največ 20 na zagon.
+- **Objava brez preverjanj:** objava (A5) ne zahteva več vsaj 3 preverjanj
+  (dovolj je eno, tudi na obrazcu Review). Potrditev uvoza zdaj objavi takoj
+  prek novega `POST /admin/bulk-import-problem` (ista logika, `saveDraft`
+  z `isPublished`, brez Docker preverjanj), zavrne pa problem brez vloge ali
+  skritih testov. `import-problem` ostane osnutek. Testi 244/244.
+- Scrape zdaj pregleda do 1000 zaprtih PR-jev na repo (10 strani po 100,
+  konec ob krajši strani); omejitvi 10 kandidatov in 40 pregledanih seznamov
+  datotek na repo ostaneta.
+- **Uvoz: osnutek → Docker → samodejna objava** (nadomesti takojšnjo
+  objavo): `bulk-import-problem` shrani osnutek s
+  `import_check_status = 'pending'` in doda problem v vrsto v procesu (en
+  Docker zagon naenkrat). `runChecksAndMaybePublish` uporabi `loadForRun` +
+  `streamCheckRun` iz objave; ko vsa preverjanja padejo na hroščati kodi,
+  objavi (`passed`), sicer ostane osnutek (`failed`) z razlogom v
+  `import_check_error`. Ponovni zagon backend-a pusti vrstice `pending`.
+  Migracija 0032. `saveDraft` spet vedno shrani osnutek. Sporočilo na strani:
+  "Imported X problems — running checks, will publish automatically on pass."
+  Testi 245/245 (Docker test v `import`).

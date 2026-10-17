@@ -7,7 +7,7 @@ import { pool } from "../../db.js";
 // 5000 requests an hour.
 
 const API = "https://api.github.com";
-const PAGES = 3; // 100 closed PRs per page, newest first
+const PAGES = 10; // 100 closed PRs per page, newest first (up to 1000 per repo)
 const MAX_PER_REPO = 10; // candidates per repo (each one costs a Claude call in enrichment)
 const MAX_FILE_LOOKUPS = 40; // bug-titled PRs whose file lists are fetched, per repo
 const MAX_SOURCE_FILES = 3;

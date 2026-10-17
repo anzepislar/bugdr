@@ -45,8 +45,8 @@ Route: `/admin` — fully protected, redirects non-admins.
 **Check run + publish (built A4 + A5, D20):**
 - Run checks: every check runs in Docker against the buggy code and must FAIL (a check that passes does not
   catch the bug). A passing run only counts for the version it ran on - any save or code replacement clears it.
-- Publish Problem always runs the checks again and publishes only if all fail. Needs a role, at least 3 checks,
-  the code and hidden test files.
+- Publish Problem always runs the checks again and publishes only if all fail. Needs a role, at least one check
+  (the 3-check minimum was dropped, user 17. 10. 2026), the code and hidden test files.
 - Unpublish: back to an editable draft; not while the problem is in a contest that has not ended.
 
 ---
@@ -188,7 +188,7 @@ number of new threads:
 ### 6. Import from GitHub (`/admin/import`)
 
 Built 17. 10. 2026 (X9). "Import" in the admin sidebar, after Problems. Pipeline:
-1. **Scrape** (`POST /admin/scrape`, NDJSON): for each repo (owner/name, up to 20) the newest 300 closed PRs; kept
+1. **Scrape** (`POST /admin/scrape`, NDJSON): for each repo (owner/name, up to 20) the newest 1000 closed PRs (10 pages); kept
    are merged PRs with a bug-fix title that change 1-3 JavaScript files (≤ 150 lines, tests and docs ignored,
    nothing else changed), at most 10 per repo. PRs already imported (`problems.source_url`) are skipped. Optional
    `GITHUB_TOKEN` (60 → 5000 requests an hour).
@@ -197,9 +197,12 @@ Built 17. 10. 2026 (X9). "Import" in the admin sidebar, after Problems. Pipeline
    built-ins only (code, fixed files, hidden `node --test` checks, problem text) or rejects the PR with a reason.
 3. **Preview**: accepted/rejected counts, top rejection reasons, the problems with validation per row, Remove,
    "Download results.json".
-4. **Confirm import**: `POST /admin/import-problem` once per problem, one at a time - saved as **drafts**
-   (`source = 'github'`). No bulk publish (user, 17. 10. 2026): each draft is published from Problems, where the
-   Docker check run is the gate.
+4. **Confirm import**: `POST /admin/bulk-import-problem` once per problem, one at a time - saved as a **draft**
+   (`source = 'github'`, needs a role and hidden test files) with `import_check_status = 'pending'`. The server then
+   runs the publish flow's Docker check run in the background (a queue, one run at a time): if every check fails
+   on the buggy code the problem is published (`passed`), otherwise it stays a draft (`failed`) and
+   `import_check_error` says why (e.g. which check passes on the buggy code). A backend restart leaves queued rows
+   `pending` - publish those by hand. `POST /admin/import-problem` (same body) saves a draft with no check run.
 
 ---
 
@@ -254,7 +257,7 @@ Before publishing a problem, admin should verify:
 - [ ] Incident report shows only symptoms (logs, alerts, user complaints) — never the cause
 - [ ] No "expected behavior" anywhere, and no comments in `files` hinting at the bug location
 - [ ] All checks are working correctly (enforced: Publish runs them and every one must fail on the buggy code)
-- [ ] At least 3 checks that actually validate the fix (enforced: Publish refuses fewer than 3)
+- [ ] Checks that actually validate the fix (at least one is enforced; 3+ recommended)
 - [ ] Time limit is fair for the difficulty level
 - [ ] Codebase is clean — no sensitive data, no real company names
 - [ ] Tags are accurate and useful for search

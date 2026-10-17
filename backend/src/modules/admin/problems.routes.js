@@ -279,11 +279,11 @@ adminProblemsRouter.post("/", async (req, res) => {
 const optionalText = (v, max = Infinity) => v == null || (typeof v === "string" && v.length <= max);
 
 /**
- * Bulk import (/admin/import): one entry of an import.json scraped from GitHub (snake_case) → a draft with its full
- * codebase, source 'github'. The page calls this once per problem. Publishing still needs the check run (A4/A5).
+ * One entry of an import.json scraped from GitHub (snake_case) → a draft with its full codebase, source 'github'.
+ * `bulk` (the /admin/import confirm) also needs what publishing needs: a role and hidden test files (D53).
  */
-export async function importProblem(req, res) {
-  const b = req.body ?? {};
+async function importEntry(body, bulk) {
+  const b = body ?? {};
   const cb = b.codebase ?? {};
   const draft = parseDraft({
     title: b.title,
@@ -312,11 +312,13 @@ export async function importProblem(req, res) {
   if (!cb.files || typeof cb.files !== "object" || !Object.keys(cb.files).length) details.files = "At least one file";
   if (!optionalText(cb.language, 50) || !optionalText(cb.framework, 50)) details.language = "Up to 50 characters";
   if (!optionalText(cb.setup_commands) || !optionalText(cb.run_command)) details.commands = "Text";
+  if (bulk && !draft.categorySlug) details.categorySlug = "Pick a role before publishing";
+  if (bulk && !Object.keys(draft.hiddenFiles).length) details.hiddenFiles = "The checks need hidden test files";
   if (Object.keys(details).length) throw new HttpError(400, "VALIDATION_ERROR", "Check the highlighted fields", details);
   validateFiles(cb.files);
   if (cb.solution_files != null) validateFiles(cb.solution_files);
 
-  const saved = await saveDraft(
+  return saveDraft(
     null,
     { ...draft, source: "github", sourceUrl: b.source_url ?? null },
     {
@@ -331,7 +333,23 @@ export async function importProblem(req, res) {
       runCommand: cb.run_command ?? null,
     },
   );
-  res.status(201).json(saved);
+}
+
+/** POST /admin/import-problem: saved as a draft; publishing needs the check run (A4/A5). */
+export async function importProblem(req, res) {
+  res.status(201).json(await importEntry(req.body, false));
+}
+
+/**
+ * POST /admin/bulk-import-problem: the /admin/import confirm. Saved as a draft, then the publish flow's check run
+ * goes in the background queue (user, 17. 10. 2026): published on a pass, otherwise a draft with
+ * import_check_error. Answers right away with importCheckStatus "pending".
+ */
+export async function bulkImportProblem(req, res) {
+  const saved = await importEntry(req.body, true);
+  await pool.query("UPDATE problems SET import_check_status = 'pending' WHERE id = $1", [saved.id]);
+  queueImportCheck(saved.id);
+  res.status(201).json({ ...saved, importCheckStatus: "pending" });
 }
 
 /** Replaces every editable field of a draft (the form always sends all of them). */
@@ -588,6 +606,47 @@ async function streamCheckRun(problemId, p, stages) {
   }
 }
 
+// ponytail: an in-process queue, one Docker run at a time; a backend restart leaves its rows 'pending' (publish
+// them by hand from the edit page). A job table + worker if imports grow.
+let importChecks = Promise.resolve();
+/** Resolves when every queued import check has finished (tests). */
+export const importChecksIdle = () => importChecks;
+function queueImportCheck(problemId) {
+  importChecks = importChecks.then(() => runChecksAndMaybePublish(problemId)).catch((err) => console.error(err));
+}
+
+/**
+ * Bulk import: POST /:id/publish without the stream - the same loadForRun + streamCheckRun (every check must fail on
+ * the buggy code). Publishes on a pass, otherwise keeps the draft and records why in import_check_error.
+ */
+export async function runChecksAndMaybePublish(problemId) {
+  const fail = (error) =>
+    pool.query("UPDATE problems SET import_check_status = 'failed', import_check_error = $2 WHERE id = $1", [problemId, error]);
+  let p;
+  try {
+    p = await loadForRun(problemId);
+  } catch (err) {
+    return fail(err.message);
+  }
+  const description = new Map(p.checks.map((c) => [c.id, c.description]));
+  const passedOnBuggyCode = [];
+  let runError = null;
+  const ok = await streamCheckRun(problemId, p, {
+    line: (e) => {
+      if (e.type === "result" && e.passed) passedOnBuggyCode.push(description.get(e.checkId));
+      if (e.type === "error") runError = e.message;
+    },
+  });
+  if (ok === null) return fail(runError ?? "The checks could not run.");
+  if (!ok) return fail(`Passes on the buggy code, so it does not catch the bug: ${passedOnBuggyCode.join("; ")}`);
+  const { rows } = await pool.query(
+    `UPDATE problems SET is_published = TRUE, import_check_status = 'passed', import_check_error = NULL
+     WHERE id = $1 AND updated_at::text = $2 AND NOT is_published RETURNING id`,
+    [problemId, p.version],
+  );
+  if (!rows.length) await fail("The draft changed or was published while the checks ran.");
+}
+
 // Ends with { type: "done", ok }.
 adminProblemsRouter.post("/:id/dry-run", async (req, res) => {
   const p = await loadForRun(req.params.id);
@@ -599,15 +658,13 @@ adminProblemsRouter.post("/:id/dry-run", async (req, res) => {
 
 // A5: Publish always runs the checks again (user, 9. 10. 2026) and publishes only if every check fails on the buggy
 // code and the draft did not change meanwhile (04 "Never publish a problem without testing all checks first").
-// Needs a role, at least 3 checks (04 "Quality Guidelines"), the code and hidden test files (D53: without them the
-// checks cannot run for users). Same stream as the dry-run, ending with { type: "done", ok, published, slug? }.
-const MIN_CHECKS = 3;
+// Needs a role, at least one check (loadForRun), the code and hidden test files (D53: without them the checks cannot
+// run for users). Same stream as the dry-run, ending with { type: "done", ok, published, slug? }.
 
 adminProblemsRouter.post("/:id/publish", async (req, res) => {
   const p = await loadForRun(req.params.id);
   if (p.is_published) throw new HttpError(409, "ALREADY_PUBLISHED", "This problem is already published");
   if (!p.category_id) throw new HttpError(409, "NO_ROLE", "Pick a role before publishing");
-  if (p.checks.length < MIN_CHECKS) throw new HttpError(409, "TOO_FEW_CHECKS", `Add at least ${MIN_CHECKS} checks before publishing`);
   if (!Object.keys(p.hidden_files).length)
     throw new HttpError(409, "NO_HIDDEN_FILES", "The checks need hidden test files before publishing");
 
